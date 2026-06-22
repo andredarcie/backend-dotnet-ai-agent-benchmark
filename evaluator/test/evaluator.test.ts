@@ -5,8 +5,9 @@ import { runArchitectureChecks } from '../src/checks/architecture';
 import { runKafkaStaticChecks, runQualityChecks } from '../src/checks/quality';
 import { runStaticChecks } from '../src/checks/static';
 import { distinctCaptures, stripComments, type SourceFile } from '../src/files';
-import { buildCategories, finalizeReport } from '../src/report';
+import { buildCategories, finalizeReport, groupByModel } from '../src/report';
 import type { RoslynResult } from '../src/roslyn';
+import type { SubmissionReport } from '../src/types';
 import { check, round1 } from '../src/util';
 
 const file = (name: string, content: string): SourceFile => ({ rel: name, abs: '/x/' + name, name, content });
@@ -204,5 +205,42 @@ describe('report aggregation', () => {
   it('buildCategories groups and keeps only non-empty categories', () => {
     const cats = buildCategories([check('a', 'static', 'x', 5, true), check('b', 'quality', 'y', 5, false)]);
     assert.deepEqual(cats.map((c) => c.category).sort(), ['quality', 'static']);
+  });
+});
+
+describe('groupByModel (multi-run aggregation)', () => {
+  const report = (name: string, earned: number, max = 126): SubmissionReport => ({
+    name, path: '/x', booted: true, categories: [], totalEarned: earned, totalMax: max,
+    percent: Math.round((earned / max) * 1000) / 10, notes: [],
+  });
+
+  it('groups <model>__runN (and a bare folder), ranks by median, reports mean ± sample stddev', () => {
+    const groups = groupByModel([
+      report('gpt__run1', 118), report('gpt__run2', 120), report('gpt__run3', 122),
+      report('opus', 119), report('opus__run2', 121), // bare folder counts as a run
+    ]);
+
+    const gpt = groups.find((g) => g.model === 'gpt')!;
+    assert.equal(gpt.n, 3);
+    assert.equal(gpt.medianTotal, 120);
+    assert.equal(gpt.meanTotal, 120);
+    assert.equal(gpt.minTotal, 118);
+    assert.equal(gpt.maxTotal, 122);
+    assert.equal(gpt.stddev, 2); // sample stddev of [118,120,122]
+
+    const opus = groups.find((g) => g.model === 'opus')!;
+    assert.equal(opus.n, 2); // bare 'opus' + 'opus__run2'
+
+    // ranked by median desc: gpt (120) ahead of opus (lower-middle of [119,121] = 119)
+    assert.equal(groups[0].model, 'gpt');
+    assert.equal(opus.medianTotal, 119);
+  });
+
+  it('single run reports stddev 0 and n=1', () => {
+    const [g] = groupByModel([report('solo', 117)]);
+    assert.equal(g.n, 1);
+    assert.equal(g.stddev, 0);
+    assert.equal(g.medianTotal, 117);
+    assert.equal(g.meanTotal, 117);
   });
 });

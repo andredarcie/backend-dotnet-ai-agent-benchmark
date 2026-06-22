@@ -9,6 +9,7 @@
   },
   "scripts": {
     "eval": "tsx src/index.ts",
+    "add-run": "node scripts/add-run.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/evaluator.test.ts"
   },

@@ -13,13 +13,15 @@ Card REST API (.NET 10 + EF Core + PostgreSQL + Kafka, all in Docker). An **auto
 5. **Stresses** the API with concurrent load (RPS, error rate, p95 latency).
 6. Produces a **scored report** per category plus a leaderboard comparing the models.
 
+> 🧭 **New here?** Follow the [step-by-step tutorial](./TUTORIAL.md): install the tools, grade a bundled sample, then benchmark your own model.
+
 ## 🏆 Leaderboard
 
 Regenerate any time with `npm run eval -- --leaderboard`
 (reads `evaluator/results/*.json`); full source in [`evaluator/results/leaderboard.md`](./evaluator/results/leaderboard.md).
 
 > ℹ️ **Single-run results under the current 126-point rubric** (Roslyn engine; `--strict-db` verified for
-> every submission that booted). These are one run per model — see the methodology note below on why a
+> every submission that booted). These are one run per model - see the methodology note below on why a
 > single run should not be read as a definitive ranking, and prefer per-model medians over multiple runs.
 
 | # | Submission | Total | Static · 28 | Arch · 10 | Boot · 15 | Functional · 25 | Kafka · 20 | Stress · 10 | Quality · 18 | strict-db |
@@ -33,7 +35,7 @@ Regenerate any time with `npm run eval -- --leaderboard`
 > ℹ️ `claude-sonnet-4-6-xhigh` needed a **compose patch to boot**: it pinned `bitnami/kafka:3.7`, a tag
 > Bitnami removed from Docker Hub (no longer resolves). The Kafka service was swapped to
 > `apache/kafka:3.9.0` (env vars translated 1:1 + single-node `__consumer_offsets` replication settings)
-> so the project runs — the .NET source was **not** touched. With that, it booted clean and scored full
+> so the project runs - the .NET source was **not** touched. With that, it booted clean and scored full
 > Functional/Kafka/Stress. It still targets **.NET 9**, not 10 (−3 in Static), and its only EF
 > **migrations** in the field is a quality highlight (`Migrations/` folder, +2 where the others lost it).
 
@@ -68,7 +70,8 @@ through the per-category checks in [`REQUIREMENTS.md`](./REQUIREMENTS.md) rather
 
 ## How to run
 
-Prerequisites: **Docker** (with `docker compose` v2) and **Node.js 20+**.
+Prerequisites: **Docker** (with `docker compose` v2), **Node.js 20+**, and the **.NET 10 SDK**
+(Roslyn analysis is required by default; pass `--allow-regex-fallback` to skip it).
 
 ```powershell
 # 1. Install evaluator dependencies (once)
@@ -109,11 +112,35 @@ leaderboard to `evaluator/results/leaderboard.md`.
 
 ### Multiple runs per model (recommended)
 
-Because models are stochastic, prefer **several runs per model** over a single submission. Use the
-double-underscore convention: put repeated runs in `submissions/<model>__run1/`,
-`submissions/<model>__run2/`, … (e.g. `submissions/gpt-5-5-xhigh__run1/`). The leaderboard groups
-runs by model and reports the **median total plus the range and run count**. A single
-`submissions/<model>/` folder still works as a one-run sample (n=1).
+Models are **stochastic**: the same prompt yields a different project each time. A single submission
+per model is a weak sample, and a one- or two-point gap between models is almost certainly noise. For
+a defensible comparison, generate **≥ 5 runs per model** and let the leaderboard report the
+**median ± standard deviation**.
+
+It's three commands. Re-prompt the model with [`PROMPT.md`](./PROMPT.md) **k times** (fresh each time),
+saving each generation to its own folder, then file and score them:
+
+```powershell
+cd evaluator
+
+# File each fresh generation as the next run of the model (copies it into submissions/<model>__runN/,
+# skipping bin/obj/node_modules). Run this once per generation:
+npm run add-run -- gpt-5-5-xhigh ../path/to/generation-1
+npm run add-run -- gpt-5-5-xhigh ../path/to/generation-2
+# … repeat up to run 5+ (and the same for every other model)
+
+# Score everything and build the aggregated leaderboard:
+npm run eval                       # evaluates every submissions/* folder (all runs of all models)
+npm run eval -- --leaderboard      # rebuild leaderboard.md (median ± σ per model)
+```
+
+The leaderboard groups `submissions/<model>__runN/` folders by model, **ranks by median total**, and
+shows **±σ, mean, range and run count**. Any model with fewer than 5 runs is flagged ⚠ and the table
+is labelled **provisional**. A bare `submissions/<model>/` folder still works as a one-run sample
+(n = 1) and counts as run #1.
+
+> Naming is just the `__` separator: `gpt-5-5-xhigh__run3` → grouped under `gpt-5-5-xhigh`. `add-run`
+> picks the next free number for you; you can also create the folders by hand.
 
 ## Adding a new model
 

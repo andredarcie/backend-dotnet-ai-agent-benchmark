@@ -6,6 +6,9 @@ import { round1 } from './util';
 
 const CATEGORY_ORDER: Category[] = ['static', 'architecture', 'build', 'functional', 'kafka', 'stress', 'quality'];
 
+// Below this many runs per model, a ranking is statistically weak — flag it as provisional.
+export const RECOMMENDED_RUNS = 5;
+
 export function buildCategories(checks: CheckResult[]): CategoryScore[] {
   return CATEGORY_ORDER.map((category) => {
     const own = checks.filter((c) => c.category === category);
@@ -126,11 +129,17 @@ export function groupByModel(reports: SubmissionReport[]): ModelGroup[] {
     const sorted = [...runs].sort((a, b) => a.totalEarned - b.totalEarned);
     const n = sorted.length;
     const representative = sorted[Math.floor((n - 1) / 2)];
+    const totals = sorted.map((r) => r.totalEarned);
+    const meanTotal = totals.reduce((s, t) => s + t, 0) / n;
+    // sample standard deviation (Bessel's n-1); 0 for a single run
+    const stddev = n > 1 ? Math.sqrt(totals.reduce((s, t) => s + (t - meanTotal) ** 2, 0) / (n - 1)) : 0;
     groups.push({
       model,
       runs,
       n,
       medianTotal: representative.totalEarned,
+      meanTotal: round1(meanTotal),
+      stddev: round1(stddev),
       minTotal: sorted[0].totalEarned,
       maxTotal: sorted[n - 1].totalEarned,
       totalMax: representative.totalMax,
@@ -158,15 +167,26 @@ export function writeLeaderboard(resultsDir: string, reports: SubmissionReport[]
   groups.forEach((g, i) => {
     const r = g.representative;
     const percent = g.totalMax ? Math.round((g.medianTotal / g.totalMax) * 1000) / 10 : 0;
-    const range = g.n > 1 ? ` [${g.minTotal}-${g.maxTotal} over ${g.n} runs]` : '';
-    const total = `**${g.medianTotal}/${g.totalMax}** (${percent}%)${range}`;
+    // Rank by median; report the spread (mean ± sample σ, range) so a tester sees the noise.
+    const spread = g.n > 1 ? ` ±${g.stddev} · mean ${g.meanTotal} · ${g.minTotal}-${g.maxTotal}` : '';
+    const runsCell = g.n < RECOMMENDED_RUNS ? `${g.n} ⚠` : `${g.n}`;
+    const total = `**${g.medianTotal}/${g.totalMax}** (${percent}%)${spread}`;
     lines.push(
-      `| ${i + 1} | \`${g.model}\` | ${g.n} | ${total} | ` +
+      `| ${i + 1} | \`${g.model}\` | ${runsCell} | ${total} | ` +
         `${get(r, 'static')} | ${get(r, 'architecture')} | ${get(r, 'build')} | ` +
         `${get(r, 'functional')} | ${get(r, 'kafka')} | ${get(r, 'stress')} | ${get(r, 'quality')} |`,
     );
   });
   lines.push('');
+
+  if (groups.some((g) => g.n < RECOMMENDED_RUNS)) {
+    lines.push(
+      `> ⚠ **Provisional ranking** — models marked ⚠ have fewer than ${RECOMMENDED_RUNS} runs, so the ` +
+        'totals are a weak sample (a one- or two-point gap is likely noise). Add more runs with ' +
+        '`npm run add-run -- <model> <generated-project>` and re-run `npm run eval`.',
+    );
+    lines.push('');
+  }
 
   const out = path.join(resultsDir, 'leaderboard.md');
   writeFileSync(out, lines.join('\n'), 'utf8');

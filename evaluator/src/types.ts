@@ -57,6 +57,8 @@ export interface ModelGroup {
   runs: SubmissionReport[];
   n: number;
   medianTotal: number;
+  meanTotal: number;
+  stddev: number; // sample standard deviation of the run totals (0 when n < 2)
   minTotal: number;
   maxTotal: number;
   totalMax: number;

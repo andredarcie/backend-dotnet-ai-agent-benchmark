@@ -5,6 +5,17 @@ import { check } from '../util';
 
 const W = WEIGHTS.stress;
 
+/**
+ * Drives concurrent read/write load against the API for a fixed window and scores three
+ * coarse thresholds (error rate, throughput, p95 latency).
+ *
+ * These thresholds are a CORRECTNESS FLOOR, not a fine-grained discriminator: most working
+ * APIs clear them comfortably, so they mainly catch APIs that fall over under load rather
+ * than ranking healthy ones against each other. To smooth out per-run noise the orchestrator
+ * runs this several times and selects the conservative MEDIAN across attempts (that median
+ * selection lives in index.ts, not here). This function just returns one attempt's
+ * { checks, metrics }.
+ */
 export async function runStressChecks(): Promise<{ checks: CheckResult[]; metrics: StressMetrics }> {
   // Seed a credit card so write load has a valid FK.
   const seed = await http('POST', '/api/credit-cards', {

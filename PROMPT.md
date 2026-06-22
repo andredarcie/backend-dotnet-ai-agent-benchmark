@@ -18,8 +18,9 @@ contract to the letter (routes, status codes, and JSON shape) — any divergence
 - **Messaging:** Apache Kafka, running as a service in `docker-compose`. The API publishes a
   message to Kafka every time a transaction is created (see section 4).
 - **Orchestration:** a `docker-compose.yml` at the project root that starts **API + Postgres + Kafka**.
-- The database schema must be created **automatically** when the API starts (migrations or
-  `EnsureCreated()`). No manual step may be required.
+- The database schema must be created **automatically** when the API starts, with no manual step.
+  `EnsureCreated()` is acceptable to get a passing boot, but production-grade **EF Core migrations**
+  are preferred and scored higher under best-practices.
 
 ### Required architecture (layering)
 
@@ -118,7 +119,8 @@ must publish a message to a Kafka topic. This lets downstream consumers react to
   ```json
   { "id": 1, "creditCardId": 1, "amount": 199.90, "merchant": "Amazon", "category": "shopping", "createdAt": "2026-01-01T12:00:00Z" }
   ```
-- **Message key:** the transaction `id` (as a string).
+- **Message key:** the transaction `id` (as a string). The key **must equal** the transaction id —
+  this is checked and graded, so do not use a random key, a constant, or no key.
 - The publish must happen **after** the transaction is persisted (do not publish for invalid
   requests that returned 400).
 - Use a Kafka client for .NET (e.g. `Confluent.Kafka`).

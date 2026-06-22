@@ -66,32 +66,6 @@ export function anyMatch(files: SourceFile[], re: RegExp): SourceFile | undefine
   return files.find((f) => re.test(f.content));
 }
 
-/** Counts non-blank, non-comment lines of C# code (skips generated Migrations). */
-export function countCodeLines(files: SourceFile[]): number {
-  let total = 0;
-  for (const f of files) {
-    if (!f.name.toLowerCase().endsWith('.cs')) continue;
-    if (/(^|[\\/])Migrations[\\/]/.test(f.rel)) continue;
-    let inBlock = false;
-    for (const raw of f.content.split('\n')) {
-      let line = raw.trim();
-      if (inBlock) {
-        const end = line.indexOf('*/');
-        if (end < 0) continue;
-        line = line.slice(end + 2).trim();
-        inBlock = false;
-      }
-      if (!line || line.startsWith('//') || line.startsWith('*')) continue;
-      if (line.startsWith('/*')) {
-        if (line.indexOf('*/') < 0) inBlock = true;
-        continue;
-      }
-      total++;
-    }
-  }
-  return total;
-}
-
 /** Removes // line comments and block comments so tokens in comments don't trigger checks. */
 export function stripComments(src: string): string {
   return src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/\/\/[^\n]*/g, ' ');

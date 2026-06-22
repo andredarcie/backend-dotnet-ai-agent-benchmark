@@ -15,6 +15,8 @@ export const config = {
   stress: {
     concurrency: Number(process.env.BENCH_STRESS_CONCURRENCY ?? 50),
     durationMs: Number(process.env.BENCH_STRESS_MS ?? 15_000),
+    // maxErrorRate/minRps/maxP95Ms are a CORRECTNESS FLOOR (most working APIs clear
+    // them) — not a fine-grained discriminator between healthy submissions.
     maxErrorRate: Number(process.env.BENCH_STRESS_MAX_ERR ?? 0.01), // < 1%
     minRps: Number(process.env.BENCH_STRESS_MIN_RPS ?? 50), // sustained throughput floor
     maxP95Ms: Number(process.env.BENCH_STRESS_MAX_P95 ?? 1_000),
@@ -39,7 +41,7 @@ export const WEIGHTS = {
     postgresProvider: 2,
     relationship: 2,
     kafkaClientPublish: 2,
-    targetNet10: 5, // wrong .NET version is a contract violation → penalized here
+    targetNet10: 3, // wrong .NET version is a contract violation → weighted as a single contract item
   },
   architecture: {
     repositoryLayer: 2,
@@ -55,7 +57,8 @@ export const WEIGHTS = {
   functional: 25, // split evenly across the assertions actually run
   kafka: {
     brokerReachable: 5,
-    eventPublished: 10,
+    eventPublished: 8,
+    eventKey: 2, // the produced message key must equal the transaction id
     healthcheck: 3, // compose has a Kafka healthcheck
     durability: 2, // producer configured durable (Acks.All / idempotence + retries)
   },
@@ -74,7 +77,6 @@ export const WEIGHTS = {
     migrations: 2, // EF migrations rather than EnsureCreated
     nonRoot: 1, // container runs as non-root
     publishResilient: 3, // a Kafka publish failure doesn't 500 the request (catch, no rethrow)
-    loc: 2, // concise codebase (graded by lines of code)
   },
 };
 

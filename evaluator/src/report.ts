@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { CATEGORY_TITLES } from './config';
-import type { Category, CategoryScore, CheckResult, SubmissionReport } from './types';
+import type { Category, CategoryScore, CheckResult, ModelGroup, SubmissionReport } from './types';
 import { round1 } from './util';
 
 const CATEGORY_ORDER: Category[] = ['static', 'architecture', 'build', 'functional', 'kafka', 'stress', 'quality'];
@@ -52,6 +52,7 @@ export function renderMarkdown(r: SubmissionReport): string {
   lines.push(`# Benchmark report — \`${r.name}\``);
   lines.push('');
   lines.push(`**Score: ${r.totalEarned} / ${r.totalMax} (${r.percent}%)** — ${r.booted ? 'booted ✅' : 'did not boot ❌'}`);
+  lines.push(`**Analysis engine:** \`${r.engine ?? 'unknown'}\``);
   lines.push('');
 
   if (r.integrity) {
@@ -105,22 +106,62 @@ export function writeReports(resultsDir: string, r: SubmissionReport): { json: s
   return { json, md };
 }
 
+/** Strip a `__<runId>` suffix to get the base model name (a folder `<model>__<runId>` is one run). */
+export function baseModelName(name: string): string {
+  return name.replace(/__.+$/, '');
+}
+
+/** Group submission reports into per-model groups, picking a conservative median run as representative. */
+export function groupByModel(reports: SubmissionReport[]): ModelGroup[] {
+  const byModel = new Map<string, SubmissionReport[]>();
+  for (const r of reports) {
+    const model = baseModelName(r.name);
+    const arr = byModel.get(model);
+    if (arr) arr.push(r);
+    else byModel.set(model, [r]);
+  }
+
+  const groups: ModelGroup[] = [];
+  for (const [model, runs] of byModel) {
+    const sorted = [...runs].sort((a, b) => a.totalEarned - b.totalEarned);
+    const n = sorted.length;
+    const representative = sorted[Math.floor((n - 1) / 2)];
+    groups.push({
+      model,
+      runs,
+      n,
+      medianTotal: representative.totalEarned,
+      minTotal: sorted[0].totalEarned,
+      maxTotal: sorted[n - 1].totalEarned,
+      totalMax: representative.totalMax,
+      representative,
+    });
+  }
+
+  groups.sort((a, b) => b.medianTotal - a.medianTotal);
+  return groups;
+}
+
 export function writeLeaderboard(resultsDir: string, reports: SubmissionReport[]): string {
-  const ranked = [...reports].sort((a, b) => b.totalEarned - a.totalEarned);
+  const groups = groupByModel(reports);
   const lines: string[] = [];
   lines.push('# Leaderboard');
   lines.push('');
-  lines.push('| # | Submission | Total | Static | Arch | Boot | Functional | Kafka | Stress | Quality |');
-  lines.push('|--:|------------|------:|-------:|-----:|-----:|-----------:|------:|-------:|--------:|');
+  lines.push('| # | Model | Runs | Total | Static | Arch | Boot | Functional | Kafka | Stress | Quality |');
+  lines.push('|--:|-------|-----:|------:|-------:|-----:|-----:|-----------:|------:|-------:|--------:|');
 
   const get = (r: SubmissionReport, cat: Category) => {
     const c = r.categories.find((x) => x.category === cat);
     return c ? `${c.earned}/${c.max}` : '—';
   };
 
-  ranked.forEach((r, i) => {
+  groups.forEach((g, i) => {
+    const r = g.representative;
+    const percent = g.totalMax ? Math.round((g.medianTotal / g.totalMax) * 1000) / 10 : 0;
+    const range = g.n > 1 ? ` [${g.minTotal}–${g.maxTotal} over ${g.n} runs]` : '';
+    const total = `**${g.medianTotal}/${g.totalMax}** (${percent}%)${range}`;
     lines.push(
-      `| ${i + 1} | \`${r.name}\` | **${r.totalEarned}/${r.totalMax}** (${r.percent}%) | ` +
+      `| ${i + 1} | \`${g.model}\` | ${g.n} | ${total} | ` +
         `${get(r, 'static')} | ${get(r, 'architecture')} | ${get(r, 'build')} | ` +
         `${get(r, 'functional')} | ${get(r, 'kafka')} | ${get(r, 'stress')} | ${get(r, 'quality')} |`,
     );

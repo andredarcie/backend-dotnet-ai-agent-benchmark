@@ -45,7 +45,20 @@ export interface SubmissionReport {
   totalMax: number;
   percent: number;
   stress?: StressMetrics;
+  // Which static-analysis engine produced this report.
+  engine?: 'roslyn' | 'regex';
   // Opt-in (--strict-db) runtime verdict; does not affect the 0–100 score.
   integrity?: { passed: boolean; detail: string };
   notes: string[];
+}
+
+export interface ModelGroup {
+  model: string;
+  runs: SubmissionReport[];
+  n: number;
+  medianTotal: number;
+  minTotal: number;
+  maxTotal: number;
+  totalMax: number;
+  representative: SubmissionReport;
 }

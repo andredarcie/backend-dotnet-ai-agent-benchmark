@@ -1,8 +1,8 @@
 import { WEIGHTS } from '../config';
-import { anyMatch, composeFiles, countCodeLines, csFiles, type SourceFile } from '../files';
+import { anyMatch, composeFiles, csFiles, type SourceFile } from '../files';
 import type { RoslynResult } from '../roslyn';
 import type { CheckResult } from '../types';
-import { check, round1 } from '../util';
+import { check } from '../util';
 
 const Q = WEIGHTS.quality;
 const K = WEIGHTS.kafka;
@@ -77,38 +77,28 @@ export function runQualityChecks(files: SourceFile[], roslyn: RoslynResult | nul
 
   const hasMigrationsFolder = files.some((f) => /(^|[\\/])Migrations[\\/]/.test(f.rel) && f.name.toLowerCase().endsWith('.cs'));
   const migrate = hasMigrationsFolder || (roslyn ? roslyn.databaseMigrate : !!anyMatch(cs, /Database\.Migrate/));
-  results.push(check('quality.migrations', 'quality', 'Uses EF migrations (not EnsureCreated)', Q.migrations, migrate,
+  results.push(check('quality.migrations', 'quality', 'Production-grade schema management (EF migrations, bonus over EnsureCreated)', Q.migrations, migrate,
     hasMigrationsFolder ? 'Migrations/ folder present' : migrate ? 'Database.Migrate() call' : 'EnsureCreated only'));
 
   const dockerfile = files.find((f) => f.name.toLowerCase().startsWith('dockerfile'));
   const nonRoot = !!dockerfile && /^\s*USER\s+\S+/m.test(dockerfile.content);
   results.push(check('quality.nonRoot', 'quality', 'Container runs as non-root (USER)', Q.nonRoot, nonRoot));
 
-  // Resilient Kafka publish: a publish failure is caught (no rethrow) so it doesn't 500 the request.
+  // Resilient Kafka publish: a publish failure is handled (catch-and-log) or routed through a
+  // transactional outbox, so it doesn't 500 the request.
   if (roslyn) {
-    results.push(check('quality.kafkaResilient', 'quality', 'Resilient Kafka publish (failure does not fail the request)' + via,
-      Q.publishResilient, roslyn.kafkaPublishResilient,
-      roslyn.kafkaPublishResilient ? 'publish in try/catch, no rethrow' : 'publish failure propagates (no catch, or catch rethrows)'));
+    const ok = roslyn.kafkaPublishResilient || roslyn.kafkaPublishOutbox;
+    results.push(check('quality.kafkaResilient', 'quality', 'Publish failure handled gracefully (catch-and-log or outbox)' + via,
+      Q.publishResilient, ok,
+      ok ? 'publish in try/catch (no rethrow) or transactional outbox' : 'publish failure propagates (no catch, or catch rethrows)'));
   } else {
-    const ok = !!anyMatch(cs, /catch[\s\S]{0,300}Produce/) &&
+    const hasOutbox = !!anyMatch(cs, /class\s+\w*Outbox|DbSet<\s*\w*Outbox/i);
+    const catchAndLog = !!anyMatch(cs, /catch[\s\S]{0,300}Produce/) &&
       !cs.some((f) => /Produce/.test(f.content) && /catch[\s\S]{0,200}throw\s*;/.test(f.content));
-    results.push(check('quality.kafkaResilient', 'quality', 'Resilient Kafka publish (failure does not fail the request)' + via, Q.publishResilient, ok));
+    const ok = catchAndLog || hasOutbox;
+    results.push(check('quality.kafkaResilient', 'quality', 'Publish failure handled gracefully (catch-and-log or outbox)' + via, Q.publishResilient, ok,
+      ok ? 'catch-and-log or transactional outbox' : 'publish failure propagates (no catch/log or transactional outbox)'));
   }
-
-  // Code conciseness — graded by non-comment lines of code (same functionality, less code is better).
-  const loc = countCodeLines(files);
-  const FULL = 800;
-  const ZERO = 1400;
-  const frac = Math.max(0, Math.min(1, (ZERO - loc) / (ZERO - FULL)));
-  results.push({
-    id: 'quality.loc',
-    category: 'quality',
-    description: `Concise codebase (${loc} LOC)`,
-    weight: Q.loc,
-    passed: frac >= 0.5,
-    earned: round1(Q.loc * frac),
-    detail: `${loc} non-comment LOC (full ≤ ${FULL}, zero ≥ ${ZERO})`,
-  });
 
   return results;
 }

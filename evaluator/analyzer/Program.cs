@@ -46,6 +46,7 @@ try
     var genericNames = new HashSet<string>();
     var allNames = new HashSet<string>();
     var memberAccesses = new HashSet<string>();
+    var objectCreationTypeNames = new HashSet<string>();
     var mapEndpointRoutes = new List<string>();
     var produceOrPublishInvocations = new List<InvocationExpressionSyntax>();
 
@@ -63,6 +64,7 @@ try
         foreach (var g in root.DescendantNodes().OfType<GenericNameSyntax>()) genericNames.Add(g.Identifier.Text);
         foreach (var sn in root.DescendantNodes().OfType<SimpleNameSyntax>()) allNames.Add(sn.Identifier.Text);
         foreach (var ma in root.DescendantNodes().OfType<MemberAccessExpressionSyntax>()) memberAccesses.Add(ma.Expression + "." + ma.Name.Identifier.Text);
+        foreach (var oc in root.DescendantNodes().OfType<ObjectCreationExpressionSyntax>()) objectCreationTypeNames.Add(oc.Type.ToString());
 
         foreach (var inv in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
@@ -170,14 +172,61 @@ try
     var useCasesReturnDtos = responseDtoTypes.Count > 0 && useCaseClasses.Any(c =>
         c.decl.Members.OfType<MethodDeclarationSyntax>().Any(m => responseDtoTypes.Any(d => m.ReturnType.ToString().Contains(d))));
 
-    var usesExceptionHandler = classes.Any(c => BaseListContains(c.decl.BaseList, s => s.Contains("IExceptionHandler"))) || allNames.Contains("IExceptionHandler");
-    var usesProblemDetails = invocationNames.Contains("AddProblemDetails") || allNames.Contains("ProblemDetails");
-    var usesResultPattern = typeNames.Any(n => n.EndsWith("Result"));
+    var usesExceptionHandler = classes.Any(c => BaseListContains(c.decl.BaseList, s => s.Contains("IExceptionHandler")));
+
+    // ProblemDetails: require actual usage — AddProblemDetails()/Problem() helper, or constructing a
+    // (Validation)ProblemDetails — not a bare identifier mention.
+    var usesProblemDetails = invocationNames.Contains("AddProblemDetails")
+        || invocationNames.Contains("Problem")
+        || objectCreationTypeNames.Any(t => t.Contains("ProblemDetails") || t.Contains("ValidationProblemDetails"));
+
+    // Result/Either pattern: require a real result abstraction (class or record named exactly
+    // Result/Either, or ending with Result/Either) that exposes a success/failure shape, AND that
+    // is referenced by a controller or a use case.
+    var resultShapeMembers = new HashSet<string> { "IsSuccess", "Succeeded", "IsFailure", "Error", "Errors", "Value" };
+    var resultFactoryNames = new HashSet<string> { "Success", "Failure", "Ok", "Fail", "Created", "NotFound", "Invalid" };
+
+    static bool IsResultCandidateName(string n) =>
+        n == "Result" || n == "Either" || n.EndsWith("Result") || n.EndsWith("Either");
+
+    bool HasResultShape(IEnumerable<MemberDeclarationSyntax> members, IEnumerable<string>? positionalParamNames)
+    {
+        foreach (var m in members)
+        {
+            if (m is PropertyDeclarationSyntax p && resultShapeMembers.Contains(p.Identifier.Text)) return true;
+            if (m is MethodDeclarationSyntax method)
+            {
+                if (resultShapeMembers.Contains(method.Identifier.Text)) return true;
+                if (method.Modifiers.Any(mod => mod.Text == "static") && resultFactoryNames.Contains(method.Identifier.Text)) return true;
+            }
+        }
+        if (positionalParamNames != null && positionalParamNames.Any(pn => resultShapeMembers.Contains(pn))) return true;
+        return false;
+    }
+
+    var resultCandidateNames = new HashSet<string>();
+    foreach (var (decl, _) in classes)
+        if (IsResultCandidateName(decl.Identifier.Text) && HasResultShape(decl.Members, null))
+            resultCandidateNames.Add(decl.Identifier.Text);
+    foreach (var r in records)
+        if (IsResultCandidateName(r.Identifier.Text)
+            && HasResultShape(r.Members, r.ParameterList?.Parameters.Select(pp => pp.Identifier.Text)))
+            resultCandidateNames.Add(r.Identifier.Text);
+
+    var usesResultPattern = resultCandidateNames.Count > 0
+        && (controllerDecls.Any(c => RefNames(c).Overlaps(resultCandidateNames))
+            || useCaseClasses.Any(c => RefNames(c.decl).Overlaps(resultCandidateNames)));
 
     var databaseMigrate = invocationNames.Contains("Migrate") || invocationNames.Contains("MigrateAsync");
 
-    // Kafka producer durability: Acks.All (or idempotence) + retries configured.
-    var kafkaDurable = memberAccesses.Contains("Acks.All") || allNames.Contains("EnableIdempotence");
+    // Kafka producer durability: Acks.All (or idempotence) configured AND a producer context is
+    // present, so a stray token alone can't pass.
+    var kafkaDurable = (memberAccesses.Contains("Acks.All") || allNames.Contains("EnableIdempotence"))
+        && (genericNames.Contains("ProducerBuilder")
+            || genericNames.Contains("ProducerConfig")
+            || allNames.Contains("ProducerConfig")
+            || allNames.Contains("ProducerBuilder")
+            || kafkaClient);
 
     // Resilient publish: the Produce/Publish call sits in a try whose catch does NOT rethrow,
     // so a messaging hiccup doesn't fail (500) the HTTP request after the data is persisted.
@@ -192,6 +241,11 @@ try
         return false;
     }
     var kafkaPublishResilient = produceOrPublishInvocations.Any(InResilientTry);
+
+    // Transactional outbox: an Outbox-named class, or a DbSet<T> whose entity name mentions Outbox.
+    var kafkaPublishOutbox =
+        declaredClassNames.Any(n => n.IndexOf("Outbox", StringComparison.OrdinalIgnoreCase) >= 0)
+        || dbSetTypes.Any(t => t.IndexOf("Outbox", StringComparison.OrdinalIgnoreCase) >= 0);
 
     var result = new
     {
@@ -226,6 +280,7 @@ try
         databaseMigrate,
         kafkaDurable,
         kafkaPublishResilient,
+        kafkaPublishOutbox,
     };
 
     Console.WriteLine(JsonSerializer.Serialize(result));

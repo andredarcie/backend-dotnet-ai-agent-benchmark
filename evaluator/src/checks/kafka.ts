@@ -44,6 +44,8 @@ export async function runKafkaChecks(): Promise<CheckResult[]> {
       W.brokerReachable, false, `connect failed: ${String(err)}`));
     results.push(check('kafka.event', 'kafka', 'Transaction create publishes to topic', W.eventPublished, false,
       'skipped (broker unreachable)'));
+    results.push(check('kafka.eventKey', 'kafka', 'Event message key = transaction id', W.eventKey, false,
+      'skipped (broker unreachable)'));
     try {
       await consumer.disconnect();
     } catch {
@@ -88,6 +90,12 @@ export async function runKafkaChecks(): Promise<CheckResult[]> {
     ? `received event for txn ${txnId ?? merchant}; key="${hit.key}" (expected "${txnId}") → ${keyOk ? 'match' : 'MISMATCH'}`
     : `no matching message within ${config.kafka.waitMs}ms (saw ${messages.length})`;
   results.push(check('kafka.event', 'kafka', 'Transaction create publishes to topic (value + key)', W.eventPublished, hit !== undefined, detail));
+
+  // The produced message key must equal the transaction id (as a string) — its own scored check.
+  const keyDetail = hit
+    ? `key="${hit.key ?? '(none)'}" (expected "${txnId}")`
+    : 'no event received';
+  results.push(check('kafka.eventKey', 'kafka', 'Event message key = transaction id', W.eventKey, keyOk, keyDetail));
 
   try {
     await consumer.disconnect();

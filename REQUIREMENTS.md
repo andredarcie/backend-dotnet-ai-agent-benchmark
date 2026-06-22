@@ -1,25 +1,28 @@
 # Scoring rubric
 
-The evaluator scores every submission across **7 categories**, for a total of **130 points**.
+The evaluator scores every submission across **7 categories**, for a total of **126 points**.
 Each check is pass/fail (or graded, for stress) and carries a weight. The exact weights live
 in `evaluator/src/config.ts` — this document mirrors them for transparency.
 
 | Category                  | Weight | What it measures                                          |
 |---------------------------|-------:|-----------------------------------------------------------|
-| 1. Static requirements    | 30     | The code contains what the prompt asked (incl. **.NET 10 target**) |
+| 1. Static requirements    | 28     | The code contains what the prompt asked (incl. **.NET 10 target**) |
 | 2. Architecture (layering)| 10     | Controller → Use Case → Repository is actually wired      |
 | 3. Build & boot           | 15     | `docker compose up` works and the API comes alive         |
 | 4. Functional behavior    | 25     | Endpoints behave per the contract                         |
 | 5. Kafka integration      | 20     | Publishes to the topic; broker **healthcheck**; **durable** producer |
 | 6. Stress / load          | 10     | Holds up under concurrent traffic                         |
-| 7. Best practices (quality)| 20    | Engineering quality beyond the minimum (tie-breakers)     |
+| 7. Best practices (quality)| 18    | Engineering quality beyond the minimum (tie-breakers)     |
 
 Categories 1, 2 and 7 (plus the static part of 5) are static (no Docker). Categories 3, 4, 6 and
 the runtime part of 5 require a running container; if boot fails they score 0.
 
+Static analysis runs with **Roslyn by default**; the report records which engine produced each
+static row, and `--allow-regex-fallback` permits the regex heuristics if the .NET SDK is absent.
+
 ---
 
-## 1. Static requirements (30 pts)
+## 1. Static requirements (28 pts)
 
 Source-code analysis — no Docker needed. C# structure is analyzed with **Roslyn** (real syntax
 trees — understands primary constructors, attributes, comments, partial classes), falling back
@@ -40,7 +43,7 @@ file-based. (`bin/`, `obj/`, `node_modules/`, `.git/` are skipped.) Each report 
 | Uses the Postgres provider    | 2   | A `UseNpgsql(...)` **wiring call** (a package reference alone is not enough) |
 | Models a 1:N relationship     | 2   | A foreign-key signal: `HasForeignKey`, `[ForeignKey]`, or a `…Id` + nav property |
 | Kafka client + publish        | 2   | A Kafka client reference (`Confluent.Kafka`) AND a produce call (`ProduceAsync` / `Produce` / `IProducer`) |
-| **Targets .NET 10**           | 5   | `TargetFramework` is `net10.*` — wrong .NET version is a contract violation and is penalized here |
+| **Targets .NET 10**           | 3   | `TargetFramework` is `net10.*` — wrong .NET version is a contract violation, but it is weighted as a single contract item (not heavier than core structural checks) |
 
 ## 2. Architecture / layering (10 pts)
 
@@ -88,7 +91,8 @@ the corresponding event. Two of the checks are static (compose / producer config
 | Check                          | Pts | Pass condition                                                       |
 |--------------------------------|----:|----------------------------------------------------------------------|
 | Broker reachable from host     | 5   | A consumer connects to `localhost:29092` and subscribes to `transactions` |
-| Transaction event published    | 10  | A message referencing the just-created transaction (`id` / `merchant`) arrives within the timeout; the message **key** (expected = transaction id) is also reported in the detail |
+| Transaction event published (value) | 8 | A message referencing the just-created transaction (`id` / `merchant`) arrives within the timeout |
+| Event message key = transaction id | 2 | The produced message **key** equals the transaction id, as required by PROMPT §4 |
 | Kafka healthcheck (compose)    | 3   | The compose Kafka service defines a healthcheck (static) |
 | Durable producer               | 2   | Producer configured for durability — `Acks.All` / `EnableIdempotence` (static) |
 
@@ -110,7 +114,11 @@ The report also records raw metrics (total requests, RPS, p50/p95/p99 latency) f
 even when thresholds pass. Thresholds are tunable via env vars (`BENCH_STRESS_MAX_ERR`,
 `BENCH_STRESS_MIN_RPS`, `BENCH_STRESS_MAX_P95`).
 
-## 7. Best practices (quality) (20 pts)
+**Honest caveat:** these thresholds are a **correctness floor** — most working APIs pass them, so
+this category rarely discriminates between healthy submissions. To avoid optimistic bias, the
+recorded score uses the **conservative MEDIAN across attempts** (NOT best-of-N / max).
+
+## 7. Best practices (quality) (18 pts)
 
 Engineering quality **beyond the minimum** — these are the tie-breakers that separate otherwise
 perfect submissions. All static (Roslyn + compose + Dockerfile).
@@ -123,10 +131,28 @@ perfect submissions. All static (Roslyn + compose + Dockerfile).
 | CancellationToken propagated| 3   | Controllers **and** repositories take a `CancellationToken`         |
 | Response DTOs               | 2   | Returns DTOs (`*Response`/`*Dto`), doesn't leak EF entities          |
 | Structured error handling   | 2   | `IExceptionHandler` / `AddProblemDetails` / a `Result` pattern       |
-| EF migrations               | 2   | A `Migrations/` folder or `Database.Migrate()` (not just `EnsureCreated`) |
+| EF migrations               | 2   | Production-grade schema management — a `Migrations/` folder or `Database.Migrate()`. A **bonus** for managed migrations over `EnsureCreated` (not a penalty for following the prompt) |
 | Non-root container          | 1   | Dockerfile sets a non-root `USER`                                    |
-| Resilient Kafka publish     | 3   | The publish sits in a `try/catch` that does **not** rethrow — a broker hiccup doesn't 500 the request after the data is persisted |
-| Concise codebase (LOC)      | 2   | **Graded** by non-comment lines of C# code (full ≤ 800, zero ≥ 1400) — same functionality, less code scores higher |
+| Resilient Kafka publish     | 3   | Publish failure handled gracefully (catch-and-log **OR** a transactional outbox), not propagated as a 500 — a broker hiccup doesn't fail the request after the data is persisted |
+
+---
+
+## Weighting rationale
+
+Why the categories carry the weights they do:
+
+- **Functional behavior (25)** is the highest single weight: contract conformance is the core
+  deliverable — an API that doesn't behave per the spec has failed regardless of how it's built.
+- **Kafka (20)** reflects that event publishing is a first-class *required* integration, verified
+  at runtime (broker reachability, value, and key), not an optional extra.
+- **Static requirements (28)** confirm the required stack/structure cheaply and deterministically;
+  many small, unambiguous checks add up, but no single one (including `.NET 10`) dominates.
+- **Build & boot (15)** gates everything downstream — if the stack doesn't come up, the functional,
+  Kafka-runtime, and stress categories can't even be measured.
+- **Architecture (10)** and **quality (18)** are tie-breakers that separate otherwise-passing
+  submissions on engineering rigor (layering, DTOs, resilience, structured errors).
+- **Stress (10)** is a correctness floor with the highest run-to-run variance, so it is deliberately
+  *not* over-weighted; its score uses the conservative median across attempts.
 
 ---
 

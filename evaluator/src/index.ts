@@ -42,10 +42,11 @@ interface Options {
   strictDb: boolean;
   leaderboard: boolean;
   retries: number;
+  allowRegexFallback: boolean;
 }
 
 function parseArgs(argv: string[]): Options {
-  const o: Options = { names: [], staticOnly: false, noKafka: false, noStress: false, keepUp: false, strictDb: false, leaderboard: false, retries: 1 };
+  const o: Options = { names: [], staticOnly: false, noKafka: false, noStress: false, keepUp: false, strictDb: false, leaderboard: false, retries: 1, allowRegexFallback: false };
   for (const arg of argv) {
     if (arg.startsWith('--retries=')) {
       o.retries = Math.max(0, parseInt(arg.slice('--retries='.length), 10) || 0);
@@ -58,6 +59,7 @@ function parseArgs(argv: string[]): Options {
       case '--keep-up': o.keepUp = true; break;
       case '--strict-db': o.strictDb = true; break;
       case '--leaderboard': o.leaderboard = true; break;
+      case '--allow-regex-fallback': o.allowRegexFallback = true; break;
       default:
         if (!arg.startsWith('--')) o.names.push(arg);
     }
@@ -103,6 +105,7 @@ const functionalSkipped = (reason: string): CheckResult[] => [
 const kafkaSkipped = (reason: string): CheckResult[] => [
   check('kafka.broker', 'kafka', 'Broker reachable on host', WEIGHTS.kafka.brokerReachable, false, reason),
   check('kafka.event', 'kafka', 'Transaction create publishes to topic', WEIGHTS.kafka.eventPublished, false, reason),
+  check('kafka.eventKey', 'kafka', 'Event message key = transaction id', WEIGHTS.kafka.eventKey, false, reason),
 ];
 const stressSkipped = (reason: string): CheckResult[] => [
   check('stress.errorRate', 'stress', 'Error rate', WEIGHTS.stress.errorRate, false, reason),
@@ -126,7 +129,26 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
   const files = readSourceFiles(dir);
   log(c.gray(`  read ${files.length} source files`));
   const roslyn = await analyzeWithRoslyn(dir, (s) => log(c.gray('  ' + s)));
+  if (roslyn === null && !opts.allowRegexFallback) {
+    log(c.red('  ✖ Roslyn analysis unavailable — the .NET SDK is required for reproducible, precise scoring.'));
+    log(c.red('    Install the .NET SDK so the Roslyn analyzer can run, or pass --allow-regex-fallback to'));
+    log(c.red('    score with the (less precise) regex engine. Aborting to avoid producing misleading scores.'));
+    process.exit(1);
+  }
   log(c.gray(`  static analysis engine: ${roslyn ? 'Roslyn (precise)' : 'regex (fallback)'}`));
+
+  // Finalize a report and stamp the engine used (Roslyn vs regex fallback) before returning.
+  const finish = (
+    booted: boolean,
+    checks: CheckResult[],
+    notes: string[],
+    stress?: SubmissionReport['stress'],
+  ): SubmissionReport => {
+    const r = finalizeReport(name, dir, booted, checks, notes, stress);
+    r.engine = roslyn ? 'roslyn' : 'regex';
+    return r;
+  };
+
   checks.push(...runStaticChecks(files, roslyn));
   checks.push(...runArchitectureChecks(files, roslyn));
   checks.push(...runQualityChecks(files, roslyn));
@@ -144,7 +166,7 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
 
   if (opts.staticOnly) {
     notes.push('static-only run: build/functional/kafka/stress were skipped.');
-    return finalizeReport(name, dir, false, checks, notes, stress);
+    return finish(false, checks, notes, stress);
   }
 
   // --- boot ---
@@ -154,7 +176,7 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
     checks.push(check('build.up', 'build', 'docker compose up', WEIGHTS.build.composeUp, false, 'no compose file'));
     checks.push(check('build.healthy', 'build', 'API becomes healthy', WEIGHTS.build.healthy, false, 'no compose file'));
     checks.push(...functionalSkipped('no compose file'), ...kafkaSkipped('no compose file'), ...stressSkipped('no compose file'));
-    return finalizeReport(name, dir, false, checks, notes, stress);
+    return finish(false, checks, notes, stress);
   }
 
   if (!(await dockerAvailable())) {
@@ -162,7 +184,7 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
     checks.push(check('build.up', 'build', 'docker compose up', WEIGHTS.build.composeUp, false, 'docker unavailable'));
     checks.push(check('build.healthy', 'build', 'API becomes healthy', WEIGHTS.build.healthy, false, 'docker unavailable'));
     checks.push(...functionalSkipped('docker unavailable'), ...kafkaSkipped('docker unavailable'), ...stressSkipped('docker unavailable'));
-    return finalizeReport(name, dir, false, checks, notes, stress);
+    return finish(false, checks, notes, stress);
   }
 
   const project = projectName(name);
@@ -215,7 +237,7 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
     const reason = upOk ? 'API not healthy' : 'boot failed';
     checks.push(...functionalSkipped(reason), ...kafkaSkipped(reason), ...stressSkipped(reason));
     if (!opts.keepUp) await composeDown(dir, project, composeFile, { timeoutMs: config.docker.downTimeoutMs });
-    return finalizeReport(name, dir, false, checks, notes, stress);
+    return finish(false, checks, notes, stress);
   }
 
   booted = true;
@@ -236,21 +258,24 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
   if (opts.noStress) {
     notes.push('Stress checks skipped (--no-stress).');
   } else {
-    // Best-of-N: stress is sensitive to host load, so if the thresholds are missed we re-run
-    // it (no rebuild) and keep the best attempt — absorbs transient contention noise.
+    // Conservative median: stress is sensitive to host load, so if the thresholds are missed we
+    // re-run it (no rebuild) to gather more samples, then pick the conservative-median attempt by
+    // total earned — anti-optimistic, so transient *good* luck can't inflate the score either.
     const earned = (cs: CheckResult[]) => cs.reduce((s, c) => s + c.earned, 0);
     log(c.gray(`  stress test (${config.stress.concurrency} workers, ${config.stress.durationMs / 1000}s) ...`));
-    let best = await runStressChecks();
+    const runs = [await runStressChecks()];
     const attempts = 1 + Math.max(0, opts.retries);
-    for (let i = 1; i < attempts && best.checks.some((c) => !c.passed); i++) {
-      log(c.gray(`  stress thresholds missed — re-running stress (attempt ${i + 1}/${attempts}, best-of-N) ...`));
-      const again = await runStressChecks();
-      if (earned(again.checks) > earned(best.checks)) best = again;
+    for (let i = 1; i < attempts && runs[runs.length - 1].checks.some((c) => !c.passed); i++) {
+      log(c.gray(`  stress thresholds missed — re-running stress (attempt ${i + 1}/${attempts}, conservative median) ...`));
+      runs.push(await runStressChecks());
     }
-    if (best.checks.some((c) => !c.passed))
-      notes.push(`Stress did not fully pass after ${attempts} attempt(s) — may indicate a loaded host or a real tail-latency issue.`);
-    checks.push(...best.checks);
-    stress = best.metrics;
+    // Sort ascending by earned and pick the lower-middle index (for 2 runs this is the LOWER one).
+    const sorted = [...runs].sort((a, b) => earned(a.checks) - earned(b.checks));
+    const chosen = sorted[Math.floor((sorted.length - 1) / 2)];
+    if (chosen.checks.some((c) => !c.passed))
+      notes.push(`Stress did not fully pass (conservative median across ${runs.length} attempt(s)) — may indicate a loaded host or a real tail-latency issue.`);
+    checks.push(...chosen.checks);
+    stress = chosen.metrics;
   }
 
   // Opt-in runtime integrity check (must run while the containers are still up).
@@ -267,7 +292,7 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
     notes.push('Containers left running (--keep-up).');
   }
 
-  const report = finalizeReport(name, dir, booted, checks, notes, stress);
+  const report = finish(booted, checks, notes, stress);
   report.integrity = integrity;
   return report;
 }

@@ -59,6 +59,7 @@ const FULL_ROSLYN: RoslynResult = {
   databaseMigrate: true,
   kafkaDurable: true,
   kafkaPublishResilient: true,
+  kafkaPublishOutbox: false,
 };
 
 const sum = (xs: { earned: number }[]) => round1(xs.reduce((s, x) => s + x.earned, 0));
@@ -84,12 +85,12 @@ describe('files helpers', () => {
 });
 
 describe('static checks (Roslyn mode)', () => {
-  it('a complete .NET 10 submission earns the full 30', () => {
+  it('a complete .NET 10 submission earns the full 28', () => {
     const res = runStaticChecks([COMPOSE, DOCKERFILE], FULL_ROSLYN);
-    assert.equal(maxSum(res), 30);
-    assert.equal(sum(res), 30, JSON.stringify(res.filter((r) => !r.passed).map((r) => r.id)));
+    assert.equal(maxSum(res), 28);
+    assert.equal(sum(res), 28, JSON.stringify(res.filter((r) => !r.passed).map((r) => r.id)));
   });
-  it('wrong .NET version is penalized (net8 fails the net10 check, −5)', () => {
+  it('wrong .NET version is penalized (net8 fails the net10 check, −3)', () => {
     const res = runStaticChecks([COMPOSE, DOCKERFILE], { ...FULL_ROSLYN, targetFrameworks: ['net8.0'] });
     assert.equal(passed(res, 'static.net10'), false);
     assert.equal(sum(res), 25);
@@ -100,7 +101,7 @@ describe('static checks (Roslyn mode)', () => {
 });
 
 describe('static checks (regex fallback, roslyn=null)', () => {
-  it('classic EF-Core .NET 10 style earns the full 30', () => {
+  it('classic EF-Core .NET 10 style earns the full 28', () => {
     const cs = [
       file('App.csproj', '<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>'),
       file('AppDbContext.cs', `using Microsoft.EntityFrameworkCore;
@@ -115,7 +116,7 @@ describe('static checks (regex fallback, roslyn=null)', () => {
       file('Program.cs', 'using Confluent.Kafka; options.UseNpgsql(cs); await producer.ProduceAsync(t, m);'),
     ];
     const res = runStaticChecks([COMPOSE, DOCKERFILE, ...cs], null);
-    assert.equal(sum(res), 30, JSON.stringify(res.filter((r) => !r.passed).map((r) => r.id)));
+    assert.equal(sum(res), 28, JSON.stringify(res.filter((r) => !r.passed).map((r) => r.id)));
   });
 });
 
@@ -131,21 +132,14 @@ describe('architecture checks (Roslyn mode)', () => {
 });
 
 describe('quality checks', () => {
-  it('a clean, concise submission earns the full 20', () => {
+  it('a clean, concise submission earns the full 18', () => {
     const res = runQualityChecks([COMPOSE, DOCKERFILE], FULL_ROSLYN);
-    assert.equal(maxSum(res), 20);
-    assert.equal(sum(res), 20, JSON.stringify(res.filter((r) => !r.passed).map((r) => r.id)));
+    assert.equal(maxSum(res), 18);
+    assert.equal(sum(res), 18, JSON.stringify(res.filter((r) => !r.passed).map((r) => r.id)));
   });
   it('resilient publish passes only when the catch does not rethrow', () => {
     assert.equal(passed(runQualityChecks([COMPOSE, DOCKERFILE], FULL_ROSLYN), 'quality.kafkaResilient'), true);
     assert.equal(passed(runQualityChecks([COMPOSE, DOCKERFILE], { ...FULL_ROSLYN, kafkaPublishResilient: false }), 'quality.kafkaResilient'), false);
-  });
-  it('LOC is graded — a big codebase earns less than a small one', () => {
-    const big = file('Big.cs', Array.from({ length: 1600 }, (_, i) => `var x${i} = ${i};`).join('\n'));
-    const small = runQualityChecks([COMPOSE, DOCKERFILE], FULL_ROSLYN).find((r) => r.id === 'quality.loc')!;
-    const large = runQualityChecks([COMPOSE, DOCKERFILE, big], FULL_ROSLYN).find((r) => r.id === 'quality.loc')!;
-    assert.equal(small.earned, 2); // ~0 LOC fixtures → full
-    assert.ok(large.earned < small.earned); // 1600 LOC → graded down
   });
   it('hardcoded container_name + Zookeeper + old Kafka are penalized', () => {
     const badCompose = file('docker-compose.yml', `services:

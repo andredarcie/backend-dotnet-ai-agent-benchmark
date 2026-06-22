@@ -39,6 +39,7 @@ export interface RoslynResult {
   databaseMigrate: boolean;
   kafkaDurable: boolean;
   kafkaPublishResilient: boolean;
+  kafkaPublishOutbox: boolean;
 }
 
 interface ExecResult {

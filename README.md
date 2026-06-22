@@ -13,10 +13,15 @@ Card REST API (.NET 10 + EF Core + PostgreSQL + Kafka, all in Docker). An **auto
 5. **Stresses** the API with concurrent load (RPS, error rate, p95 latency).
 6. Produces a **scored report** per category plus a leaderboard comparing the models.
 
-## 🏆 Leaderboard
+## 🏆 Leaderboard (illustrative / legacy)
 
-Final ranking of evaluated submissions. Regenerate any time with `npm run eval -- --leaderboard`
+Regenerate any time with `npm run eval -- --leaderboard`
 (reads `evaluator/results/*.json`); full source in [`evaluator/results/leaderboard.md`](./evaluator/results/leaderboard.md).
+
+> ⚠️ **Illustrative single-run results, generated with a previous rubric (out of 130).** They have not
+> been regenerated for the current 126-point rubric — re-run `npm run eval` to refresh. More importantly,
+> these are single runs per model; see the methodology note below on why single runs should not be read
+> as a definitive ranking.
 
 | # | Submission | Total | Static · 30 | Arch · 10 | Boot · 15 | Functional · 25 | Kafka · 20 | Stress · 10 | Quality · 20 | strict-db |
 |--:|------------|------:|:-----------:|:---------:|:---------:|:---------------:|:----------:|:-----------:|:------------:|:--------:|
@@ -25,28 +30,23 @@ Final ranking of evaluated submissions. Regenerate any time with `npm run eval -
 | 3 | `gemini-3-5-flash` | **112 / 130** (86.2%) | 30 | 10 | 15 | 25 | 20 | 10 | 2 | ✅ |
 | 4 | `claude-haiku-4-5` | **104 / 130** (80%) | **25** | 10 | 15 | 25 | **15** | 10 | 4 | ✅ |
 
-> **Safe margin of error: ±5 points (~4%).** Treat submissions within ~5 points of each other as a
-> statistical tie. About **120 of the 130 points reproduce exactly run-to-run** (Static, Architecture,
-> Functional, Kafka and Quality come from Roslyn + file/HTTP analysis); only the **stress band (~10 pts)**
-> is environment-sensitive, and best-of-N already absorbs that noise. With this margin,
-> `claude-opus-4-8-xhigh` (124.7) and `gpt-5-5-xhigh` (124) are **effectively tied at #1** — the point
-> estimate puts Opus a hair ahead — while `gemini-3-5-flash` (112) and `claude-haiku-4-5` (104) are each
-> clearly separated.
+### Reading these results (methodology)
 
-All four meet the contract (boot, CRUD, Kafka publish, real Postgres persistence — all verified).
-The ranking is decided by the stricter checks added on top:
+The **static** categories — Static, Architecture, Quality, and the static Kafka checks — are
+**deterministic given the Roslyn engine**: re-running the analyzer on the same source produces the same
+scores. The **runtime** categories — Build/boot, Functional, runtime Kafka, and Stress — depend on
+Docker and the host, so they **vary run-to-run**.
 
-- **`claude-opus-4-8-xhigh`** and **`gpt-5-5-xhigh`** are a near-perfect tie — both .NET 10, KRaft,
-  recent Kafka, durable producer + healthcheck, `CancellationToken`, response DTOs, `Result` errors.
-  They trade two checks: **GPT** doesn't hardcode `container_name` (+2), but **Opus** wraps its Kafka
-  publish so a broker hiccup doesn't 500 the request (**resilient publish, +3**) — Opus nets ahead by
-  **0.7** (GPT's slightly smaller codebase makes up part of the LOC gap). Both still lose `migrations`
-  and non-root `USER`.
-- **`gemini-3-5-flash`** has a durable Kafka producer (`Acks.All`) and healthcheck, but loses Quality
-  (returns entities instead of DTOs, hardcoded `container_name`, Zookeeper, no `CancellationToken`,
-  and **rethrows on publish failure**).
-- **`claude-haiku-4-5`** is on **.NET 8, not .NET 10** (−5 in Static, a contract violation), and its
-  compose has **no Kafka healthcheck** and a **non-durable producer** (−5 in Kafka).
+Because the models themselves are stochastic, **a single submission per model is a weak sample** and the
+table above should not be read as a definitive ranking. For a sound comparison, generate **multiple runs
+per model** (folder convention `submissions/<model>__run1/`, `submissions/<model>__run2/`, …) and compare
+the **per-model median total**. Treat small gaps — well within the run-to-run spread you actually observe
+— as **ties**, rather than ranking by sub-point differences. **Stress is the highest-variance category**
+and is scored by the **conservative median across attempts**.
+
+For what it's worth, all four example submissions did meet the core contract (boot, CRUD, Kafka publish,
+and real Postgres persistence — all verified). Beyond that baseline, the differences are best understood
+through the per-category checks in [`REQUIREMENTS.md`](./REQUIREMENTS.md) rather than a single total.
 
 ## Layout
 
@@ -84,6 +84,11 @@ npm run eval -- --leaderboard
 ./run.ps1 gpt-5-5-xhigh
 ```
 
+**Roslyn is required by default.** The static analysis uses Roslyn (via the .NET SDK), so the
+.NET SDK must be installed; if it is unavailable the evaluation fails fast rather than silently
+degrading. Pass `--allow-regex-fallback` to disable that requirement and fall back to regex-based
+analysis — each report records which engine was used.
+
 Reports (JSON + Markdown) are written to `evaluator/results/`, and the consolidated
 leaderboard to `evaluator/results/leaderboard.md`.
 
@@ -95,4 +100,80 @@ leaderboard to `evaluator/results/leaderboard.md`.
 4. Compare the reports under `evaluator/results/`, then refresh the table above with
    `npm run eval -- --leaderboard`.
 
-See [`REQUIREMENTS.md`](./REQUIREMENTS.md) for the full scoring rubric.
+### Multiple runs per model (recommended)
+
+Because models are stochastic, prefer **several runs per model** over a single submission. Use the
+double-underscore convention: put repeated runs in `submissions/<model>__run1/`,
+`submissions/<model>__run2/`, … (e.g. `submissions/gpt-5-5-xhigh__run1/`). The leaderboard groups
+runs by model and reports the **median total plus the range and run count**. A single
+`submissions/<model>/` folder still works as a one-run sample (n=1).
+
+## Adding a new model
+
+Want to benchmark a model that isn't here yet? The evaluator auto-discovers any folder under
+`submissions/`, so adding a model is just "drop a project in, run the eval". Step by step:
+
+**1. Generate the submission.** Hand the model the **entire** [`PROMPT.md`](./PROMPT.md) verbatim —
+nothing else, no hints, no rubric (the rubric lives in [`REQUIREMENTS.md`](./REQUIREMENTS.md) and must
+**not** be shown to the model, or you're teaching to the test). Let it produce the whole project.
+
+**2. Create the folder.** Save the model's output into a new directory whose name is the model id in
+kebab-case:
+
+```
+submissions/<model-name>/          # e.g. submissions/claude-sonnet-4-6/
+```
+
+- Use only `[a-z0-9-]` (it becomes the Docker project name `bench-<model-name>`).
+- For several runs of the same model (recommended — see above), append `__runN`:
+  `submissions/claude-sonnet-4-6__run1/`, `…__run2/`, … They are grouped under `claude-sonnet-4-6`
+  in the leaderboard.
+
+**3. Check the folder contract.** The evaluator expects, **at the folder root**:
+
+- `docker-compose.yml` (or `.yaml` / `compose.y(a)ml`) that brings up **API + Postgres + Kafka** with
+  one command.
+- A `Dockerfile` for the API.
+- The API listening on **`8080`** (mapped to host `8080`) and Kafka reachable from the host on
+  **`localhost:29092`**.
+- The .NET source (project file, `Program.cs`, the 2 controllers, 2 entities, `DbContext`, repository
+  + use-case layers, Kafka producer).
+
+> The folder must be **self-contained and boot with a single `docker compose up --build`** — no manual
+> setup steps. If your model emitted instructions ("then run migrations…"), the submission fails the
+> "no manual step" contract.
+
+**4. Evaluate it.**
+
+```powershell
+cd evaluator
+npm install                          # first time only
+npm run eval -- <model-name>         # e.g. npm run eval -- claude-sonnet-4-6
+# from the repo root you can also: ./run.ps1 <model-name>
+```
+
+This boots the stack in an isolated Docker project, runs the static + functional + Kafka + stress
+checks, then tears it down. Add `--strict-db` to also verify real Postgres persistence.
+
+**5. Read the report & refresh the leaderboard.**
+
+```powershell
+npm run eval -- --leaderboard        # rebuild leaderboard.md from saved results (no Docker)
+```
+
+Per-model reports land in `evaluator/results/<model-name>.{json,md}`; the combined ranking in
+`evaluator/results/leaderboard.md`.
+
+**Prerequisites & gotchas**
+
+- **Docker** (with `docker compose` v2) running, plus the **.NET SDK** (Roslyn analysis is required by
+  default — pass `--allow-regex-fallback` to skip it).
+- Free host ports **8080** and **29092** — the runner clears stale `bench-*` containers automatically,
+  but will warn (and not boot) if a non-benchmark container is holding them.
+- If boot fails, categories 4–6 score 0; check the `compose up failed: …` tail in the console and the
+  `Notes` section of the report.
+- Don't commit `bin/`, `obj/`, or `node_modules/` inside a submission — they're skipped by the analyzer
+  anyway, but they bloat the repo.
+
+See [`REQUIREMENTS.md`](./REQUIREMENTS.md) for the full scoring rubric, including the
+[Weighting rationale](./REQUIREMENTS.md#weighting-rationale) for the category point split.

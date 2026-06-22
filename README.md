@@ -1,6 +1,6 @@
 # Backend .NET - AI Agent Benchmark
 
-**This project is an AI-coding benchmark that gives several models the same prompt to build a .NET 10 Credit Card REST API (Controllers + EF Core + PostgreSQL + Kafka, all in Docker), then automatically scores each submission - by running it in Docker and analyzing its source - on required stack, the Controller → Use Case → Repository architecture, build & boot, functional CRUD/validation/status-codes, Kafka event publishing (verified by consuming the topic), real Postgres persistence, stress/load, and engineering best practices.**
+**This project is an AI-coding benchmark that gives several models the same prompt to build a .NET 10 Credit Card REST API, then automatically scores each submission - by running it in Docker and analyzing its source - on required stack, the Controller → Use Case → Repository architecture, build & boot, functional CRUD/validation/status-codes, Kafka event publishing (verified by consuming the topic), real Postgres persistence, stress/load, and engineering best practices.**
 
 Every model gets **the same prompt** ([`PROMPT.md`](./PROMPT.md)) and must deliver a Credit
 Card REST API (.NET 10 + EF Core + PostgreSQL + Kafka, all in Docker). An **automated evaluator**

@@ -1,0 +1,19 @@
+# .NET
+bin/
+obj/
+*.user
+
+# Node (evaluator)
+node_modules/
+evaluator/dist/
+
+# Evaluator output (keep the folder, ignore generated reports)
+evaluator/results/*.json
+evaluator/results/*.md
+!evaluator/results/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vs/
+.idea/

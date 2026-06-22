@@ -13,22 +13,29 @@ Card REST API (.NET 10 + EF Core + PostgreSQL + Kafka, all in Docker). An **auto
 5. **Stresses** the API with concurrent load (RPS, error rate, p95 latency).
 6. Produces a **scored report** per category plus a leaderboard comparing the models.
 
-## 🏆 Leaderboard (illustrative / legacy)
+## 🏆 Leaderboard
 
 Regenerate any time with `npm run eval -- --leaderboard`
 (reads `evaluator/results/*.json`); full source in [`evaluator/results/leaderboard.md`](./evaluator/results/leaderboard.md).
 
-> ⚠️ **Illustrative single-run results, generated with a previous rubric (out of 130).** They have not
-> been regenerated for the current 126-point rubric - re-run `npm run eval` to refresh. More importantly,
-> these are single runs per model; see the methodology note below on why single runs should not be read
-> as a definitive ranking.
+> ℹ️ **Single-run results under the current 126-point rubric** (Roslyn engine; `--strict-db` verified for
+> every submission that booted). These are one run per model — see the methodology note below on why a
+> single run should not be read as a definitive ranking, and prefer per-model medians over multiple runs.
 
-| # | Submission | Total | Static · 30 | Arch · 10 | Boot · 15 | Functional · 25 | Kafka · 20 | Stress · 10 | Quality · 20 | strict-db |
+| # | Submission | Total | Static · 28 | Arch · 10 | Boot · 15 | Functional · 25 | Kafka · 20 | Stress · 10 | Quality · 18 | strict-db |
 |--:|------------|------:|:-----------:|:---------:|:---------:|:---------------:|:----------:|:-----------:|:------------:|:--------:|
-| 1 | `claude-opus-4-8-xhigh` | **124.7 / 130** (95.9%) | 30 | 10 | 15 | 25 | 20 | 10 | **14.7** | ✅ |
-| 2 | `gpt-5-5-xhigh` | **124 / 130** (95.4%) | 30 | 10 | 15 | 25 | 20 | 10 | 14 | ✅ |
-| 3 | `gemini-3-5-flash` | **112 / 130** (86.2%) | 30 | 10 | 15 | 25 | 20 | 10 | 2 | ✅ |
-| 4 | `claude-haiku-4-5` | **104 / 130** (80%) | **25** | 10 | 15 | 25 | **15** | 10 | 4 | ✅ |
+| 1 | `claude-opus-4-8-xhigh` | **121 / 126** (96%) | 28 | 10 | 15 | 25 | 20 | 10 | **13** | ✅ |
+| 2 | `gpt-5-5-xhigh` | **120 / 126** (95.2%) | 28 | 10 | 15 | 25 | 20 | 10 | 12 | ✅ |
+| 3 | `claude-sonnet-4-6-xhigh` | **117 / 126** (92.9%) | **25** | 10 | 15 | 25 | 20 | 10 | 12 | ✅ |
+| 4 | `gemini-3-5-flash` | **108 / 126** (85.7%) | 28 | 10 | 15 | 25 | 20 | 10 | 0 | ✅ |
+| 5 | `claude-haiku-4-5` | **102 / 126** (81%) | **25** | 10 | 15 | 25 | **15** | 10 | 2 | ✅ |
+
+> ℹ️ `claude-sonnet-4-6-xhigh` needed a **compose patch to boot**: it pinned `bitnami/kafka:3.7`, a tag
+> Bitnami removed from Docker Hub (no longer resolves). The Kafka service was swapped to
+> `apache/kafka:3.9.0` (env vars translated 1:1 + single-node `__consumer_offsets` replication settings)
+> so the project runs — the .NET source was **not** touched. With that, it booted clean and scored full
+> Functional/Kafka/Stress. It still targets **.NET 9**, not 10 (−3 in Static), and its only EF
+> **migrations** in the field is a quality highlight (`Migrations/` folder, +2 where the others lost it).
 
 ### Reading these results (methodology)
 

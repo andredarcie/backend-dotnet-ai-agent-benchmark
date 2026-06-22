@@ -49,14 +49,14 @@ function mark(passed: boolean): string {
 
 export function renderMarkdown(r: SubmissionReport): string {
   const lines: string[] = [];
-  lines.push(`# Benchmark report — \`${r.name}\``);
+  lines.push(`# Benchmark report - \`${r.name}\``);
   lines.push('');
-  lines.push(`**Score: ${r.totalEarned} / ${r.totalMax} (${r.percent}%)** — ${r.booted ? 'booted ✅' : 'did not boot ❌'}`);
+  lines.push(`**Score: ${r.totalEarned} / ${r.totalMax} (${r.percent}%)** - ${r.booted ? 'booted ✅' : 'did not boot ❌'}`);
   lines.push(`**Analysis engine:** \`${r.engine ?? 'unknown'}\``);
   lines.push('');
 
   if (r.integrity) {
-    lines.push(`**Runtime integrity (strict-db):** ${r.integrity.passed ? 'VERIFIED ✅' : 'FAILED ❌'} — ${r.integrity.detail}`);
+    lines.push(`**Runtime integrity (strict-db):** ${r.integrity.passed ? 'VERIFIED ✅' : 'FAILED ❌'} - ${r.integrity.detail}`);
     lines.push('');
   }
 
@@ -78,7 +78,7 @@ export function renderMarkdown(r: SubmissionReport): string {
   }
 
   for (const cat of r.categories) {
-    lines.push(`### ${cat.title} — ${cat.earned}/${cat.max}`);
+    lines.push(`### ${cat.title} - ${cat.earned}/${cat.max}`);
     lines.push('');
     lines.push('| | Check | Pts | Detail |');
     lines.push('|--|-------|----:|--------|');
@@ -152,13 +152,13 @@ export function writeLeaderboard(resultsDir: string, reports: SubmissionReport[]
 
   const get = (r: SubmissionReport, cat: Category) => {
     const c = r.categories.find((x) => x.category === cat);
-    return c ? `${c.earned}/${c.max}` : '—';
+    return c ? `${c.earned}/${c.max}` : '-';
   };
 
   groups.forEach((g, i) => {
     const r = g.representative;
     const percent = g.totalMax ? Math.round((g.medianTotal / g.totalMax) * 1000) / 10 : 0;
-    const range = g.n > 1 ? ` [${g.minTotal}–${g.maxTotal} over ${g.n} runs]` : '';
+    const range = g.n > 1 ? ` [${g.minTotal}-${g.maxTotal} over ${g.n} runs]` : '';
     const total = `**${g.medianTotal}/${g.totalMax}** (${percent}%)${range}`;
     lines.push(
       `| ${i + 1} | \`${g.model}\` | ${g.n} | ${total} | ` +

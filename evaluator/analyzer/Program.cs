@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 // Roslyn-based structural analyzer for a .NET submission.
 // Parses C# syntactically (no compilation needed) so it correctly understands primary
-// constructors, comments, attributes, partial classes, etc. — things regex gets wrong.
+// constructors, comments, attributes, partial classes, etc. - things regex gets wrong.
 // Prints a single JSON object to stdout. On failure prints {"ok":false,...} so the caller
 // can fall back to its regex heuristics.
 
@@ -146,7 +146,7 @@ try
     var useCasesPerFile = useCaseClasses.GroupBy(c => c.file).ToDictionary(g => g.Key, g => g.Count());
     var oneFilePerUseCase = useCaseClasses.Count > 0 && useCasesPerFile.Values.All(v => v == 1);
 
-    // --- layering relationships (comments ignored — this is the syntax tree) ---
+    // --- layering relationships (comments ignored - this is the syntax tree) ---
     var dbTokens = new HashSet<string>(dbContextNames) { "DbContext", "DbSet" };
     var controllerDecls = classes.Where(c => controllers.Contains(c.decl.Identifier.Text)).Select(c => c.decl).ToList();
     var controllerTouchesDbContext = controllerDecls.Any(c => RefNames(c).Overlaps(dbTokens));
@@ -167,15 +167,15 @@ try
     var typeNames = classes.Select(c => c.decl.Identifier.Text).Concat(records.Select(r => r.Identifier.Text)).ToList();
     var responseDtoTypes = typeNames.Where(n => n.EndsWith("Response") || n.EndsWith("Dto") || n.EndsWith("DTO")).Distinct().ToList();
     var controllersUseDtos = responseDtoTypes.Count > 0 && controllerDecls.Any(c => RefNames(c).Overlaps(responseDtoTypes));
-    // Use cases that RETURN a response DTO (controllers then surface that via result.Value) —
+    // Use cases that RETURN a response DTO (controllers then surface that via result.Value) -
     // this means responses are DTOs even when the controller never names the type.
     var useCasesReturnDtos = responseDtoTypes.Count > 0 && useCaseClasses.Any(c =>
         c.decl.Members.OfType<MethodDeclarationSyntax>().Any(m => responseDtoTypes.Any(d => m.ReturnType.ToString().Contains(d))));
 
     var usesExceptionHandler = classes.Any(c => BaseListContains(c.decl.BaseList, s => s.Contains("IExceptionHandler")));
 
-    // ProblemDetails: require actual usage — AddProblemDetails()/Problem() helper, or constructing a
-    // (Validation)ProblemDetails — not a bare identifier mention.
+    // ProblemDetails: require actual usage - AddProblemDetails()/Problem() helper, or constructing a
+    // (Validation)ProblemDetails - not a bare identifier mention.
     var usesProblemDetails = invocationNames.Contains("AddProblemDetails")
         || invocationNames.Contains("Problem")
         || objectCreationTypeNames.Any(t => t.Contains("ProblemDetails") || t.Contains("ValidationProblemDetails"));

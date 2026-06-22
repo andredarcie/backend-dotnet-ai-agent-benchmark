@@ -2,11 +2,11 @@
 
 Automated grader for the .NET Credit Card API benchmark. For each submission it:
 
-1. **Static analysis** (no Docker) — requirements + the Controller → Use Case → Repository layering.
-2. **Build & boot** — `docker compose up --build` and wait for the API.
-3. **Functional tests** — CRUD, relationship, validation, status codes (per [`../PROMPT.md`](../PROMPT.md)).
-4. **Kafka** — consume `localhost:29092` / topic `transactions` and verify a created transaction is published.
-5. **Stress** — concurrent load; error rate, throughput, p95.
+1. **Static analysis** (no Docker) - requirements + the Controller → Use Case → Repository layering.
+2. **Build & boot** - `docker compose up --build` and wait for the API.
+3. **Functional tests** - CRUD, relationship, validation, status codes (per [`../PROMPT.md`](../PROMPT.md)).
+4. **Kafka** - consume `localhost:29092` / topic `transactions` and verify a created transaction is published.
+5. **Stress** - concurrent load; error rate, throughput, p95.
 
 Scores follow [`../REQUIREMENTS.md`](../REQUIREMENTS.md) (100 points total).
 
@@ -37,7 +37,7 @@ Run the evaluator's own unit tests with `npm test`.
 
 ### Static analysis engine (Roslyn)
 
-C# structure checks (categories 1 & 2) use **Roslyn** — real C# syntax trees — so they correctly
+C# structure checks (categories 1 & 2) use **Roslyn** - real C# syntax trees - so they correctly
 understand primary constructors, attributes, comments and partial classes. The first run builds
 the analyzer in `analyzer/` (needs the .NET SDK). If the SDK is missing, it transparently falls
 back to regex heuristics. Each report row is tagged `[roslyn]` or `[regex]`.
@@ -45,7 +45,7 @@ back to regex heuristics. Each report row is tagged `[roslyn]` or `[regex]`.
 ### Robustness
 
 Before each boot the runner removes leftover `bench-*` containers still holding ports 8080/29092
-(orphans from a crashed run — it never touches your other containers) and retries boot on transient
+(orphans from a crashed run - it never touches your other containers) and retries boot on transient
 failures (`--retries=N`, default 1). The **stress** phase is best-of-N too: if it misses the
 thresholds it re-runs (no rebuild) and keeps the best attempt, absorbing transient host-load noise.
 
@@ -56,14 +56,14 @@ credentials, and runs `psql` to confirm the schema was actually persisted to Pos
 (≥ 2 base tables in the `public` schema). This catches a submission that references the
 Npgsql package but secretly runs on an in-memory provider.
 
-It is a **separate VERIFIED/FAILED verdict** shown in the report and console — it does **not**
-change the 0–100 score, so runs stay comparable whether or not the flag is used. A `FAILED`
+It is a **separate VERIFIED/FAILED verdict** shown in the report and console - it does **not**
+change the 0-100 score, so runs stay comparable whether or not the flag is used. A `FAILED`
 verdict is a strong signal to disqualify a submission manually.
 
 Reports land in `results/`:
-- `results/<name>.json` — full machine-readable report
-- `results/<name>.md` — human-readable breakdown
-- `results/leaderboard.md` — ranked comparison (when > 1 submission)
+- `results/<name>.json` - full machine-readable report
+- `results/<name>.md` - human-readable breakdown
+- `results/leaderboard.md` - ranked comparison (when > 1 submission)
 
 ## Configuration (env vars)
 
@@ -82,11 +82,11 @@ Reports land in `results/`:
 
 ## How it works
 
-- `src/checks/static.ts` + `architecture.ts` — regex analysis over the submission's source files.
-- `src/docker.ts` — wraps `docker compose` (isolated project name per submission, `down -v` between runs).
-- `src/checks/functional.ts` — scripted HTTP assertions; the functional weight is split evenly across them.
-- `src/checks/kafka.ts` — a `kafkajs` consumer verifies the published event.
-- `src/checks/stress.ts` — a self-contained concurrent load generator.
-- `src/report.ts` — scoring, Markdown/JSON output, leaderboard.
+- `src/checks/static.ts` + `architecture.ts` - regex analysis over the submission's source files.
+- `src/docker.ts` - wraps `docker compose` (isolated project name per submission, `down -v` between runs).
+- `src/checks/functional.ts` - scripted HTTP assertions; the functional weight is split evenly across them.
+- `src/checks/kafka.ts` - a `kafkajs` consumer verifies the published event.
+- `src/checks/stress.ts` - a self-contained concurrent load generator.
+- `src/report.ts` - scoring, Markdown/JSON output, leaderboard.
 
 Submissions are evaluated **one at a time**, so they can reuse the same host ports.

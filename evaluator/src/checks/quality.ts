@@ -22,7 +22,7 @@ function kafkaImageRecent(composeText: string): { recent: boolean; detail: strin
   if (name.includes('cp-kafka') || name.includes('confluent')) recent = major > 7 || (major === 7 && minor >= 6);
   else if (name.includes('apache/kafka')) recent = major > 3 || (major === 3 && minor >= 8);
   else if (name.includes('bitnami')) recent = major > 3 || (major === 3 && minor >= 7);
-  else recent = major >= 3; // unknown family — be lenient
+  else recent = major >= 3; // unknown family - be lenient
   return { recent, detail: `${ref} (${recent ? 'recent' : 'outdated'})` };
 }
 
@@ -37,7 +37,7 @@ export function runQualityChecks(files: SourceFile[], roslyn: RoslynResult | nul
   results.push(check('quality.noContainerName', 'quality', 'No hardcoded container_name (isolatable)', Q.noContainerName,
     compose.length > 0 && !hasContainerName, hasContainerName ? 'container_name is hardcoded' : 'ok'));
 
-  // Detect an actual Zookeeper service/image — not the word in a comment (e.g. "# KRaft, no ZooKeeper").
+  // Detect an actual Zookeeper service/image - not the word in a comment (e.g. "# KRaft, no ZooKeeper").
   const hasZookeeper = /image:\s*\S*zookeeper/i.test(composeText) || /^\s+zookeeper\s*:/im.test(composeText);
   results.push(check('quality.kraft', 'quality', 'Kafka in KRaft mode (no Zookeeper)', Q.kraftNoZookeeper,
     compose.length > 0 && !hasZookeeper, hasZookeeper ? 'runs a Zookeeper service' : 'no Zookeeper'));

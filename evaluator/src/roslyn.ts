@@ -95,7 +95,7 @@ async function ensureBuilt(onLog?: (s: string) => void): Promise<boolean> {
  */
 export async function analyzeWithRoslyn(submissionDir: string, onLog?: (s: string) => void): Promise<RoslynResult | null> {
   if (!(await dotnetAvailable())) {
-    onLog?.('dotnet not available — falling back to regex static analysis');
+    onLog?.('dotnet not available - falling back to regex static analysis');
     return null;
   }
   if (!(await ensureBuilt(onLog))) return null;
@@ -103,13 +103,13 @@ export async function analyzeWithRoslyn(submissionDir: string, onLog?: (s: strin
   const r = await exec('dotnet', [analyzerDll, submissionDir], 120_000);
   const line = r.stdout.split('\n').map((l) => l.trim()).filter(Boolean).reverse().find((l) => l.startsWith('{'));
   if (!line) {
-    onLog?.('analyzer produced no JSON — falling back to regex');
+    onLog?.('analyzer produced no JSON - falling back to regex');
     return null;
   }
   try {
     const parsed = JSON.parse(line) as RoslynResult & { error?: string };
     if (!parsed.ok) {
-      onLog?.(`analyzer error (${parsed.error ?? 'unknown'}) — falling back to regex`);
+      onLog?.(`analyzer error (${parsed.error ?? 'unknown'}) - falling back to regex`);
       return null;
     }
     return parsed;

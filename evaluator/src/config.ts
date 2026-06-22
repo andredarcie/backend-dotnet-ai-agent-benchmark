@@ -16,7 +16,7 @@ export const config = {
     concurrency: Number(process.env.BENCH_STRESS_CONCURRENCY ?? 50),
     durationMs: Number(process.env.BENCH_STRESS_MS ?? 15_000),
     // maxErrorRate/minRps/maxP95Ms are a CORRECTNESS FLOOR (most working APIs clear
-    // them) — not a fine-grained discriminator between healthy submissions.
+    // them) - not a fine-grained discriminator between healthy submissions.
     maxErrorRate: Number(process.env.BENCH_STRESS_MAX_ERR ?? 0.01), // < 1%
     minRps: Number(process.env.BENCH_STRESS_MIN_RPS ?? 50), // sustained throughput floor
     maxP95Ms: Number(process.env.BENCH_STRESS_MAX_P95 ?? 1_000),
@@ -27,7 +27,7 @@ export const config = {
   },
 };
 
-// Single source of truth for scoring weights — mirrors REQUIREMENTS.md.
+// Single source of truth for scoring weights - mirrors REQUIREMENTS.md.
 export const WEIGHTS = {
   static: {
     composePresent: 2,

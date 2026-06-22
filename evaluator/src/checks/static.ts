@@ -94,7 +94,7 @@ export function runStaticChecks(files: SourceFile[], roslyn: RoslynResult | null
       !!kafkaClient && !!publishCall, `client=${!!kafkaClient}, produce=${!!publishCall}`));
   }
 
-  // Targets .NET 10 (the prompt requires it — wrong version is a contract violation).
+  // Targets .NET 10 (the prompt requires it - wrong version is a contract violation).
   if (roslyn) {
     const tfms = roslyn.targetFrameworks;
     const ok = tfms.length > 0 && tfms.some((t) => /net10\./.test(t));

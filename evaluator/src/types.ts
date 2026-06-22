@@ -47,7 +47,7 @@ export interface SubmissionReport {
   stress?: StressMetrics;
   // Which static-analysis engine produced this report.
   engine?: 'roslyn' | 'regex';
-  // Opt-in (--strict-db) runtime verdict; does not affect the 0–100 score.
+  // Opt-in (--strict-db) runtime verdict; does not affect the 0-100 score.
   integrity?: { passed: boolean; detail: string };
   notes: string[];
 }

@@ -93,7 +93,7 @@ export function dockerCmd(args: string[], opts: { timeoutMs?: number; input?: st
 
 /**
  * Removes leftover **benchmark** containers (named `bench-*`) that still hold the given host
- * ports — orphans from a crashed/killed prior run. Scoped to `bench-*` names so it never
+ * ports - orphans from a crashed/killed prior run. Scoped to `bench-*` names so it never
  * touches the user's unrelated containers.
  */
 export async function cleanupStaleBenchContainers(ports: number[], onLog?: (s: string) => void): Promise<void> {

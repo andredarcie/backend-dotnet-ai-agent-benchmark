@@ -130,7 +130,7 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
   log(c.gray(`  read ${files.length} source files`));
   const roslyn = await analyzeWithRoslyn(dir, (s) => log(c.gray('  ' + s)));
   if (roslyn === null && !opts.allowRegexFallback) {
-    log(c.red('  ✖ Roslyn analysis unavailable — the .NET SDK is required for reproducible, precise scoring.'));
+    log(c.red('  ✖ Roslyn analysis unavailable - the .NET SDK is required for reproducible, precise scoring.'));
     log(c.red('    Install the .NET SDK so the Roslyn analyzer can run, or pass --allow-regex-fallback to'));
     log(c.red('    score with the (less precise) regex engine. Aborting to avoid producing misleading scores.'));
     process.exit(1);
@@ -172,7 +172,7 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
   // --- boot ---
   const composeFile = findComposeFile(dir);
   if (!composeFile) {
-    notes.push('No docker-compose file found — cannot boot.');
+    notes.push('No docker-compose file found - cannot boot.');
     checks.push(check('build.up', 'build', 'docker compose up', WEIGHTS.build.composeUp, false, 'no compose file'));
     checks.push(check('build.healthy', 'build', 'API becomes healthy', WEIGHTS.build.healthy, false, 'no compose file'));
     checks.push(...functionalSkipped('no compose file'), ...kafkaSkipped('no compose file'), ...stressSkipped('no compose file'));
@@ -204,7 +204,7 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
     const external = (await portHolders(ports)).filter((h) => !h.container.startsWith('bench-'));
     if (external.length) {
       const msg = external.map((h) => `:${h.port} held by '${h.container}'`).join(', ');
-      log(c.yellow(`  WARNING: required ports are busy with non-benchmark containers — ${msg}`));
+      log(c.yellow(`  WARNING: required ports are busy with non-benchmark containers - ${msg}`));
       if (attempt === maxAttempts) notes.push(`Boot blocked: required ports in use by non-benchmark containers (${msg}). Stop them and re-run.`);
     }
 
@@ -260,20 +260,20 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
   } else {
     // Conservative median: stress is sensitive to host load, so if the thresholds are missed we
     // re-run it (no rebuild) to gather more samples, then pick the conservative-median attempt by
-    // total earned — anti-optimistic, so transient *good* luck can't inflate the score either.
+    // total earned - anti-optimistic, so transient *good* luck can't inflate the score either.
     const earned = (cs: CheckResult[]) => cs.reduce((s, c) => s + c.earned, 0);
     log(c.gray(`  stress test (${config.stress.concurrency} workers, ${config.stress.durationMs / 1000}s) ...`));
     const runs = [await runStressChecks()];
     const attempts = 1 + Math.max(0, opts.retries);
     for (let i = 1; i < attempts && runs[runs.length - 1].checks.some((c) => !c.passed); i++) {
-      log(c.gray(`  stress thresholds missed — re-running stress (attempt ${i + 1}/${attempts}, conservative median) ...`));
+      log(c.gray(`  stress thresholds missed - re-running stress (attempt ${i + 1}/${attempts}, conservative median) ...`));
       runs.push(await runStressChecks());
     }
     // Sort ascending by earned and pick the lower-middle index (for 2 runs this is the LOWER one).
     const sorted = [...runs].sort((a, b) => earned(a.checks) - earned(b.checks));
     const chosen = sorted[Math.floor((sorted.length - 1) / 2)];
     if (chosen.checks.some((c) => !c.passed))
-      notes.push(`Stress did not fully pass (conservative median across ${runs.length} attempt(s)) — may indicate a loaded host or a real tail-latency issue.`);
+      notes.push(`Stress did not fully pass (conservative median across ${runs.length} attempt(s)) - may indicate a loaded host or a real tail-latency issue.`);
     checks.push(...chosen.checks);
     stress = chosen.metrics;
   }
@@ -308,7 +308,7 @@ function printSummary(r: SubmissionReport) {
   }
   if (r.integrity) {
     const tag = r.integrity.passed ? c.green('strict-db: VERIFIED ✅') : c.red('strict-db: FAILED ❌');
-    log('   ' + tag + c.gray(` — ${r.integrity.detail}`));
+    log('   ' + tag + c.gray(` - ${r.integrity.detail}`));
   }
 }
 
@@ -336,7 +336,7 @@ async function main() {
     process.exit(1);
   }
 
-  log(c.bold(`Benchmark evaluator — ${targets.length} submission(s): ${targets.join(', ')}`));
+  log(c.bold(`Benchmark evaluator - ${targets.length} submission(s): ${targets.join(', ')}`));
 
   const reports: SubmissionReport[] = [];
   for (const name of targets) {

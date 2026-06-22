@@ -91,7 +91,7 @@ export async function runKafkaChecks(): Promise<CheckResult[]> {
     : `no matching message within ${config.kafka.waitMs}ms (saw ${messages.length})`;
   results.push(check('kafka.event', 'kafka', 'Transaction create publishes to topic (value + key)', W.eventPublished, hit !== undefined, detail));
 
-  // The produced message key must equal the transaction id (as a string) — its own scored check.
+  // The produced message key must equal the transaction id (as a string) - its own scored check.
   const keyDetail = hit
     ? `key="${hit.key ?? '(none)'}" (expected "${txnId}")`
     : 'no event received';

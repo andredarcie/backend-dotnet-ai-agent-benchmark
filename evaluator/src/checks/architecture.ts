@@ -23,7 +23,7 @@ export function runArchitectureChecks(files: SourceFile[], roslyn: RoslynResult 
       W.useCaseLayer, roslyn.useCases.length > 0, `${roslyn.useCases.length} use case(s)`));
 
     // The Roslyn check is call-graph aware: controllers must reference a use case AND must
-    // NOT touch the DbContext directly (comments are ignored — it's the syntax tree).
+    // NOT touch the DbContext directly (comments are ignored - it's the syntax tree).
     results.push(check('arch.controllerUseCase', 'architecture', 'Controllers call use cases (not DbContext)' + via,
       W.controllersUseUseCases, roslyn.controllerUsesUseCase && !roslyn.controllerTouchesDbContext,
       `usesUseCase=${roslyn.controllerUsesUseCase}, touchesDb=${roslyn.controllerTouchesDbContext}`));

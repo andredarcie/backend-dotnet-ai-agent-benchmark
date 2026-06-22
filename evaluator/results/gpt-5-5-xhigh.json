@@ -1,0 +1,623 @@
+{
+  "name": "gpt-5-5-xhigh",
+  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\gpt-5-5-xhigh",
+  "booted": true,
+  "categories": [
+    {
+      "category": "static",
+      "title": "1. Static requirements",
+      "earned": 28,
+      "max": 28,
+      "checks": [
+        {
+          "id": "static.compose",
+          "category": "static",
+          "description": "docker-compose file present",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "docker-compose.yml"
+        },
+        {
+          "id": "static.compose.postgres",
+          "category": "static",
+          "description": "Compose uses a Postgres service",
+          "weight": 2,
+          "passed": true,
+          "earned": 2
+        },
+        {
+          "id": "static.compose.build",
+          "category": "static",
+          "description": "Compose builds the API image (build:)",
+          "weight": 2,
+          "passed": true,
+          "earned": 2
+        },
+        {
+          "id": "static.dockerfile",
+          "category": "static",
+          "description": "Dockerfile present",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "Dockerfile"
+        },
+        {
+          "id": "static.compose.kafka",
+          "category": "static",
+          "description": "Compose has a Kafka service",
+          "weight": 2,
+          "passed": true,
+          "earned": 2
+        },
+        {
+          "id": "static.controllers",
+          "category": "static",
+          "description": "At least 2 controllers [roslyn]",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "found: CreditCardsController, TransactionsController"
+        },
+        {
+          "id": "static.entities",
+          "category": "static",
+          "description": "At least 2 entities (DbSet<> of real classes) [roslyn]",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "entities: CreditCard, Transaction"
+        },
+        {
+          "id": "static.orm",
+          "category": "static",
+          "description": "Uses EF Core (namespace + DbContext subclass) [roslyn]",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "efNamespace=true, dbContexts=[AppDbContext]"
+        },
+        {
+          "id": "static.npgsql",
+          "category": "static",
+          "description": "Wires the Npgsql/Postgres provider (UseNpgsql) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "UseNpgsql(...) found"
+        },
+        {
+          "id": "static.relationship",
+          "category": "static",
+          "description": "Models a 1:N relationship (FK) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2
+        },
+        {
+          "id": "static.kafka.publish",
+          "category": "static",
+          "description": "Kafka client + produce call [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "client=true, produce=true"
+        },
+        {
+          "id": "static.net10",
+          "category": "static",
+          "description": "Targets .NET 10 [roslyn]",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "targetFrameworks: net10.0"
+        }
+      ]
+    },
+    {
+      "category": "architecture",
+      "title": "2. Architecture (layering)",
+      "earned": 10,
+      "max": 10,
+      "checks": [
+        {
+          "id": "arch.repository",
+          "category": "architecture",
+          "description": "Repository layer (interface + implementation) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "interface=true, impl=true"
+        },
+        {
+          "id": "arch.baseRepository",
+          "category": "architecture",
+          "description": "Generic base repository class [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2
+        },
+        {
+          "id": "arch.useCases",
+          "category": "architecture",
+          "description": "Use-case layer (*UseCase classes) [roslyn]",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "11 use case(s)"
+        },
+        {
+          "id": "arch.controllerUseCase",
+          "category": "architecture",
+          "description": "Controllers call use cases (not DbContext) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "usesUseCase=true, touchesDb=false"
+        },
+        {
+          "id": "arch.repoEf",
+          "category": "architecture",
+          "description": "Repositories own EF Core / DbContext access [roslyn]",
+          "weight": 1,
+          "passed": true,
+          "earned": 1
+        }
+      ]
+    },
+    {
+      "category": "build",
+      "title": "3. Build & boot",
+      "earned": 15,
+      "max": 15,
+      "checks": [
+        {
+          "id": "build.up",
+          "category": "build",
+          "description": "docker compose up",
+          "weight": 8,
+          "passed": true,
+          "earned": 8,
+          "detail": "compose started (within 2 attempts)"
+        },
+        {
+          "id": "build.healthy",
+          "category": "build",
+          "description": "API becomes healthy",
+          "weight": 7,
+          "passed": true,
+          "earned": 7,
+          "detail": "health OK"
+        }
+      ]
+    },
+    {
+      "category": "functional",
+      "title": "4. Functional behavior",
+      "earned": 25,
+      "max": 25,
+      "checks": [
+        {
+          "id": "func.health",
+          "category": "functional",
+          "description": "GET /health → 200",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.card.create",
+          "category": "functional",
+          "description": "POST /api/credit-cards → 201 + numeric id",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=201, id=1"
+        },
+        {
+          "id": "func.card.create.location",
+          "category": "functional",
+          "description": "POST /api/credit-cards sets Location header",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "location=http://localhost:8080/api/credit-cards/1"
+        },
+        {
+          "id": "func.card.schema",
+          "category": "functional",
+          "description": "Created credit card echoes all fields (camelCase)",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "fields: id,cardholderName,cardNumber,brand,creditLimit,createdAt"
+        },
+        {
+          "id": "func.card.get",
+          "category": "functional",
+          "description": "GET /api/credit-cards/{id} → 200 + matches",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.card.list",
+          "category": "functional",
+          "description": "GET /api/credit-cards → 200 array",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200, isArray=true"
+        },
+        {
+          "id": "func.card.validation",
+          "category": "functional",
+          "description": "POST /api/credit-cards empty name → 400",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=400"
+        },
+        {
+          "id": "func.card.missing",
+          "category": "functional",
+          "description": "GET missing credit card → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        },
+        {
+          "id": "func.txn.create",
+          "category": "functional",
+          "description": "POST /api/transactions → 201 + numeric id",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=201, id=1"
+        },
+        {
+          "id": "func.txn.create.location",
+          "category": "functional",
+          "description": "POST /api/transactions sets Location header",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "location=http://localhost:8080/api/transactions/1"
+        },
+        {
+          "id": "func.txn.schema",
+          "category": "functional",
+          "description": "Created transaction echoes all fields (camelCase)",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "fields: id,creditCardId,amount,merchant,category,createdAt"
+        },
+        {
+          "id": "func.txn.get",
+          "category": "functional",
+          "description": "GET /api/transactions/{id} → 200",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.txn.list",
+          "category": "functional",
+          "description": "GET /api/transactions → 200 array",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.txn.amount",
+          "category": "functional",
+          "description": "POST /api/transactions amount<=0 → 400",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=400"
+        },
+        {
+          "id": "func.txn.badcard",
+          "category": "functional",
+          "description": "POST /api/transactions bad creditCardId → 400",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=400"
+        },
+        {
+          "id": "func.rel.list",
+          "category": "functional",
+          "description": "GET /api/credit-cards/{id}/transactions → 200 incl. txn",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.rel.missing",
+          "category": "functional",
+          "description": "GET transactions for missing card → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        },
+        {
+          "id": "func.txn.update",
+          "category": "functional",
+          "description": "PUT /api/transactions/{id} → 200/204",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.txn.delete",
+          "category": "functional",
+          "description": "DELETE /api/transactions/{id} → 204",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=204"
+        },
+        {
+          "id": "func.txn.gone",
+          "category": "functional",
+          "description": "GET deleted transaction → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        },
+        {
+          "id": "func.card.update",
+          "category": "functional",
+          "description": "PUT /api/credit-cards/{id} → 200/204 + persisted",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.card.update.missing",
+          "category": "functional",
+          "description": "PUT missing credit card → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        },
+        {
+          "id": "func.txn.update.missing",
+          "category": "functional",
+          "description": "PUT missing transaction → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        },
+        {
+          "id": "func.card.delete",
+          "category": "functional",
+          "description": "DELETE /api/credit-cards/{id} → 204",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=204"
+        },
+        {
+          "id": "func.card.gone",
+          "category": "functional",
+          "description": "GET deleted credit card → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        }
+      ]
+    },
+    {
+      "category": "kafka",
+      "title": "5. Kafka integration",
+      "earned": 20,
+      "max": 20,
+      "checks": [
+        {
+          "id": "kafka.healthcheck",
+          "category": "kafka",
+          "description": "Kafka service has a healthcheck",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "kafka healthcheck found"
+        },
+        {
+          "id": "kafka.durability",
+          "category": "kafka",
+          "description": "Durable producer (Acks.All / idempotence)",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "Acks.All / idempotence configured"
+        },
+        {
+          "id": "kafka.broker",
+          "category": "kafka",
+          "description": "Broker reachable on host (localhost:29092)",
+          "weight": 5,
+          "passed": true,
+          "earned": 5,
+          "detail": "subscribed to \"transactions\""
+        },
+        {
+          "id": "kafka.event",
+          "category": "kafka",
+          "description": "Transaction create publishes to topic (value + key)",
+          "weight": 8,
+          "passed": true,
+          "earned": 8,
+          "detail": "received event for txn 2; key=\"2\" (expected \"2\") → match"
+        },
+        {
+          "id": "kafka.eventKey",
+          "category": "kafka",
+          "description": "Event message key = transaction id",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "key=\"2\" (expected \"2\")"
+        }
+      ]
+    },
+    {
+      "category": "stress",
+      "title": "6. Stress / load",
+      "earned": 10,
+      "max": 10,
+      "checks": [
+        {
+          "id": "stress.errorRate",
+          "category": "stress",
+          "description": "Error rate < 1%",
+          "weight": 6,
+          "passed": true,
+          "earned": 6,
+          "detail": "errorRate=0.00% (0/7815)"
+        },
+        {
+          "id": "stress.throughput",
+          "category": "stress",
+          "description": "Sustained throughput ≥ 50 req/s",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "521 req/s, 7815 total"
+        },
+        {
+          "id": "stress.p95",
+          "category": "stress",
+          "description": "p95 latency < 1000ms",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "p95=144ms"
+        }
+      ]
+    },
+    {
+      "category": "quality",
+      "title": "7. Best practices (quality)",
+      "earned": 12,
+      "max": 18,
+      "checks": [
+        {
+          "id": "quality.noContainerName",
+          "category": "quality",
+          "description": "No hardcoded container_name (isolatable)",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "ok"
+        },
+        {
+          "id": "quality.kraft",
+          "category": "quality",
+          "description": "Kafka in KRaft mode (no Zookeeper)",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "no Zookeeper"
+        },
+        {
+          "id": "quality.kafkaVersion",
+          "category": "quality",
+          "description": "Up-to-date Kafka image",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "confluentinc/cp-kafka:8.0.0 (recent)"
+        },
+        {
+          "id": "quality.cancellation",
+          "category": "quality",
+          "description": "CancellationToken propagated (controller→repo) [roslyn]",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "controllers=true, repos=true"
+        },
+        {
+          "id": "quality.dtos",
+          "category": "quality",
+          "description": "Uses response DTOs (no entity leakage) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "dtoTypes=2, controllersUse=true, useCasesReturn=true"
+        },
+        {
+          "id": "quality.errors",
+          "category": "quality",
+          "description": "Structured errors (ProblemDetails / IExceptionHandler / Result) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "exHandler=false, problemDetails=false, result=true"
+        },
+        {
+          "id": "quality.migrations",
+          "category": "quality",
+          "description": "Production-grade schema management (EF migrations, bonus over EnsureCreated)",
+          "weight": 2,
+          "passed": false,
+          "earned": 0,
+          "detail": "EnsureCreated only"
+        },
+        {
+          "id": "quality.nonRoot",
+          "category": "quality",
+          "description": "Container runs as non-root (USER)",
+          "weight": 1,
+          "passed": false,
+          "earned": 0
+        },
+        {
+          "id": "quality.kafkaResilient",
+          "category": "quality",
+          "description": "Publish failure handled gracefully (catch-and-log or outbox) [roslyn]",
+          "weight": 3,
+          "passed": false,
+          "earned": 0,
+          "detail": "publish failure propagates (no catch, or catch rethrows)"
+        }
+      ]
+    }
+  ],
+  "totalEarned": 120,
+  "totalMax": 126,
+  "percent": 95.2,
+  "stress": {
+    "totalRequests": 7815,
+    "errors": 0,
+    "errorRate": 0,
+    "rps": 521,
+    "p50": 99,
+    "p95": 144,
+    "p99": 154
+  },
+  "notes": [],
+  "engine": "roslyn",
+  "integrity": {
+    "passed": true,
+    "detail": "Postgres(creditcards) holds 2 base tables → schema was persisted to a real Postgres"
+  }
+}

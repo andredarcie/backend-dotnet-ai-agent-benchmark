@@ -93,8 +93,12 @@ export function runQualityChecks(files: SourceFile[], roslyn: RoslynResult | nul
       ok ? 'publish in try/catch (no rethrow) or transactional outbox' : 'publish failure propagates (no catch, or catch rethrows)'));
   } else {
     const hasOutbox = !!anyMatch(cs, /class\s+\w*Outbox|DbSet<\s*\w*Outbox/i);
-    const catchAndLog = !!anyMatch(cs, /catch[\s\S]{0,300}Produce/) &&
-      !cs.some((f) => /Produce/.test(f.content) && /catch[\s\S]{0,200}throw\s*;/.test(f.content));
+    // Produce sits in a try, a catch actually handles it (logs / retries / enqueues — not a silent
+    // swallow), and no catch rethrows. A bare `catch {}` must NOT pass.
+    const producesInTry = !!anyMatch(cs, /try[\s\S]{0,400}Produce/);
+    const catchHandles = !!anyMatch(cs, /catch[^{]*\{[\s\S]{0,300}(Log|Console\.|Write|Retry|Enqueue|Save)/i);
+    const rethrows = cs.some((f) => /catch[^{]*\{[\s\S]{0,200}throw\s*;/.test(f.content));
+    const catchAndLog = producesInTry && catchHandles && !rethrows;
     const ok = catchAndLog || hasOutbox;
     results.push(check('quality.kafkaResilient', 'quality', 'Publish failure handled gracefully (catch-and-log or outbox)' + via, Q.publishResilient, ok,
       ok ? 'catch-and-log or transactional outbox' : 'publish failure propagates (no catch/log or transactional outbox)'));

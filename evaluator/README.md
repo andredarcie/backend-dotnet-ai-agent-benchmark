@@ -8,7 +8,7 @@ Automated grader for the .NET Credit Card API benchmark. For each submission it:
 4. **Kafka** - consume `localhost:29092` / topic `transactions` and verify a created transaction is published.
 5. **Stress** - concurrent load; error rate, throughput, p95.
 
-Scores follow [`../REQUIREMENTS.md`](../REQUIREMENTS.md) (100 points total).
+Scores follow [`../REQUIREMENTS.md`](../REQUIREMENTS.md) (126 points total).
 
 ## Install
 
@@ -39,15 +39,18 @@ Run the evaluator's own unit tests with `npm test`.
 
 C# structure checks (categories 1 & 2) use **Roslyn** - real C# syntax trees - so they correctly
 understand primary constructors, attributes, comments and partial classes. The first run builds
-the analyzer in `analyzer/` (needs the .NET SDK). If the SDK is missing, it transparently falls
-back to regex heuristics. Each report row is tagged `[roslyn]` or `[regex]`.
+the analyzer in `analyzer/` (needs the .NET SDK). **Roslyn is required by default**: if the SDK /
+analyzer is unavailable the run fails fast (so scores stay reproducible) unless you pass
+`--allow-regex-fallback` to score with the looser regex heuristics. Each report row is tagged
+`[roslyn]` or `[regex]`, and the report records which engine was used.
 
 ### Robustness
 
 Before each boot the runner removes leftover `bench-*` containers still holding ports 8080/29092
 (orphans from a crashed run - it never touches your other containers) and retries boot on transient
-failures (`--retries=N`, default 1). The **stress** phase is best-of-N too: if it misses the
-thresholds it re-runs (no rebuild) and keeps the best attempt, absorbing transient host-load noise.
+failures (`--retries=N`, default 1). The **stress** phase re-runs on a missed threshold (no rebuild)
+and scores the **conservative median** across attempts (not best-of-N), so transient host-load noise
+is absorbed without optimistically inflating the result.
 
 ### `--strict-db` (runtime Postgres integrity)
 
@@ -57,7 +60,7 @@ credentials, and runs `psql` to confirm the schema was actually persisted to Pos
 Npgsql package but secretly runs on an in-memory provider.
 
 It is a **separate VERIFIED/FAILED verdict** shown in the report and console - it does **not**
-change the 0-100 score, so runs stay comparable whether or not the flag is used. A `FAILED`
+change the 126-point score, so runs stay comparable whether or not the flag is used. A `FAILED`
 verdict is a strong signal to disqualify a submission manually.
 
 Reports land in `results/`:

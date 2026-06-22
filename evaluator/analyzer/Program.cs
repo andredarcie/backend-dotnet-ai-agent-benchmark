@@ -123,9 +123,20 @@ try
         var ts = p.Type.ToString();
         return entitySet.Any(e => ts == e || ts.Contains($"<{e}>"));
     }));
+    // A real FK is a `<Something>Id` key property — NOT the entity's own `Id` primary key (otherwise
+    // every entity with an `Id` passes and the check is a tautology). Require the prefix to reference
+    // ANOTHER entity (e.g. CreditCardId → CreditCard), so it actually evidences a relationship.
+    static bool IsFkType(string ts) => ts is "int" or "int?" or "long" or "long?" or "Guid" or "Guid?";
     bool hasFkProperty = entityDecls.Any(c => c.Members.OfType<PropertyDeclarationSyntax>().Any(p =>
-        p.Identifier.Text.EndsWith("Id") && p.Type.ToString() is "int" or "int?" or "long" or "long?" or "Guid" or "Guid?"));
-    bool relationship = hasNavigation || hasFkProperty || invocationNames.Contains("HasForeignKey");
+    {
+        var pn = p.Identifier.Text;
+        if (pn == "Id" || !pn.EndsWith("Id") || !IsFkType(p.Type.ToString())) return false;
+        var prefix = pn[..^2]; // strip the trailing "Id"
+        return entitySet.Any(e => e != c.Identifier.Text && (prefix == e || e.EndsWith(prefix) || prefix.EndsWith(e)));
+    }));
+    bool hasForeignKeyAttr = entityDecls.Any(c => c.Members.OfType<PropertyDeclarationSyntax>()
+        .Any(p => p.AttributeLists.SelectMany(a => a.Attributes).Any(a => a.Name.ToString().Contains("ForeignKey"))));
+    bool relationship = hasNavigation || hasFkProperty || hasForeignKeyAttr || invocationNames.Contains("HasForeignKey");
 
     // --- Kafka ---
     var kafkaClient = usings.Any(u => u.Contains("Confluent.Kafka")) || genericNames.Contains("IProducer") || genericNames.Contains("ProducerBuilder");
@@ -228,15 +239,33 @@ try
             || allNames.Contains("ProducerBuilder")
             || kafkaClient);
 
-    // Resilient publish: the Produce/Publish call sits in a try whose catch does NOT rethrow,
-    // so a messaging hiccup doesn't fail (500) the HTTP request after the data is persisted.
+    // Resilient publish: the Produce/Publish call sits in a try that (a) does NOT rethrow — so a
+    // messaging hiccup doesn't 500 the request after the data is persisted — AND (b) actually HANDLES
+    // the failure (logs / retries / enqueues for later), not a silent `catch {}`. Bare swallow is
+    // data loss, not resilience, so it must NOT earn the point.
+    static bool CatchHandles(CatchClauseSyntax c)
+    {
+        foreach (var call in c.Block.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            var name = call.Expression switch
+            {
+                MemberAccessExpressionSyntax ma => ma.Name.Identifier.Text,
+                IdentifierNameSyntax idn => idn.Identifier.Text,
+                _ => string.Empty,
+            };
+            if (Regex.IsMatch(name, "Log|Write|Error|Warn|Trace|Debug|Critical|Information|Produce|Publish|Send|Enqueue|Retry|Save"))
+                return true;
+        }
+        return false;
+    }
     static bool InResilientTry(InvocationExpressionSyntax inv)
     {
         foreach (var t in inv.Ancestors().OfType<TryStatementSyntax>())
         {
             if (!t.Block.Span.Contains(inv.Span)) continue; // inv is in a catch/finally, not the try block
             if (t.Catches.Count == 0) return false;
-            return !t.Catches.Any(c => c.Block.DescendantNodes().OfType<ThrowStatementSyntax>().Any());
+            var noRethrow = !t.Catches.Any(c => c.Block.DescendantNodes().OfType<ThrowStatementSyntax>().Any());
+            return noRethrow && t.Catches.Any(CatchHandles); // no rethrow AND the failure is actually handled
         }
         return false;
     }

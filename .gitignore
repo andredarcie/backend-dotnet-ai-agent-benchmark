@@ -7,10 +7,8 @@ obj/
 node_modules/
 evaluator/dist/
 
-# Evaluator output (keep the folder, ignore generated reports)
-evaluator/results/*.json
-evaluator/results/*.md
-!evaluator/results/.gitkeep
+# Evaluator output: results/*.json, *.md and leaderboard.md are committed as the
+# reproducibility artifact behind the README leaderboard (regenerate with `npm run eval`).
 
 # OS / editor
 .DS_Store

@@ -12,7 +12,10 @@ across 7 categories.
 > (`claude-sonnet-4-6-xhigh` and `claude-haiku-4-5` have **3** each, the rest **1**); all are under 5
 > runs, so this is a **provisional** ranking. Some Sonnet/Haiku runs were **minimally patched to
 > build/boot** (wrong dependency version/name, broken Kafka healthcheck) and carry a **-10 penalty** so
-> their real work is still scored. Per-run details and policy: [METHODOLOGY.md](./METHODOLOGY.md).
+> their real work is still scored. `gemini-3-5-pro` is a heavier patch - it shipped **no
+> `docker-compose.yml`/`Dockerfile` at all** (headless single-turn generation), so a standard compose +
+> Dockerfile were supplied to boot its code, same **-10 penalty** (and it was not `--strict-db` verified).
+> Per-run details and policy: [METHODOLOGY.md](./METHODOLOGY.md).
 
 Category columns are grouped to stay readable: **Static+Arch** (stack · 28 + layering · 10 = 38),
 **Runtime** (boot · 15 + functional · 25 + stress · 10 = 50), **Kafka** (20), **Quality** (18).
@@ -22,8 +25,9 @@ Category columns are grouped to stay readable: **Static+Arch** (stack · 28 + la
 | 1 | `claude-opus-4-8-xhigh` | 1 | **121 / 126** (96%) | 38 | 50 | 20 | **13** |
 | 2 | `gpt-5-5-xhigh` | 1 | **120 / 126** (95.2%) | 38 | 50 | 20 | 12 |
 | 3 | `gemini-3-5-flash` | 1 | **108 / 126** (85.7%) | 38 | 50 | 20 | 0 |
-| 4 | `claude-sonnet-4-6-xhigh` | **3** | **102 / 126** (81%) ±30.6 (58-117) | 35 | 50 | 18 | 9 |
-| 5 | `claude-haiku-4-5` | **3** | **97 / 126** (77%) ±14.9 (74-102) | 38 | 50 | 5 | 4 |
+| 4 | `gemini-3-5-pro` | 1 | **103 / 126** (81.7%) | 38 | 50 | 16 | 9 |
+| 5 | `claude-sonnet-4-6-xhigh` | **3** | **102 / 126** (81%) ±30.6 (58-117) | 35 | 50 | 18 | 9 |
+| 6 | `claude-haiku-4-5` | **3** | **97 / 126** (77%) ±14.9 (74-102) | 38 | 50 | 5 | 4 |
 
 Regenerate with `npm run eval -- --leaderboard` (full source:
 [`evaluator/results/leaderboard.md`](./evaluator/results/leaderboard.md)). Multi-run rows show the

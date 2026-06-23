@@ -1,0 +1,4 @@
+{
+  "points": 10,
+  "reason": "did not boot: the model produced no containerization at all - no docker-compose.yml and no Dockerfile (PROMPT deliverables #1 and #2), so the project could not start with `docker compose up --build` and the evaluator could not even list it. Added a minimal compose (API + Postgres + Kafka, the standard cp-kafka stack used by the other Gemini run) and a .NET 10 Dockerfile so the model's actual code can be scored. Infra/build config only; the .NET source was left untouched. NOTE: generated via headless `agy -p` (single-turn), which stopped after the C# code; the interactive run produces these files itself."
+}

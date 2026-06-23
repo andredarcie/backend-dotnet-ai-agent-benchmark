@@ -1,0 +1,9 @@
+namespace CreditCardApi.DTOs;
+
+public class UpdateCreditCardDto
+{
+    public string CardholderName { get; set; } = string.Empty;
+    public string CardNumber { get; set; } = string.Empty;
+    public string? Brand { get; set; }
+    public decimal CreditLimit { get; set; }
+}

@@ -22,7 +22,7 @@ Regenerate any time with `npm run eval -- --leaderboard`
 
 > ℹ️ **Current 126-point rubric** (Roslyn engine; `--strict-db` verified for every run that booted).
 > Ranked by **per-model median total**. Most models have a single run; `claude-sonnet-4-6-xhigh` has
-> **2**. Every model still has fewer than 5 runs (⚠), so this is a **provisional** ranking - see the
+> **3**. Every model still has fewer than 5 runs (⚠), so this is a **provisional** ranking - see the
 > methodology note below.
 
 | # | Model | Runs | Total (median) | Static · 28 | Arch · 10 | Boot · 15 | Functional · 25 | Kafka · 20 | Stress · 10 | Quality · 18 | strict-db |
@@ -31,20 +31,21 @@ Regenerate any time with `npm run eval -- --leaderboard`
 | 2 | `gpt-5-5-xhigh` | 1 | **120 / 126** (95.2%) | 28 | 10 | 15 | 25 | 20 | 10 | 12 | ✅ |
 | 3 | `gemini-3-5-flash` | 1 | **108 / 126** (85.7%) | 28 | 10 | 15 | 25 | 20 | 10 | 0 | ✅ |
 | 4 | `claude-haiku-4-5` | 1 | **102 / 126** (81%) | 25 | 10 | 15 | 25 | 15 | 10 | 2 | ✅ |
-| 5 | `claude-sonnet-4-6-xhigh` | **2** | **47 / 126** (37.3%) ±49.5 (47-117) | 25 | 10 | 0 | 0 | 3 | 0 | 9 | run1 ✅ |
+| 5 | `claude-sonnet-4-6-xhigh` | **3** | **47 / 126** (37.3%) ±40.4 · mean 70.3 · (47-117) | 25 | 10 | 0 | 0 | 3 | 0 | 9 | run1 ✅ |
 
-> ℹ️ **`claude-sonnet-4-6-xhigh` is the only model with 2 runs, and they are a textbook case for why
-> multi-run matters** (category cells above show the median/representative run, **run2**):
-> - **run1 → 117/126**, but only after a compose patch: it pinned `bitnami/kafka:3.7`, a tag Bitnami
->   removed from Docker Hub. The Kafka service was swapped to `apache/kafka:3.9.0` (env vars translated
->   1:1 + single-node `__consumer_offsets` settings); the .NET source was **not** touched.
-> - **run2 → 47/126, did not build**: its `.csproj` pins `Microsoft.EntityFrameworkCore 9.0.0` while
->   `Npgsql.EntityFrameworkCore.PostgreSQL 9.0.4` needs `>= 9.0.1`, so `dotnet restore` fails (NU1605
->   package downgrade). A genuine submission bug, graded **as-is**.
+> ℹ️ **`claude-sonnet-4-6-xhigh` has 3 runs, and they are a textbook case for why multi-run matters**
+> (category cells above show the median/representative run, a failed one):
+> - **run1 → 117/126** (booted), but only after a compose patch: it pinned `bitnami/kafka:3.7`, a tag
+>   Bitnami removed from Docker Hub. The Kafka service was swapped to `apache/kafka:3.9.0` (env vars
+>   translated 1:1 + single-node `__consumer_offsets` settings); the .NET source was **not** touched.
+> - **run2 and run3 → 47/126 each, did not build**: both pin `Microsoft.EntityFrameworkCore 9.0.0`
+>   while `Npgsql.EntityFrameworkCore.PostgreSQL` (9.0.4 / 9.0.3) needs `>= 9.0.1`, so `dotnet restore`
+>   fails (NU1605 package downgrade). The **same dependency bug twice** - a systematic flaw in how this
+>   model versions EF Core for the task, not a fluke. Graded **as-is** (no patch).
 >
-> The conservative median of the two is **47** with a huge spread (**±49.5**, range 47-117): one strong
-> generation, one broken one. That variance - invisible with a single run - is exactly the signal the
-> ranking should surface. Both runs target **.NET 9**, not 10 (-3 in Static).
+> So **2 of 3 generations don't even compile**, and the one that did needed a registry-rot workaround.
+> The conservative median is **47** with a wide spread (**±40.4**, range 47-117) - precisely the
+> reliability signal a single run would have hidden. All three target **.NET 9**, not 10 (-3 in Static).
 
 ### Reading these results (methodology)
 

@@ -1,0 +1,396 @@
+{
+  "name": "claude-sonnet-4-6-xhigh/run3",
+  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-sonnet-4-6-xhigh\\run3",
+  "booted": false,
+  "categories": [
+    {
+      "category": "static",
+      "title": "1. Static requirements",
+      "earned": 25,
+      "max": 28,
+      "checks": [
+        {
+          "id": "static.compose",
+          "category": "static",
+          "description": "docker-compose file present",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "docker-compose.yml"
+        },
+        {
+          "id": "static.compose.postgres",
+          "category": "static",
+          "description": "Compose uses a Postgres service",
+          "weight": 2,
+          "passed": true,
+          "earned": 2
+        },
+        {
+          "id": "static.compose.build",
+          "category": "static",
+          "description": "Compose builds the API image (build:)",
+          "weight": 2,
+          "passed": true,
+          "earned": 2
+        },
+        {
+          "id": "static.dockerfile",
+          "category": "static",
+          "description": "Dockerfile present",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "Dockerfile"
+        },
+        {
+          "id": "static.compose.kafka",
+          "category": "static",
+          "description": "Compose has a Kafka service",
+          "weight": 2,
+          "passed": true,
+          "earned": 2
+        },
+        {
+          "id": "static.controllers",
+          "category": "static",
+          "description": "At least 2 controllers [roslyn]",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "found: CreditCardsController, HealthController, TransactionsController"
+        },
+        {
+          "id": "static.entities",
+          "category": "static",
+          "description": "At least 2 entities (DbSet<> of real classes) [roslyn]",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "entities: CreditCard, Transaction"
+        },
+        {
+          "id": "static.orm",
+          "category": "static",
+          "description": "Uses EF Core (namespace + DbContext subclass) [roslyn]",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "efNamespace=true, dbContexts=[AppDbContext]"
+        },
+        {
+          "id": "static.npgsql",
+          "category": "static",
+          "description": "Wires the Npgsql/Postgres provider (UseNpgsql) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "UseNpgsql(...) found"
+        },
+        {
+          "id": "static.relationship",
+          "category": "static",
+          "description": "Models a 1:N relationship (FK) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2
+        },
+        {
+          "id": "static.kafka.publish",
+          "category": "static",
+          "description": "Kafka client + produce call [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "client=true, produce=true"
+        },
+        {
+          "id": "static.net10",
+          "category": "static",
+          "description": "Targets .NET 10 [roslyn]",
+          "weight": 3,
+          "passed": false,
+          "earned": 0,
+          "detail": "targetFrameworks: net9.0"
+        }
+      ]
+    },
+    {
+      "category": "architecture",
+      "title": "2. Architecture (layering)",
+      "earned": 10,
+      "max": 10,
+      "checks": [
+        {
+          "id": "arch.repository",
+          "category": "architecture",
+          "description": "Repository layer (interface + implementation) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "interface=true, impl=true"
+        },
+        {
+          "id": "arch.baseRepository",
+          "category": "architecture",
+          "description": "Generic base repository class [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2
+        },
+        {
+          "id": "arch.useCases",
+          "category": "architecture",
+          "description": "Use-case layer (*UseCase classes) [roslyn]",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "11 use case(s)"
+        },
+        {
+          "id": "arch.controllerUseCase",
+          "category": "architecture",
+          "description": "Controllers call use cases (not DbContext) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "usesUseCase=true, touchesDb=false"
+        },
+        {
+          "id": "arch.repoEf",
+          "category": "architecture",
+          "description": "Repositories own EF Core / DbContext access [roslyn]",
+          "weight": 1,
+          "passed": true,
+          "earned": 1
+        }
+      ]
+    },
+    {
+      "category": "build",
+      "title": "3. Build & boot",
+      "earned": 0,
+      "max": 15,
+      "checks": [
+        {
+          "id": "build.up",
+          "category": "build",
+          "description": "docker compose up",
+          "weight": 8,
+          "passed": false,
+          "earned": 0,
+          "detail": "exit=17"
+        },
+        {
+          "id": "build.healthy",
+          "category": "build",
+          "description": "API becomes healthy",
+          "weight": 7,
+          "passed": false,
+          "earned": 0,
+          "detail": "not healthy within 180000ms"
+        }
+      ]
+    },
+    {
+      "category": "functional",
+      "title": "4. Functional behavior",
+      "earned": 0,
+      "max": 25,
+      "checks": [
+        {
+          "id": "func.skipped",
+          "category": "functional",
+          "description": "Functional tests",
+          "weight": 25,
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
+        }
+      ]
+    },
+    {
+      "category": "kafka",
+      "title": "5. Kafka integration",
+      "earned": 3,
+      "max": 20,
+      "checks": [
+        {
+          "id": "kafka.healthcheck",
+          "category": "kafka",
+          "description": "Kafka service has a healthcheck",
+          "weight": 3,
+          "passed": true,
+          "earned": 3,
+          "detail": "kafka healthcheck found"
+        },
+        {
+          "id": "kafka.durability",
+          "category": "kafka",
+          "description": "Durable producer (Acks.All / idempotence)",
+          "weight": 2,
+          "passed": false,
+          "earned": 0,
+          "detail": "default acks"
+        },
+        {
+          "id": "kafka.broker",
+          "category": "kafka",
+          "description": "Broker reachable on host",
+          "weight": 5,
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
+        },
+        {
+          "id": "kafka.event",
+          "category": "kafka",
+          "description": "Transaction create publishes to topic",
+          "weight": 8,
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
+        },
+        {
+          "id": "kafka.eventKey",
+          "category": "kafka",
+          "description": "Event message key = transaction id",
+          "weight": 2,
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
+        }
+      ]
+    },
+    {
+      "category": "stress",
+      "title": "6. Stress / load",
+      "earned": 0,
+      "max": 10,
+      "checks": [
+        {
+          "id": "stress.errorRate",
+          "category": "stress",
+          "description": "Error rate",
+          "weight": 6,
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
+        },
+        {
+          "id": "stress.throughput",
+          "category": "stress",
+          "description": "Throughput",
+          "weight": 2,
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
+        },
+        {
+          "id": "stress.p95",
+          "category": "stress",
+          "description": "p95 latency",
+          "weight": 2,
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
+        }
+      ]
+    },
+    {
+      "category": "quality",
+      "title": "7. Best practices (quality)",
+      "earned": 9,
+      "max": 18,
+      "checks": [
+        {
+          "id": "quality.noContainerName",
+          "category": "quality",
+          "description": "No hardcoded container_name (isolatable)",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "ok"
+        },
+        {
+          "id": "quality.kraft",
+          "category": "quality",
+          "description": "Kafka in KRaft mode (no Zookeeper)",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "no Zookeeper"
+        },
+        {
+          "id": "quality.kafkaVersion",
+          "category": "quality",
+          "description": "Up-to-date Kafka image",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "confluentinc/cp-kafka:7.6.0 (recent)"
+        },
+        {
+          "id": "quality.cancellation",
+          "category": "quality",
+          "description": "CancellationToken propagated (controller→repo) [roslyn]",
+          "weight": 3,
+          "passed": false,
+          "earned": 0,
+          "detail": "controllers=false, repos=false"
+        },
+        {
+          "id": "quality.dtos",
+          "category": "quality",
+          "description": "Uses response DTOs (no entity leakage) [roslyn]",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "dtoTypes=4, controllersUse=true, useCasesReturn=false"
+        },
+        {
+          "id": "quality.errors",
+          "category": "quality",
+          "description": "Structured errors (ProblemDetails / IExceptionHandler / Result) [roslyn]",
+          "weight": 2,
+          "passed": false,
+          "earned": 0,
+          "detail": "exHandler=false, problemDetails=false, result=false"
+        },
+        {
+          "id": "quality.migrations",
+          "category": "quality",
+          "description": "Production-grade schema management (EF migrations, bonus over EnsureCreated)",
+          "weight": 2,
+          "passed": true,
+          "earned": 2,
+          "detail": "Migrations/ folder present"
+        },
+        {
+          "id": "quality.nonRoot",
+          "category": "quality",
+          "description": "Container runs as non-root (USER)",
+          "weight": 1,
+          "passed": false,
+          "earned": 0
+        },
+        {
+          "id": "quality.kafkaResilient",
+          "category": "quality",
+          "description": "Publish failure handled gracefully (catch-and-log or outbox) [roslyn]",
+          "weight": 3,
+          "passed": false,
+          "earned": 0,
+          "detail": "publish failure propagates (no catch, or catch rethrows)"
+        }
+      ]
+    }
+  ],
+  "totalEarned": 47,
+  "totalMax": 126,
+  "percent": 37.3,
+  "notes": [
+    "compose up failed after 2 attempt(s): time=\"2026-06-22T21:52:09-03:00\" level=warning msg=\"C:\\\\repos\\\\backend-dotnet-ai-agent-benchmark\\\\submissions\\\\claude-sonnet-4-6-xhigh\\\\run3\\\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion\" |  Service api  Building | failed to solve: process \"/bin/sh -c dotnet restore CreditCardApi/CreditCardApi.csproj\" did not complete successfully: exit code: 1 | "
+  ],
+  "engine": "roslyn"
+}

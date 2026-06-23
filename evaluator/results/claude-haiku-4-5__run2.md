@@ -1,18 +1,26 @@
 # Benchmark report - `claude-haiku-4-5/run2`
 
-**Score: 43 / 126 (34.1%)** - did not boot ❌
+**Score: 74 / 126 (58.7%)** - booted ✅
 **Analysis engine:** `roslyn`
+**Patch penalty:** -10 (did not build/boot: (1) NU1101 - referenced 'Microsoft.EntityFrameworkCore.PostgreSQL' (does not exist; renamed to 'Npgsql.EntityFrameworkCore.PostgreSQL'); (2) CS1061 - Program.cs uses Swagger without referencing Swashbuckle.AspNetCore (added it); (3) Kafka healthcheck called 'kafka-broker-api-versions.sh' (no .sh in cp-kafka) against localhost:9092, so the broker stayed unhealthy and the API never started (fixed to 'kafka-broker-api-versions --bootstrap-server kafka:9092'). Compose/deps only; .NET source untouched.)
+
+**Runtime integrity (strict-db):** VERIFIED ✅ - Postgres(creditcard_db) holds 2 base tables → schema was persisted to a real Postgres
 
 | Category | Score |
 |----------|------:|
 | 1. Static requirements | 28 / 28 |
 | 2. Architecture (layering) | 10 / 10 |
-| 3. Build & boot | 0 / 15 |
-| 4. Functional behavior | 0 / 25 |
-| 5. Kafka integration | 3 / 20 |
-| 6. Stress / load | 0 / 10 |
+| 3. Build & boot | 15 / 15 |
+| 4. Functional behavior | 17 / 25 |
+| 5. Kafka integration | 8 / 20 |
+| 6. Stress / load | 4 / 10 |
 | 7. Best practices (quality) | 2 / 18 |
-| **Total** | **43 / 126** |
+| **Total** | **74 / 126** |
+
+### Stress metrics
+
+- Requests: **7114** (474.3 req/s), errors: **1782** (25.05%)
+- Latency: p50 **44ms**, p95 **179ms**, p99 **1229ms**
 
 ### 1. Static requirements - 28/28
 
@@ -41,36 +49,60 @@
 | ✅ | Controllers call use cases (not DbContext) [roslyn] | 2/2 | usesUseCase=true, touchesDb=false |
 | ✅ | Repositories own EF Core / DbContext access [roslyn] | 1/1 |  |
 
-### 3. Build & boot - 0/15
+### 3. Build & boot - 15/15
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ❌ | docker compose up | 0/8 | exit=17 |
-| ❌ | API becomes healthy | 0/7 | not healthy within 180000ms |
+| ✅ | docker compose up | 8/8 | compose started (within 2 attempts) |
+| ✅ | API becomes healthy | 7/7 | health OK |
 
-### 4. Functional behavior - 0/25
+### 4. Functional behavior - 17/25
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ❌ | Functional tests | 0/25 | boot failed |
+| ✅ | GET /health → 200 | 1/1 | status=200 |
+| ✅ | POST /api/credit-cards → 201 + numeric id | 1/1 | status=201, id=1 |
+| ✅ | POST /api/credit-cards sets Location header | 1/1 | location=http://localhost:8080/api/credit-cards/1 |
+| ✅ | Created credit card echoes all fields (camelCase) | 1/1 | fields: id,cardholderName,cardNumber,brand,creditLimit,createdAt,transactions |
+| ✅ | GET /api/credit-cards/{id} → 200 + matches | 1/1 | status=200 |
+| ✅ | GET /api/credit-cards → 200 array | 1/1 | status=200, isArray=true |
+| ✅ | POST /api/credit-cards empty name → 400 | 1/1 | status=400 |
+| ✅ | GET missing credit card → 404 | 1/1 | status=404 |
+| ❌ | POST /api/transactions → 201 + numeric id | 0/1 | status=500, id=undefined |
+| ❌ | POST /api/transactions sets Location header | 0/1 | location=(none) |
+| ❌ | Created transaction echoes all fields (camelCase) | 0/1 | fields: (none) |
+| ❌ | GET /api/transactions/{id} → 200 | 0/1 | no txn id |
+| ✅ | GET /api/transactions → 200 array | 1/1 | status=200 |
+| ✅ | POST /api/transactions amount<=0 → 400 | 1/1 | status=400 |
+| ✅ | POST /api/transactions bad creditCardId → 400 | 1/1 | status=400 |
+| ❌ | GET /api/credit-cards/{id}/transactions → 200 incl. txn | 0/1 | status=500 |
+| ✅ | GET transactions for missing card → 404 | 1/1 | status=404 |
+| ❌ | PUT txn → 200/204 | 0/1 | no ids |
+| ❌ | DELETE txn → 204 | 0/1 | no txn id |
+| ❌ | GET deleted txn → 404 | 0/1 | no txn id |
+| ✅ | PUT /api/credit-cards/{id} → 200/204 + persisted | 1/1 | status=200 |
+| ✅ | PUT missing credit card → 404 | 1/1 | status=404 |
+| ✅ | PUT missing transaction → 404 | 1/1 | status=404 |
+| ✅ | DELETE /api/credit-cards/{id} → 204 | 1/1 | status=204 |
+| ✅ | GET deleted credit card → 404 | 1/1 | status=404 |
 
-### 5. Kafka integration - 3/20
+### 5. Kafka integration - 8/20
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
 | ✅ | Kafka service has a healthcheck | 3/3 | kafka healthcheck found |
 | ❌ | Durable producer (Acks.All / idempotence) | 0/2 | default acks |
-| ❌ | Broker reachable on host | 0/5 | boot failed |
-| ❌ | Transaction create publishes to topic | 0/8 | boot failed |
-| ❌ | Event message key = transaction id | 0/2 | boot failed |
+| ✅ | Broker reachable on host (localhost:29092) | 5/5 | subscribed to "transactions" |
+| ❌ | Transaction create publishes to topic (value + key) | 0/8 | no matching message within 25000ms (saw 2) |
+| ❌ | Event message key = transaction id | 0/2 | no event received |
 
-### 6. Stress / load - 0/10
+### 6. Stress / load - 4/10
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ❌ | Error rate | 0/6 | boot failed |
-| ❌ | Throughput | 0/2 | boot failed |
-| ❌ | p95 latency | 0/2 | boot failed |
+| ❌ | Error rate < 1% | 0/6 | errorRate=25.05% (1782/7114) |
+| ✅ | Sustained throughput ≥ 50 req/s | 2/2 | 474.3 req/s, 7114 total |
+| ✅ | p95 latency < 1000ms | 2/2 | p95=179ms |
 
 ### 7. Best practices (quality) - 2/18
 
@@ -88,4 +120,5 @@
 
 ### Notes
 
-- compose up failed after 2 attempt(s): time="2026-06-22T22:02:52-03:00" level=warning msg="C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-haiku-4-5\\run2\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion" |  Service api  Building | failed to solve: process "/bin/sh -c dotnet restore" did not complete successfully: exit code: 1 | 
+- Patched to run (penalty -10): did not build/boot: (1) NU1101 - referenced 'Microsoft.EntityFrameworkCore.PostgreSQL' (does not exist; renamed to 'Npgsql.EntityFrameworkCore.PostgreSQL'); (2) CS1061 - Program.cs uses Swagger without referencing Swashbuckle.AspNetCore (added it); (3) Kafka healthcheck called 'kafka-broker-api-versions.sh' (no .sh in cp-kafka) against localhost:9092, so the broker stayed unhealthy and the API never started (fixed to 'kafka-broker-api-versions --bootstrap-server kafka:9092'). Compose/deps only; .NET source untouched.
+- Stress did not fully pass (conservative median across 2 attempt(s)) - may indicate a loaded host or a real tail-latency issue.

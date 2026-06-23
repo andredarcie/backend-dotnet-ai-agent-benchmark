@@ -45,7 +45,7 @@ services:
       KAFKA_LOG_CLEANUP_POLICY: delete
       KAFKA_LOG_RETENTION_HOURS: 24
     healthcheck:
-      test: ["CMD", "bash", "-c", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      test: ["CMD", "bash", "-c", "kafka-broker-api-versions --bootstrap-server kafka:9092"]
       interval: 5s
       timeout: 10s
       retries: 5

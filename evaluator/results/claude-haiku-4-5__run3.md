@@ -18,8 +18,8 @@
 
 ### Stress metrics
 
-- Requests: **6408** (427.2 req/s), errors: **0** (0.00%)
-- Latency: p50 **105ms**, p95 **220ms**, p99 **312ms**
+- Requests: **8749** (583.3 req/s), errors: **0** (0.00%)
+- Latency: p50 **89ms**, p95 **134ms**, p99 **156ms**
 
 ### 1. Static requirements - 28/28
 
@@ -99,9 +99,9 @@
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ✅ | Error rate < 1% | 6/6 | errorRate=0.00% (0/6408) |
-| ✅ | Sustained throughput ≥ 50 req/s | 2/2 | 427.2 req/s, 6408 total |
-| ✅ | p95 latency < 1000ms | 2/2 | p95=220ms |
+| ✅ | Error rate < 1% | 6/6 | errorRate=0.00% (0/8749) |
+| ✅ | Sustained throughput ≥ 50 req/s | 2/2 | 583.3 req/s, 8749 total |
+| ✅ | p95 latency < 1000ms | 2/2 | p95=134ms |
 
 ### 7. Best practices (quality) - 4/18
 

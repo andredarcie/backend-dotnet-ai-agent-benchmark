@@ -1,0 +1,4 @@
+{
+  "points": 10,
+  "reason": "did not build/boot: (1) NU1101 - referenced 'Microsoft.EntityFrameworkCore.PostgreSQL' (does not exist; renamed to 'Npgsql.EntityFrameworkCore.PostgreSQL'); (2) CS1061 - Program.cs uses Swagger without referencing Swashbuckle.AspNetCore (added it); (3) Kafka healthcheck called 'kafka-broker-api-versions.sh' (no .sh in cp-kafka) against localhost:9092, so the broker stayed unhealthy and the API never started (fixed to 'kafka-broker-api-versions --bootstrap-server kafka:9092'). Compose/deps only; .NET source untouched."
+}

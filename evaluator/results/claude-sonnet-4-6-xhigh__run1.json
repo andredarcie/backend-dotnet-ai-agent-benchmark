@@ -1,6 +1,6 @@
 {
   "name": "claude-sonnet-4-6-xhigh/run1",
-  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-sonnet-4-6-xhigh",
+  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-sonnet-4-6-xhigh\\run1",
   "booted": true,
   "categories": [
     {
@@ -491,7 +491,7 @@
           "weight": 6,
           "passed": true,
           "earned": 6,
-          "detail": "errorRate=0.00% (0/7887)"
+          "detail": "errorRate=0.00% (0/6361)"
         },
         {
           "id": "stress.throughput",
@@ -500,7 +500,7 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "525.8 req/s, 7887 total"
+          "detail": "424.1 req/s, 6361 total"
         },
         {
           "id": "stress.p95",
@@ -509,7 +509,7 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "p95=142ms"
+          "detail": "p95=166ms"
         }
       ]
     },
@@ -606,13 +606,13 @@
   "totalMax": 126,
   "percent": 92.9,
   "stress": {
-    "totalRequests": 7887,
+    "totalRequests": 6361,
     "errors": 0,
     "errorRate": 0,
-    "rps": 525.8,
-    "p50": 98,
-    "p95": 142,
-    "p99": 158
+    "rps": 424.1,
+    "p50": 109,
+    "p95": 166,
+    "p99": 592
   },
   "notes": [],
   "engine": "roslyn",

@@ -1,18 +1,26 @@
 # Benchmark report - `claude-sonnet-4-6-xhigh/run3`
 
-**Score: 47 / 126 (37.3%)** - did not boot ❌
+**Score: 102 / 126 (81%)** - booted ✅
 **Analysis engine:** `roslyn`
+**Patch penalty:** -10 (did not build/boot: (1) NU1605 - csproj pinned Microsoft.EntityFrameworkCore 9.0.0 but Npgsql 9.0.3 needs >= 9.0.1 (bumped EF Core to 9.0.3); (2) Kafka healthcheck probed localhost:9092 while the broker only listens on kafka:9092, so the container stayed unhealthy and the API never started (pointed the healthcheck at kafka:9092). Compose/deps only; .NET source untouched.)
+
+**Runtime integrity (strict-db):** VERIFIED ✅ - Postgres(creditcarddb) holds 3 base tables → schema was persisted to a real Postgres
 
 | Category | Score |
 |----------|------:|
 | 1. Static requirements | 25 / 28 |
 | 2. Architecture (layering) | 10 / 10 |
-| 3. Build & boot | 0 / 15 |
-| 4. Functional behavior | 0 / 25 |
-| 5. Kafka integration | 3 / 20 |
-| 6. Stress / load | 0 / 10 |
+| 3. Build & boot | 15 / 15 |
+| 4. Functional behavior | 25 / 25 |
+| 5. Kafka integration | 18 / 20 |
+| 6. Stress / load | 10 / 10 |
 | 7. Best practices (quality) | 9 / 18 |
-| **Total** | **47 / 126** |
+| **Total** | **102 / 126** |
+
+### Stress metrics
+
+- Requests: **4886** (325.7 req/s), errors: **0** (0.00%)
+- Latency: p50 **159ms**, p95 **225ms**, p99 **236ms**
 
 ### 1. Static requirements - 25/28
 
@@ -41,36 +49,60 @@
 | ✅ | Controllers call use cases (not DbContext) [roslyn] | 2/2 | usesUseCase=true, touchesDb=false |
 | ✅ | Repositories own EF Core / DbContext access [roslyn] | 1/1 |  |
 
-### 3. Build & boot - 0/15
+### 3. Build & boot - 15/15
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ❌ | docker compose up | 0/8 | exit=17 |
-| ❌ | API becomes healthy | 0/7 | not healthy within 180000ms |
+| ✅ | docker compose up | 8/8 | compose started (within 2 attempts) |
+| ✅ | API becomes healthy | 7/7 | health OK |
 
-### 4. Functional behavior - 0/25
+### 4. Functional behavior - 25/25
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ❌ | Functional tests | 0/25 | boot failed |
+| ✅ | GET /health → 200 | 1/1 | status=200 |
+| ✅ | POST /api/credit-cards → 201 + numeric id | 1/1 | status=201, id=1 |
+| ✅ | POST /api/credit-cards sets Location header | 1/1 | location=http://localhost:8080/api/credit-cards/1 |
+| ✅ | Created credit card echoes all fields (camelCase) | 1/1 | fields: id,cardholderName,cardNumber,brand,creditLimit,createdAt |
+| ✅ | GET /api/credit-cards/{id} → 200 + matches | 1/1 | status=200 |
+| ✅ | GET /api/credit-cards → 200 array | 1/1 | status=200, isArray=true |
+| ✅ | POST /api/credit-cards empty name → 400 | 1/1 | status=400 |
+| ✅ | GET missing credit card → 404 | 1/1 | status=404 |
+| ✅ | POST /api/transactions → 201 + numeric id | 1/1 | status=201, id=1 |
+| ✅ | POST /api/transactions sets Location header | 1/1 | location=http://localhost:8080/api/transactions/1 |
+| ✅ | Created transaction echoes all fields (camelCase) | 1/1 | fields: id,creditCardId,amount,merchant,category,createdAt |
+| ✅ | GET /api/transactions/{id} → 200 | 1/1 | status=200 |
+| ✅ | GET /api/transactions → 200 array | 1/1 | status=200 |
+| ✅ | POST /api/transactions amount<=0 → 400 | 1/1 | status=400 |
+| ✅ | POST /api/transactions bad creditCardId → 400 | 1/1 | status=400 |
+| ✅ | GET /api/credit-cards/{id}/transactions → 200 incl. txn | 1/1 | status=200 |
+| ✅ | GET transactions for missing card → 404 | 1/1 | status=404 |
+| ✅ | PUT /api/transactions/{id} → 200/204 | 1/1 | status=200 |
+| ✅ | DELETE /api/transactions/{id} → 204 | 1/1 | status=204 |
+| ✅ | GET deleted transaction → 404 | 1/1 | status=404 |
+| ✅ | PUT /api/credit-cards/{id} → 200/204 + persisted | 1/1 | status=200 |
+| ✅ | PUT missing credit card → 404 | 1/1 | status=404 |
+| ✅ | PUT missing transaction → 404 | 1/1 | status=404 |
+| ✅ | DELETE /api/credit-cards/{id} → 204 | 1/1 | status=204 |
+| ✅ | GET deleted credit card → 404 | 1/1 | status=404 |
 
-### 5. Kafka integration - 3/20
+### 5. Kafka integration - 18/20
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
 | ✅ | Kafka service has a healthcheck | 3/3 | kafka healthcheck found |
 | ❌ | Durable producer (Acks.All / idempotence) | 0/2 | default acks |
-| ❌ | Broker reachable on host | 0/5 | boot failed |
-| ❌ | Transaction create publishes to topic | 0/8 | boot failed |
-| ❌ | Event message key = transaction id | 0/2 | boot failed |
+| ✅ | Broker reachable on host (localhost:29092) | 5/5 | subscribed to "transactions" |
+| ✅ | Transaction create publishes to topic (value + key) | 8/8 | received event for txn 2; key="2" (expected "2") → match |
+| ✅ | Event message key = transaction id | 2/2 | key="2" (expected "2") |
 
-### 6. Stress / load - 0/10
+### 6. Stress / load - 10/10
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ❌ | Error rate | 0/6 | boot failed |
-| ❌ | Throughput | 0/2 | boot failed |
-| ❌ | p95 latency | 0/2 | boot failed |
+| ✅ | Error rate < 1% | 6/6 | errorRate=0.00% (0/4886) |
+| ✅ | Sustained throughput ≥ 50 req/s | 2/2 | 325.7 req/s, 4886 total |
+| ✅ | p95 latency < 1000ms | 2/2 | p95=225ms |
 
 ### 7. Best practices (quality) - 9/18
 
@@ -88,4 +120,4 @@
 
 ### Notes
 
-- compose up failed after 2 attempt(s): time="2026-06-22T21:52:09-03:00" level=warning msg="C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-sonnet-4-6-xhigh\\run3\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion" |  Service api  Building | failed to solve: process "/bin/sh -c dotnet restore CreditCardApi/CreditCardApi.csproj" did not complete successfully: exit code: 1 | 
+- Patched to run (penalty -10): did not build/boot: (1) NU1605 - csproj pinned Microsoft.EntityFrameworkCore 9.0.0 but Npgsql 9.0.3 needs >= 9.0.1 (bumped EF Core to 9.0.3); (2) Kafka healthcheck probed localhost:9092 while the broker only listens on kafka:9092, so the container stayed unhealthy and the API never started (pointed the healthcheck at kafka:9092). Compose/deps only; .NET source untouched.

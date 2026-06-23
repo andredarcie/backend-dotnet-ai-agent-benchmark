@@ -149,6 +149,24 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
   }
   log(c.gray(`  static analysis engine: ${roslyn ? 'Roslyn (precise)' : 'regex (fallback)'}`));
 
+  // A run that was minimally patched to build/boot carries a `bench-patch.json` marker
+  // ({points, reason}); we subtract the penalty so its real work is still scored, with the patch
+  // documented in the report.
+  let penalty: SubmissionReport['penalty'];
+  const patchFile = path.join(dir, 'bench-patch.json');
+  if (existsSync(patchFile)) {
+    try {
+      const p = JSON.parse(readFileSync(patchFile, 'utf8'));
+      const points = Number(p.points) || 0;
+      if (points > 0) {
+        penalty = { points, reason: String(p.reason ?? 'patched to build/boot') };
+        notes.push(`Patched to run (penalty -${points}): ${penalty.reason}`);
+      }
+    } catch {
+      /* ignore a malformed marker */
+    }
+  }
+
   // Finalize a report and stamp the engine used (Roslyn vs regex fallback) before returning.
   const finish = (
     booted: boolean,
@@ -156,7 +174,7 @@ async function evaluate(name: string, opts: Options): Promise<SubmissionReport> 
     notes: string[],
     stress?: SubmissionReport['stress'],
   ): SubmissionReport => {
-    const r = finalizeReport(name, dir, booted, checks, notes, stress);
+    const r = finalizeReport(name, dir, booted, checks, notes, stress, penalty);
     r.engine = roslyn ? 'roslyn' : 'regex';
     return r;
   };

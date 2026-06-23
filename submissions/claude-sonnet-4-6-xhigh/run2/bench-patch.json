@@ -1,0 +1,4 @@
+{
+  "points": 10,
+  "reason": "build failed (NU1605): csproj pinned Microsoft.EntityFrameworkCore 9.0.0 but the Npgsql 9.0.4 provider needs >= 9.0.1. Bumped EF Core to 9.0.4 so it builds; .NET source untouched."
+}

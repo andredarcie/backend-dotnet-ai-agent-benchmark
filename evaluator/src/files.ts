@@ -30,6 +30,7 @@ export function readSourceFiles(root: string): SourceFile[] {
         if (SKIP_DIRS.has(e.name)) continue;
         walk(full);
       } else if (e.isFile()) {
+        if (e.name === 'bench-patch.json') continue; // benchmark patch marker, not part of the submission
         const ext = path.extname(e.name).toLowerCase();
         const isDockerfile = e.name.toLowerCase().startsWith('dockerfile');
         if (TEXT_EXT.has(ext) || isDockerfile) {

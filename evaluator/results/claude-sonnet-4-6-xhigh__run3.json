@@ -1,7 +1,7 @@
 {
   "name": "claude-sonnet-4-6-xhigh/run3",
   "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-sonnet-4-6-xhigh\\run3",
-  "booted": false,
+  "booted": true,
   "categories": [
     {
       "category": "static",
@@ -169,7 +169,7 @@
     {
       "category": "build",
       "title": "3. Build & boot",
-      "earned": 0,
+      "earned": 15,
       "max": 15,
       "checks": [
         {
@@ -177,42 +177,258 @@
           "category": "build",
           "description": "docker compose up",
           "weight": 8,
-          "passed": false,
-          "earned": 0,
-          "detail": "exit=17"
+          "passed": true,
+          "earned": 8,
+          "detail": "compose started (within 2 attempts)"
         },
         {
           "id": "build.healthy",
           "category": "build",
           "description": "API becomes healthy",
           "weight": 7,
-          "passed": false,
-          "earned": 0,
-          "detail": "not healthy within 180000ms"
+          "passed": true,
+          "earned": 7,
+          "detail": "health OK"
         }
       ]
     },
     {
       "category": "functional",
       "title": "4. Functional behavior",
-      "earned": 0,
+      "earned": 25,
       "max": 25,
       "checks": [
         {
-          "id": "func.skipped",
+          "id": "func.health",
           "category": "functional",
-          "description": "Functional tests",
-          "weight": 25,
-          "passed": false,
-          "earned": 0,
-          "detail": "boot failed"
+          "description": "GET /health → 200",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.card.create",
+          "category": "functional",
+          "description": "POST /api/credit-cards → 201 + numeric id",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=201, id=1"
+        },
+        {
+          "id": "func.card.create.location",
+          "category": "functional",
+          "description": "POST /api/credit-cards sets Location header",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "location=http://localhost:8080/api/credit-cards/1"
+        },
+        {
+          "id": "func.card.schema",
+          "category": "functional",
+          "description": "Created credit card echoes all fields (camelCase)",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "fields: id,cardholderName,cardNumber,brand,creditLimit,createdAt"
+        },
+        {
+          "id": "func.card.get",
+          "category": "functional",
+          "description": "GET /api/credit-cards/{id} → 200 + matches",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.card.list",
+          "category": "functional",
+          "description": "GET /api/credit-cards → 200 array",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200, isArray=true"
+        },
+        {
+          "id": "func.card.validation",
+          "category": "functional",
+          "description": "POST /api/credit-cards empty name → 400",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=400"
+        },
+        {
+          "id": "func.card.missing",
+          "category": "functional",
+          "description": "GET missing credit card → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        },
+        {
+          "id": "func.txn.create",
+          "category": "functional",
+          "description": "POST /api/transactions → 201 + numeric id",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=201, id=1"
+        },
+        {
+          "id": "func.txn.create.location",
+          "category": "functional",
+          "description": "POST /api/transactions sets Location header",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "location=http://localhost:8080/api/transactions/1"
+        },
+        {
+          "id": "func.txn.schema",
+          "category": "functional",
+          "description": "Created transaction echoes all fields (camelCase)",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "fields: id,creditCardId,amount,merchant,category,createdAt"
+        },
+        {
+          "id": "func.txn.get",
+          "category": "functional",
+          "description": "GET /api/transactions/{id} → 200",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.txn.list",
+          "category": "functional",
+          "description": "GET /api/transactions → 200 array",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.txn.amount",
+          "category": "functional",
+          "description": "POST /api/transactions amount<=0 → 400",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=400"
+        },
+        {
+          "id": "func.txn.badcard",
+          "category": "functional",
+          "description": "POST /api/transactions bad creditCardId → 400",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=400"
+        },
+        {
+          "id": "func.rel.list",
+          "category": "functional",
+          "description": "GET /api/credit-cards/{id}/transactions → 200 incl. txn",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.rel.missing",
+          "category": "functional",
+          "description": "GET transactions for missing card → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        },
+        {
+          "id": "func.txn.update",
+          "category": "functional",
+          "description": "PUT /api/transactions/{id} → 200/204",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.txn.delete",
+          "category": "functional",
+          "description": "DELETE /api/transactions/{id} → 204",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=204"
+        },
+        {
+          "id": "func.txn.gone",
+          "category": "functional",
+          "description": "GET deleted transaction → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        },
+        {
+          "id": "func.card.update",
+          "category": "functional",
+          "description": "PUT /api/credit-cards/{id} → 200/204 + persisted",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=200"
+        },
+        {
+          "id": "func.card.update.missing",
+          "category": "functional",
+          "description": "PUT missing credit card → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        },
+        {
+          "id": "func.txn.update.missing",
+          "category": "functional",
+          "description": "PUT missing transaction → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
+        },
+        {
+          "id": "func.card.delete",
+          "category": "functional",
+          "description": "DELETE /api/credit-cards/{id} → 204",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=204"
+        },
+        {
+          "id": "func.card.gone",
+          "category": "functional",
+          "description": "GET deleted credit card → 404",
+          "weight": 1,
+          "passed": true,
+          "earned": 1,
+          "detail": "status=404"
         }
       ]
     },
     {
       "category": "kafka",
       "title": "5. Kafka integration",
-      "earned": 3,
+      "earned": 18,
       "max": 20,
       "checks": [
         {
@@ -236,64 +452,64 @@
         {
           "id": "kafka.broker",
           "category": "kafka",
-          "description": "Broker reachable on host",
+          "description": "Broker reachable on host (localhost:29092)",
           "weight": 5,
-          "passed": false,
-          "earned": 0,
-          "detail": "boot failed"
+          "passed": true,
+          "earned": 5,
+          "detail": "subscribed to \"transactions\""
         },
         {
           "id": "kafka.event",
           "category": "kafka",
-          "description": "Transaction create publishes to topic",
+          "description": "Transaction create publishes to topic (value + key)",
           "weight": 8,
-          "passed": false,
-          "earned": 0,
-          "detail": "boot failed"
+          "passed": true,
+          "earned": 8,
+          "detail": "received event for txn 2; key=\"2\" (expected \"2\") → match"
         },
         {
           "id": "kafka.eventKey",
           "category": "kafka",
           "description": "Event message key = transaction id",
           "weight": 2,
-          "passed": false,
-          "earned": 0,
-          "detail": "boot failed"
+          "passed": true,
+          "earned": 2,
+          "detail": "key=\"2\" (expected \"2\")"
         }
       ]
     },
     {
       "category": "stress",
       "title": "6. Stress / load",
-      "earned": 0,
+      "earned": 10,
       "max": 10,
       "checks": [
         {
           "id": "stress.errorRate",
           "category": "stress",
-          "description": "Error rate",
+          "description": "Error rate < 1%",
           "weight": 6,
-          "passed": false,
-          "earned": 0,
-          "detail": "boot failed"
+          "passed": true,
+          "earned": 6,
+          "detail": "errorRate=0.00% (0/4886)"
         },
         {
           "id": "stress.throughput",
           "category": "stress",
-          "description": "Throughput",
+          "description": "Sustained throughput ≥ 50 req/s",
           "weight": 2,
-          "passed": false,
-          "earned": 0,
-          "detail": "boot failed"
+          "passed": true,
+          "earned": 2,
+          "detail": "325.7 req/s, 4886 total"
         },
         {
           "id": "stress.p95",
           "category": "stress",
-          "description": "p95 latency",
+          "description": "p95 latency < 1000ms",
           "weight": 2,
-          "passed": false,
-          "earned": 0,
-          "detail": "boot failed"
+          "passed": true,
+          "earned": 2,
+          "detail": "p95=225ms"
         }
       ]
     },
@@ -386,11 +602,28 @@
       ]
     }
   ],
-  "totalEarned": 47,
+  "totalEarned": 102,
   "totalMax": 126,
-  "percent": 37.3,
+  "percent": 81,
+  "stress": {
+    "totalRequests": 4886,
+    "errors": 0,
+    "errorRate": 0,
+    "rps": 325.7,
+    "p50": 159,
+    "p95": 225,
+    "p99": 236
+  },
+  "penalty": {
+    "points": 10,
+    "reason": "did not build/boot: (1) NU1605 - csproj pinned Microsoft.EntityFrameworkCore 9.0.0 but Npgsql 9.0.3 needs >= 9.0.1 (bumped EF Core to 9.0.3); (2) Kafka healthcheck probed localhost:9092 while the broker only listens on kafka:9092, so the container stayed unhealthy and the API never started (pointed the healthcheck at kafka:9092). Compose/deps only; .NET source untouched."
+  },
   "notes": [
-    "compose up failed after 2 attempt(s): time=\"2026-06-22T21:52:09-03:00\" level=warning msg=\"C:\\\\repos\\\\backend-dotnet-ai-agent-benchmark\\\\submissions\\\\claude-sonnet-4-6-xhigh\\\\run3\\\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion\" |  Service api  Building | failed to solve: process \"/bin/sh -c dotnet restore CreditCardApi/CreditCardApi.csproj\" did not complete successfully: exit code: 1 | "
+    "Patched to run (penalty -10): did not build/boot: (1) NU1605 - csproj pinned Microsoft.EntityFrameworkCore 9.0.0 but Npgsql 9.0.3 needs >= 9.0.1 (bumped EF Core to 9.0.3); (2) Kafka healthcheck probed localhost:9092 while the broker only listens on kafka:9092, so the container stayed unhealthy and the API never started (pointed the healthcheck at kafka:9092). Compose/deps only; .NET source untouched."
   ],
-  "engine": "roslyn"
+  "engine": "roslyn",
+  "integrity": {
+    "passed": true,
+    "detail": "Postgres(creditcarddb) holds 3 base tables → schema was persisted to a real Postgres"
+  }
 }

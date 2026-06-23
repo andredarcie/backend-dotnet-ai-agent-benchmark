@@ -10,21 +10,25 @@ across 7 categories.
 
 > ℹ️ Current 126-point rubric, ranked by **per-model median total**. Run counts vary
 > (`claude-sonnet-4-6-xhigh` and `claude-haiku-4-5` have **3** each, the rest **1**); all are under 5
-> runs, so this is a **provisional** ranking. Per-run details and how to read these numbers:
-> [METHODOLOGY.md](./METHODOLOGY.md).
+> runs, so this is a **provisional** ranking. Some Sonnet/Haiku runs were **minimally patched to
+> build/boot** (wrong dependency version/name, broken Kafka healthcheck) and carry a **-10 penalty** so
+> their real work is still scored. Per-run details and policy: [METHODOLOGY.md](./METHODOLOGY.md).
 
-| # | Model | Runs | Total (median) | Static · 28 | Arch · 10 | Boot · 15 | Functional · 25 | Kafka · 20 | Stress · 10 | Quality · 18 | strict-db |
-|--:|-------|:---:|------:|:-----------:|:---------:|:---------:|:---------------:|:----------:|:-----------:|:------------:|:--------:|
-| 1 | `claude-opus-4-8-xhigh` | 1 | **121 / 126** (96%) | 28 | 10 | 15 | 25 | 20 | 10 | **13** | ✅ |
-| 2 | `gpt-5-5-xhigh` | 1 | **120 / 126** (95.2%) | 28 | 10 | 15 | 25 | 20 | 10 | 12 | ✅ |
-| 3 | `gemini-3-5-flash` | 1 | **108 / 126** (85.7%) | 28 | 10 | 15 | 25 | 20 | 10 | 0 | ✅ |
-| 4 | `claude-haiku-4-5` | **3** | **97 / 126** (77%) ±32.7 (43-102) | 28 | 10 | 15 | 25 | 5 | 10 | 4 | ✅ |
-| 5 | `claude-sonnet-4-6-xhigh` | **3** | **47 / 126** (37.3%) ±40.4 (47-117) | 25 | 10 | 0 | 0 | 3 | 0 | 9 | run1 ✅ |
+Category columns are grouped to stay readable: **Static+Arch** (stack · 28 + layering · 10 = 38),
+**Runtime** (boot · 15 + functional · 25 + stress · 10 = 50), **Kafka** (20), **Quality** (18).
+
+| # | Model | Runs | Total (median) | Static+Arch · 38 | Runtime · 50 | Kafka · 20 | Quality · 18 |
+|--:|-------|:---:|------:|:---------------:|:------------:|:----------:|:------------:|
+| 1 | `claude-opus-4-8-xhigh` | 1 | **121 / 126** (96%) | 38 | 50 | 20 | **13** |
+| 2 | `gpt-5-5-xhigh` | 1 | **120 / 126** (95.2%) | 38 | 50 | 20 | 12 |
+| 3 | `gemini-3-5-flash` | 1 | **108 / 126** (85.7%) | 38 | 50 | 20 | 0 |
+| 4 | `claude-sonnet-4-6-xhigh` | **3** | **102 / 126** (81%) ±30.6 (58-117) | 35 | 50 | 18 | 9 |
+| 5 | `claude-haiku-4-5` | **3** | **97 / 126** (77%) ±14.9 (74-102) | 38 | 50 | 5 | 4 |
 
 Regenerate with `npm run eval -- --leaderboard` (full source:
 [`evaluator/results/leaderboard.md`](./evaluator/results/leaderboard.md)). Multi-run rows show the
-median; cells show the median/representative run. Why Sonnet and Haiku rank low despite strong single
-runs: [METHODOLOGY.md](./METHODOLOGY.md).
+median (cells = the median/representative run) and the spread. How patched runs are handled and why
+the spread is wide: [METHODOLOGY.md](./METHODOLOGY.md).
 
 ## Run it
 

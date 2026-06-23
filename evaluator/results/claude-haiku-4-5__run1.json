@@ -1,6 +1,6 @@
 {
   "name": "claude-haiku-4-5/run1",
-  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-haiku-4-5",
+  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-haiku-4-5\\run1",
   "booted": true,
   "categories": [
     {
@@ -491,7 +491,7 @@
           "weight": 6,
           "passed": true,
           "earned": 6,
-          "detail": "errorRate=0.00% (0/6945)"
+          "detail": "errorRate=0.28% (14/5002)"
         },
         {
           "id": "stress.throughput",
@@ -500,7 +500,7 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "463 req/s, 6945 total"
+          "detail": "333.5 req/s, 5002 total"
         },
         {
           "id": "stress.p95",
@@ -509,7 +509,7 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "p95=142ms"
+          "detail": "p95=195ms"
         }
       ]
     },
@@ -606,13 +606,13 @@
   "totalMax": 126,
   "percent": 81,
   "stress": {
-    "totalRequests": 6945,
-    "errors": 0,
-    "errorRate": 0,
-    "rps": 463,
-    "p50": 111,
-    "p95": 142,
-    "p99": 166
+    "totalRequests": 5002,
+    "errors": 14,
+    "errorRate": 0.0027988804478208716,
+    "rps": 333.5,
+    "p50": 121,
+    "p95": 195,
+    "p99": 271
   },
   "notes": [],
   "engine": "roslyn",

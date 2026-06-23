@@ -491,7 +491,7 @@
           "weight": 6,
           "passed": true,
           "earned": 6,
-          "detail": "errorRate=0.00% (0/6408)"
+          "detail": "errorRate=0.00% (0/8749)"
         },
         {
           "id": "stress.throughput",
@@ -500,7 +500,7 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "427.2 req/s, 6408 total"
+          "detail": "583.3 req/s, 8749 total"
         },
         {
           "id": "stress.p95",
@@ -509,7 +509,7 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "p95=220ms"
+          "detail": "p95=134ms"
         }
       ]
     },
@@ -606,13 +606,13 @@
   "totalMax": 126,
   "percent": 77,
   "stress": {
-    "totalRequests": 6408,
+    "totalRequests": 8749,
     "errors": 0,
     "errorRate": 0,
-    "rps": 427.2,
-    "p50": 105,
-    "p95": 220,
-    "p99": 312
+    "rps": 583.3,
+    "p50": 89,
+    "p95": 134,
+    "p99": 156
   },
   "notes": [],
   "engine": "roslyn",

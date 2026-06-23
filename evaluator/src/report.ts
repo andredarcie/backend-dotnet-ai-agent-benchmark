@@ -29,9 +29,11 @@ export function finalizeReport(
   checks: CheckResult[],
   notes: string[],
   stress?: SubmissionReport['stress'],
+  penalty?: SubmissionReport['penalty'],
 ): SubmissionReport {
   const categories = buildCategories(checks);
-  const totalEarned = round1(categories.reduce((s, c) => s + c.earned, 0));
+  const gross = round1(categories.reduce((s, c) => s + c.earned, 0));
+  const totalEarned = penalty ? round1(Math.max(0, gross - penalty.points)) : gross;
   const totalMax = round1(categories.reduce((s, c) => s + c.max, 0));
   return {
     name,
@@ -42,6 +44,7 @@ export function finalizeReport(
     totalMax,
     percent: totalMax ? Math.round((totalEarned / totalMax) * 1000) / 10 : 0,
     stress,
+    penalty,
     notes,
   };
 }
@@ -56,6 +59,7 @@ export function renderMarkdown(r: SubmissionReport): string {
   lines.push('');
   lines.push(`**Score: ${r.totalEarned} / ${r.totalMax} (${r.percent}%)** - ${r.booted ? 'booted ✅' : 'did not boot ❌'}`);
   lines.push(`**Analysis engine:** \`${r.engine ?? 'unknown'}\``);
+  if (r.penalty) lines.push(`**Patch penalty:** -${r.penalty.points} (${r.penalty.reason})`);
   lines.push('');
 
   if (r.integrity) {
@@ -159,12 +163,15 @@ export function writeLeaderboard(resultsDir: string, reports: SubmissionReport[]
   const lines: string[] = [];
   lines.push('# Leaderboard');
   lines.push('');
-  lines.push('| # | Model | Runs | Total | Static | Arch | Boot | Functional | Kafka | Stress | Quality |');
-  lines.push('|--:|-------|-----:|------:|-------:|-----:|-----:|-----------:|------:|-------:|--------:|');
+  // Category columns grouped by nature to keep the table narrow:
+  //   Static+Arch = required stack + layering; Runtime = boot + functional + stress; then Kafka, Quality.
+  lines.push('| # | Model | Runs | Total | Static+Arch | Runtime | Kafka | Quality |');
+  lines.push('|--:|-------|-----:|------:|-----------:|--------:|------:|--------:|');
 
-  const get = (r: SubmissionReport, cat: Category) => {
-    const c = r.categories.find((x) => x.category === cat);
-    return c ? `${c.earned}/${c.max}` : '-';
+  const sumCats = (r: SubmissionReport, cats: Category[]) => {
+    const pick = (key: 'earned' | 'max') =>
+      round1(cats.reduce((s, cat) => s + (r.categories.find((x) => x.category === cat)?.[key] ?? 0), 0));
+    return `${pick('earned')}/${pick('max')}`;
   };
 
   groups.forEach((g, i) => {
@@ -176,8 +183,8 @@ export function writeLeaderboard(resultsDir: string, reports: SubmissionReport[]
     const total = `**${g.medianTotal}/${g.totalMax}** (${percent}%)${spread}`;
     lines.push(
       `| ${i + 1} | \`${g.model}\` | ${runsCell} | ${total} | ` +
-        `${get(r, 'static')} | ${get(r, 'architecture')} | ${get(r, 'build')} | ` +
-        `${get(r, 'functional')} | ${get(r, 'kafka')} | ${get(r, 'stress')} | ${get(r, 'quality')} |`,
+        `${sumCats(r, ['static', 'architecture'])} | ${sumCats(r, ['build', 'functional', 'stress'])} | ` +
+        `${sumCats(r, ['kafka'])} | ${sumCats(r, ['quality'])} |`,
     );
   });
   lines.push('');

@@ -1,18 +1,26 @@
 # Benchmark report - `claude-sonnet-4-6-xhigh/run2`
 
-**Score: 47 / 126 (37.3%)** - did not boot ❌
+**Score: 58.2 / 126 (46.2%)** - booted ✅
 **Analysis engine:** `roslyn`
+**Patch penalty:** -10 (build failed (NU1605): csproj pinned Microsoft.EntityFrameworkCore 9.0.0 but the Npgsql 9.0.4 provider needs >= 9.0.1. Bumped EF Core to 9.0.4 so it builds; .NET source untouched.)
+
+**Runtime integrity (strict-db):** FAILED ❌ - Postgres(creditcarddb) holds only 1 base tables (expected ≥ 2) → the API likely did not use Postgres
 
 | Category | Score |
 |----------|------:|
 | 1. Static requirements | 25 / 28 |
 | 2. Architecture (layering) | 10 / 10 |
-| 3. Build & boot | 0 / 15 |
-| 4. Functional behavior | 0 / 25 |
+| 3. Build & boot | 15 / 15 |
+| 4. Functional behavior | 2.2 / 25 |
 | 5. Kafka integration | 3 / 20 |
-| 6. Stress / load | 0 / 10 |
+| 6. Stress / load | 4 / 10 |
 | 7. Best practices (quality) | 9 / 18 |
-| **Total** | **47 / 126** |
+| **Total** | **58.2 / 126** |
+
+### Stress metrics
+
+- Requests: **12340** (822.7 req/s), errors: **12340** (100.00%)
+- Latency: p50 **54ms**, p95 **111ms**, p99 **167ms**
 
 ### 1. Static requirements - 25/28
 
@@ -41,18 +49,40 @@
 | ✅ | Controllers call use cases (not DbContext) [roslyn] | 2/2 | usesUseCase=true, touchesDb=false |
 | ✅ | Repositories own EF Core / DbContext access [roslyn] | 1/1 |  |
 
-### 3. Build & boot - 0/15
+### 3. Build & boot - 15/15
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ❌ | docker compose up | 0/8 | exit=17 |
-| ❌ | API becomes healthy | 0/7 | not healthy within 180000ms |
+| ✅ | docker compose up | 8/8 | compose started (within 2 attempts) |
+| ✅ | API becomes healthy | 7/7 | health OK |
 
-### 4. Functional behavior - 0/25
+### 4. Functional behavior - 2.2/25
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ❌ | Functional tests | 0/25 | boot failed |
+| ✅ | GET /health → 200 | 1.1/1.1 | status=200 |
+| ❌ | POST /api/credit-cards → 201 + numeric id | 0/1.1 | status=500, id=undefined |
+| ❌ | POST /api/credit-cards sets Location header | 0/1.1 | location=(none) |
+| ❌ | Created credit card echoes all fields (camelCase) | 0/1.1 | fields: (none) |
+| ❌ | GET /api/credit-cards/{id} → 200 | 0/1.1 | no card id |
+| ❌ | GET /api/credit-cards → 200 array | 0/1.1 | status=500, isArray=false |
+| ✅ | POST /api/credit-cards empty name → 400 | 1.1/1.1 | status=400 |
+| ❌ | GET missing credit card → 404 | 0/1.1 | status=500 |
+| ❌ | POST /api/transactions → 201 + id | 0/1.1 | no card id |
+| ❌ | GET /api/transactions/{id} → 200 | 0/1.1 | no txn id |
+| ❌ | GET /api/transactions → 200 array | 0/1.1 | status=500 |
+| ❌ | POST txn amount<=0 → 400 | 0/1.1 | no card id |
+| ❌ | POST /api/transactions bad creditCardId → 400 | 0/1.1 | status=500 |
+| ❌ | GET card transactions → 200 | 0/1.1 | no card id |
+| ❌ | GET transactions for missing card → 404 | 0/1.1 | status=500 |
+| ❌ | PUT txn → 200/204 | 0/1.1 | no ids |
+| ❌ | DELETE txn → 204 | 0/1.1 | no txn id |
+| ❌ | GET deleted txn → 404 | 0/1.1 | no txn id |
+| ❌ | PUT card → 200/204 | 0/1.1 | no card id |
+| ❌ | PUT missing credit card → 404 | 0/1.1 | status=500 |
+| ❌ | PUT missing txn → 404 | 0/1.1 | no card id |
+| ❌ | DELETE card → 204 | 0/1.1 | no card id |
+| ❌ | GET deleted card → 404 | 0/1.1 | no card id |
 
 ### 5. Kafka integration - 3/20
 
@@ -60,17 +90,17 @@
 |--|-------|----:|--------|
 | ✅ | Kafka service has a healthcheck | 3/3 | kafka healthcheck found |
 | ❌ | Durable producer (Acks.All / idempotence) | 0/2 | default acks |
-| ❌ | Broker reachable on host | 0/5 | boot failed |
-| ❌ | Transaction create publishes to topic | 0/8 | boot failed |
-| ❌ | Event message key = transaction id | 0/2 | boot failed |
+| ❌ | Broker reachable on host (localhost:29092) | 0/5 | connect failed: KafkaJSProtocolError: This server does not host this topic-partition |
+| ❌ | Transaction create publishes to topic | 0/8 | skipped (broker unreachable) |
+| ❌ | Event message key = transaction id | 0/2 | skipped (broker unreachable) |
 
-### 6. Stress / load - 0/10
+### 6. Stress / load - 4/10
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ❌ | Error rate | 0/6 | boot failed |
-| ❌ | Throughput | 0/2 | boot failed |
-| ❌ | p95 latency | 0/2 | boot failed |
+| ❌ | Error rate < 1% | 0/6 | errorRate=100.00% (12340/12340) |
+| ✅ | Sustained throughput ≥ 50 req/s | 2/2 | 822.7 req/s, 12340 total |
+| ✅ | p95 latency < 1000ms | 2/2 | p95=111ms |
 
 ### 7. Best practices (quality) - 9/18
 
@@ -88,4 +118,5 @@
 
 ### Notes
 
-- compose up failed after 2 attempt(s):  Service api  Building | failed to solve: process "/bin/sh -c dotnet restore" did not complete successfully: exit code: 1 | 
+- Patched to run (penalty -10): build failed (NU1605): csproj pinned Microsoft.EntityFrameworkCore 9.0.0 but the Npgsql 9.0.4 provider needs >= 9.0.1. Bumped EF Core to 9.0.4 so it builds; .NET source untouched.
+- Stress did not fully pass (conservative median across 2 attempt(s)) - may indicate a loaded host or a real tail-latency issue.

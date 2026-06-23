@@ -1,7 +1,7 @@
 {
-  "name": "claude-haiku-4-5",
-  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-haiku-4-5",
-  "booted": true,
+  "name": "claude-sonnet-4-6-xhigh/run2",
+  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-sonnet-4-6-xhigh\\run2",
+  "booted": false,
   "categories": [
     {
       "category": "static",
@@ -111,7 +111,7 @@
           "weight": 3,
           "passed": false,
           "earned": 0,
-          "detail": "targetFrameworks: net8.0"
+          "detail": "targetFrameworks: net9.0"
         }
       ]
     },
@@ -169,7 +169,7 @@
     {
       "category": "build",
       "title": "3. Build & boot",
-      "earned": 15,
+      "earned": 0,
       "max": 15,
       "checks": [
         {
@@ -177,258 +177,42 @@
           "category": "build",
           "description": "docker compose up",
           "weight": 8,
-          "passed": true,
-          "earned": 8,
-          "detail": "compose started (within 2 attempts)"
+          "passed": false,
+          "earned": 0,
+          "detail": "exit=17"
         },
         {
           "id": "build.healthy",
           "category": "build",
           "description": "API becomes healthy",
           "weight": 7,
-          "passed": true,
-          "earned": 7,
-          "detail": "health OK"
+          "passed": false,
+          "earned": 0,
+          "detail": "not healthy within 180000ms"
         }
       ]
     },
     {
       "category": "functional",
       "title": "4. Functional behavior",
-      "earned": 25,
+      "earned": 0,
       "max": 25,
       "checks": [
         {
-          "id": "func.health",
+          "id": "func.skipped",
           "category": "functional",
-          "description": "GET /health → 200",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=200"
-        },
-        {
-          "id": "func.card.create",
-          "category": "functional",
-          "description": "POST /api/credit-cards → 201 + numeric id",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=201, id=1"
-        },
-        {
-          "id": "func.card.create.location",
-          "category": "functional",
-          "description": "POST /api/credit-cards sets Location header",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "location=http://localhost:8080/api/credit-cards/1"
-        },
-        {
-          "id": "func.card.schema",
-          "category": "functional",
-          "description": "Created credit card echoes all fields (camelCase)",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "fields: id,cardholderName,cardNumber,brand,creditLimit,createdAt"
-        },
-        {
-          "id": "func.card.get",
-          "category": "functional",
-          "description": "GET /api/credit-cards/{id} → 200 + matches",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=200"
-        },
-        {
-          "id": "func.card.list",
-          "category": "functional",
-          "description": "GET /api/credit-cards → 200 array",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=200, isArray=true"
-        },
-        {
-          "id": "func.card.validation",
-          "category": "functional",
-          "description": "POST /api/credit-cards empty name → 400",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=400"
-        },
-        {
-          "id": "func.card.missing",
-          "category": "functional",
-          "description": "GET missing credit card → 404",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=404"
-        },
-        {
-          "id": "func.txn.create",
-          "category": "functional",
-          "description": "POST /api/transactions → 201 + numeric id",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=201, id=1"
-        },
-        {
-          "id": "func.txn.create.location",
-          "category": "functional",
-          "description": "POST /api/transactions sets Location header",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "location=http://localhost:8080/api/transactions/1"
-        },
-        {
-          "id": "func.txn.schema",
-          "category": "functional",
-          "description": "Created transaction echoes all fields (camelCase)",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "fields: id,creditCardId,amount,merchant,category,createdAt"
-        },
-        {
-          "id": "func.txn.get",
-          "category": "functional",
-          "description": "GET /api/transactions/{id} → 200",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=200"
-        },
-        {
-          "id": "func.txn.list",
-          "category": "functional",
-          "description": "GET /api/transactions → 200 array",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=200"
-        },
-        {
-          "id": "func.txn.amount",
-          "category": "functional",
-          "description": "POST /api/transactions amount<=0 → 400",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=400"
-        },
-        {
-          "id": "func.txn.badcard",
-          "category": "functional",
-          "description": "POST /api/transactions bad creditCardId → 400",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=400"
-        },
-        {
-          "id": "func.rel.list",
-          "category": "functional",
-          "description": "GET /api/credit-cards/{id}/transactions → 200 incl. txn",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=200"
-        },
-        {
-          "id": "func.rel.missing",
-          "category": "functional",
-          "description": "GET transactions for missing card → 404",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=404"
-        },
-        {
-          "id": "func.txn.update",
-          "category": "functional",
-          "description": "PUT /api/transactions/{id} → 200/204",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=200"
-        },
-        {
-          "id": "func.txn.delete",
-          "category": "functional",
-          "description": "DELETE /api/transactions/{id} → 204",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=204"
-        },
-        {
-          "id": "func.txn.gone",
-          "category": "functional",
-          "description": "GET deleted transaction → 404",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=404"
-        },
-        {
-          "id": "func.card.update",
-          "category": "functional",
-          "description": "PUT /api/credit-cards/{id} → 200/204 + persisted",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=200"
-        },
-        {
-          "id": "func.card.update.missing",
-          "category": "functional",
-          "description": "PUT missing credit card → 404",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=404"
-        },
-        {
-          "id": "func.txn.update.missing",
-          "category": "functional",
-          "description": "PUT missing transaction → 404",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=404"
-        },
-        {
-          "id": "func.card.delete",
-          "category": "functional",
-          "description": "DELETE /api/credit-cards/{id} → 204",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=204"
-        },
-        {
-          "id": "func.card.gone",
-          "category": "functional",
-          "description": "GET deleted credit card → 404",
-          "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "status=404"
+          "description": "Functional tests",
+          "weight": 25,
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
         }
       ]
     },
     {
       "category": "kafka",
       "title": "5. Kafka integration",
-      "earned": 15,
+      "earned": 3,
       "max": 20,
       "checks": [
         {
@@ -436,9 +220,9 @@
           "category": "kafka",
           "description": "Kafka service has a healthcheck",
           "weight": 3,
-          "passed": false,
-          "earned": 0,
-          "detail": "no kafka healthcheck"
+          "passed": true,
+          "earned": 3,
+          "detail": "kafka healthcheck found"
         },
         {
           "id": "kafka.durability",
@@ -452,71 +236,71 @@
         {
           "id": "kafka.broker",
           "category": "kafka",
-          "description": "Broker reachable on host (localhost:29092)",
+          "description": "Broker reachable on host",
           "weight": 5,
-          "passed": true,
-          "earned": 5,
-          "detail": "subscribed to \"transactions\""
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
         },
         {
           "id": "kafka.event",
           "category": "kafka",
-          "description": "Transaction create publishes to topic (value + key)",
+          "description": "Transaction create publishes to topic",
           "weight": 8,
-          "passed": true,
-          "earned": 8,
-          "detail": "received event for txn 2; key=\"2\" (expected \"2\") → match"
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
         },
         {
           "id": "kafka.eventKey",
           "category": "kafka",
           "description": "Event message key = transaction id",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "key=\"2\" (expected \"2\")"
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
         }
       ]
     },
     {
       "category": "stress",
       "title": "6. Stress / load",
-      "earned": 10,
+      "earned": 0,
       "max": 10,
       "checks": [
         {
           "id": "stress.errorRate",
           "category": "stress",
-          "description": "Error rate < 1%",
+          "description": "Error rate",
           "weight": 6,
-          "passed": true,
-          "earned": 6,
-          "detail": "errorRate=0.00% (0/6945)"
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
         },
         {
           "id": "stress.throughput",
           "category": "stress",
-          "description": "Sustained throughput ≥ 50 req/s",
+          "description": "Throughput",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "463 req/s, 6945 total"
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
         },
         {
           "id": "stress.p95",
           "category": "stress",
-          "description": "p95 latency < 1000ms",
+          "description": "p95 latency",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "p95=142ms"
+          "passed": false,
+          "earned": 0,
+          "detail": "boot failed"
         }
       ]
     },
     {
       "category": "quality",
       "title": "7. Best practices (quality)",
-      "earned": 2,
+      "earned": 9,
       "max": 18,
       "checks": [
         {
@@ -524,27 +308,27 @@
           "category": "quality",
           "description": "No hardcoded container_name (isolatable)",
           "weight": 2,
-          "passed": false,
-          "earned": 0,
-          "detail": "container_name is hardcoded"
+          "passed": true,
+          "earned": 2,
+          "detail": "ok"
         },
         {
           "id": "quality.kraft",
           "category": "quality",
           "description": "Kafka in KRaft mode (no Zookeeper)",
           "weight": 2,
-          "passed": false,
-          "earned": 0,
-          "detail": "runs a Zookeeper service"
+          "passed": true,
+          "earned": 2,
+          "detail": "no Zookeeper"
         },
         {
           "id": "quality.kafkaVersion",
           "category": "quality",
           "description": "Up-to-date Kafka image",
           "weight": 1,
-          "passed": false,
-          "earned": 0,
-          "detail": "confluentinc/cp-kafka:7.5.0 (outdated)"
+          "passed": true,
+          "earned": 1,
+          "detail": "confluentinc/cp-kafka:7.6.0 (recent)"
         },
         {
           "id": "quality.cancellation",
@@ -562,7 +346,7 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "dtoTypes=2, controllersUse=true, useCasesReturn=true"
+          "detail": "dtoTypes=2, controllersUse=true, useCasesReturn=false"
         },
         {
           "id": "quality.errors",
@@ -578,9 +362,9 @@
           "category": "quality",
           "description": "Production-grade schema management (EF migrations, bonus over EnsureCreated)",
           "weight": 2,
-          "passed": false,
-          "earned": 0,
-          "detail": "EnsureCreated only"
+          "passed": true,
+          "earned": 2,
+          "detail": "Migrations/ folder present"
         },
         {
           "id": "quality.nonRoot",
@@ -602,22 +386,11 @@
       ]
     }
   ],
-  "totalEarned": 102,
+  "totalEarned": 47,
   "totalMax": 126,
-  "percent": 81,
-  "stress": {
-    "totalRequests": 6945,
-    "errors": 0,
-    "errorRate": 0,
-    "rps": 463,
-    "p50": 111,
-    "p95": 142,
-    "p99": 166
-  },
-  "notes": [],
-  "engine": "roslyn",
-  "integrity": {
-    "passed": true,
-    "detail": "Postgres(creditcard_db) holds 2 base tables → schema was persisted to a real Postgres"
-  }
+  "percent": 37.3,
+  "notes": [
+    "compose up failed after 2 attempt(s):  Service api  Building | failed to solve: process \"/bin/sh -c dotnet restore\" did not complete successfully: exit code: 1 | "
+  ],
+  "engine": "roslyn"
 }

@@ -1,12 +1,12 @@
 {
-  "name": "claude-opus-4-8-xhigh",
-  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-opus-4-8-xhigh",
+  "name": "claude-haiku-4-5/run1",
+  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-haiku-4-5",
   "booted": true,
   "categories": [
     {
       "category": "static",
       "title": "1. Static requirements",
-      "earned": 28,
+      "earned": 25,
       "max": 28,
       "checks": [
         {
@@ -76,7 +76,7 @@
           "weight": 3,
           "passed": true,
           "earned": 3,
-          "detail": "efNamespace=true, dbContexts=[AppDbContext]"
+          "detail": "efNamespace=true, dbContexts=[CreditCardDbContext]"
         },
         {
           "id": "static.npgsql",
@@ -109,9 +109,9 @@
           "category": "static",
           "description": "Targets .NET 10 [roslyn]",
           "weight": 3,
-          "passed": true,
-          "earned": 3,
-          "detail": "targetFrameworks: net10.0"
+          "passed": false,
+          "earned": 0,
+          "detail": "targetFrameworks: net8.0"
         }
       ]
     },
@@ -428,7 +428,7 @@
     {
       "category": "kafka",
       "title": "5. Kafka integration",
-      "earned": 20,
+      "earned": 15,
       "max": 20,
       "checks": [
         {
@@ -436,18 +436,18 @@
           "category": "kafka",
           "description": "Kafka service has a healthcheck",
           "weight": 3,
-          "passed": true,
-          "earned": 3,
-          "detail": "kafka healthcheck found"
+          "passed": false,
+          "earned": 0,
+          "detail": "no kafka healthcheck"
         },
         {
           "id": "kafka.durability",
           "category": "kafka",
           "description": "Durable producer (Acks.All / idempotence)",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "Acks.All / idempotence configured"
+          "passed": false,
+          "earned": 0,
+          "detail": "default acks"
         },
         {
           "id": "kafka.broker",
@@ -491,7 +491,7 @@
           "weight": 6,
           "passed": true,
           "earned": 6,
-          "detail": "errorRate=0.00% (0/7799)"
+          "detail": "errorRate=0.00% (0/6945)"
         },
         {
           "id": "stress.throughput",
@@ -500,7 +500,7 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "519.9 req/s, 7799 total"
+          "detail": "463 req/s, 6945 total"
         },
         {
           "id": "stress.p95",
@@ -509,14 +509,14 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "p95=140ms"
+          "detail": "p95=142ms"
         }
       ]
     },
     {
       "category": "quality",
       "title": "7. Best practices (quality)",
-      "earned": 13,
+      "earned": 2,
       "max": 18,
       "checks": [
         {
@@ -533,27 +533,27 @@
           "category": "quality",
           "description": "Kafka in KRaft mode (no Zookeeper)",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "no Zookeeper"
+          "passed": false,
+          "earned": 0,
+          "detail": "runs a Zookeeper service"
         },
         {
           "id": "quality.kafkaVersion",
           "category": "quality",
           "description": "Up-to-date Kafka image",
           "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "confluentinc/cp-kafka:7.6.1 (recent)"
+          "passed": false,
+          "earned": 0,
+          "detail": "confluentinc/cp-kafka:7.5.0 (outdated)"
         },
         {
           "id": "quality.cancellation",
           "category": "quality",
           "description": "CancellationToken propagated (controller→repo) [roslyn]",
           "weight": 3,
-          "passed": true,
-          "earned": 3,
-          "detail": "controllers=true, repos=true"
+          "passed": false,
+          "earned": 0,
+          "detail": "controllers=false, repos=false"
         },
         {
           "id": "quality.dtos",
@@ -562,16 +562,16 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "dtoTypes=2, controllersUse=false, useCasesReturn=true"
+          "detail": "dtoTypes=2, controllersUse=true, useCasesReturn=true"
         },
         {
           "id": "quality.errors",
           "category": "quality",
           "description": "Structured errors (ProblemDetails / IExceptionHandler / Result) [roslyn]",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "exHandler=false, problemDetails=false, result=true"
+          "passed": false,
+          "earned": 0,
+          "detail": "exHandler=false, problemDetails=false, result=false"
         },
         {
           "id": "quality.migrations",
@@ -595,29 +595,29 @@
           "category": "quality",
           "description": "Publish failure handled gracefully (catch-and-log or outbox) [roslyn]",
           "weight": 3,
-          "passed": true,
-          "earned": 3,
-          "detail": "publish in try/catch (no rethrow) or transactional outbox"
+          "passed": false,
+          "earned": 0,
+          "detail": "publish failure propagates (no catch, or catch rethrows)"
         }
       ]
     }
   ],
-  "totalEarned": 121,
+  "totalEarned": 102,
   "totalMax": 126,
-  "percent": 96,
+  "percent": 81,
   "stress": {
-    "totalRequests": 7799,
+    "totalRequests": 6945,
     "errors": 0,
     "errorRate": 0,
-    "rps": 519.9,
-    "p50": 99,
-    "p95": 140,
-    "p99": 154
+    "rps": 463,
+    "p50": 111,
+    "p95": 142,
+    "p99": 166
   },
   "notes": [],
   "engine": "roslyn",
   "integrity": {
     "passed": true,
-    "detail": "Postgres(creditcards) holds 2 base tables → schema was persisted to a real Postgres"
+    "detail": "Postgres(creditcard_db) holds 2 base tables → schema was persisted to a real Postgres"
   }
 }

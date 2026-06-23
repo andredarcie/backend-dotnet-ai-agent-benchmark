@@ -6,7 +6,7 @@ import { round1 } from './util';
 
 const CATEGORY_ORDER: Category[] = ['static', 'architecture', 'build', 'functional', 'kafka', 'stress', 'quality'];
 
-// Below this many runs per model, a ranking is statistically weak — flag it as provisional.
+// Below this many runs per model, a ranking is statistically weak - flag it as provisional.
 export const RECOMMENDED_RUNS = 5;
 
 export function buildCategories(checks: CheckResult[]): CategoryScore[] {
@@ -102,15 +102,18 @@ export function renderMarkdown(r: SubmissionReport): string {
 }
 
 export function writeReports(resultsDir: string, r: SubmissionReport): { json: string; md: string } {
-  const json = path.join(resultsDir, `${r.name}.json`);
-  const md = path.join(resultsDir, `${r.name}.md`);
+  // results/ is flat, so flatten "<model>/<run>" → "<model>__<run>" for the filenames.
+  const safe = r.name.replace(/[\\/]+/g, '__');
+  const json = path.join(resultsDir, `${safe}.json`);
+  const md = path.join(resultsDir, `${safe}.md`);
   writeFileSync(json, JSON.stringify(r, null, 2), 'utf8');
   writeFileSync(md, renderMarkdown(r), 'utf8');
   return { json, md };
 }
 
-/** Strip a `__<runId>` suffix to get the base model name (a folder `<model>__<runId>` is one run). */
+/** The model (group) name: the part before the run. Handles both `<model>/<run>` and `<model>__<run>`. */
 export function baseModelName(name: string): string {
+  if (name.includes('/')) return name.split('/')[0];
   return name.replace(/__.+$/, '');
 }
 
@@ -181,7 +184,7 @@ export function writeLeaderboard(resultsDir: string, reports: SubmissionReport[]
 
   if (groups.some((g) => g.n < RECOMMENDED_RUNS)) {
     lines.push(
-      `> ⚠ **Provisional ranking** — models marked ⚠ have fewer than ${RECOMMENDED_RUNS} runs, so the ` +
+      `> ⚠ **Provisional ranking** - models marked ⚠ have fewer than ${RECOMMENDED_RUNS} runs, so the ` +
         'totals are a weak sample (a one- or two-point gap is likely noise). Add more runs with ' +
         '`npm run add-run -- <model> <generated-project>` and re-run `npm run eval`.',
     );

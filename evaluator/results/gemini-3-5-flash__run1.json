@@ -1,6 +1,6 @@
 {
-  "name": "gpt-5-5-xhigh",
-  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\gpt-5-5-xhigh",
+  "name": "gemini-3-5-flash/run1",
+  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\gemini-3-5-flash",
   "booted": true,
   "categories": [
     {
@@ -58,7 +58,7 @@
           "weight": 3,
           "passed": true,
           "earned": 3,
-          "detail": "found: CreditCardsController, TransactionsController"
+          "detail": "found: CreditCardsController, HealthController, TransactionsController"
         },
         {
           "id": "static.entities",
@@ -491,7 +491,7 @@
           "weight": 6,
           "passed": true,
           "earned": 6,
-          "detail": "errorRate=0.00% (0/7815)"
+          "detail": "errorRate=0.00% (0/7097)"
         },
         {
           "id": "stress.throughput",
@@ -500,7 +500,7 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "521 req/s, 7815 total"
+          "detail": "473.1 req/s, 7097 total"
         },
         {
           "id": "stress.p95",
@@ -509,14 +509,14 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "p95=144ms"
+          "detail": "p95=164ms"
         }
       ]
     },
     {
       "category": "quality",
       "title": "7. Best practices (quality)",
-      "earned": 12,
+      "earned": 0,
       "max": 18,
       "checks": [
         {
@@ -524,54 +524,54 @@
           "category": "quality",
           "description": "No hardcoded container_name (isolatable)",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "ok"
+          "passed": false,
+          "earned": 0,
+          "detail": "container_name is hardcoded"
         },
         {
           "id": "quality.kraft",
           "category": "quality",
           "description": "Kafka in KRaft mode (no Zookeeper)",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "no Zookeeper"
+          "passed": false,
+          "earned": 0,
+          "detail": "runs a Zookeeper service"
         },
         {
           "id": "quality.kafkaVersion",
           "category": "quality",
           "description": "Up-to-date Kafka image",
           "weight": 1,
-          "passed": true,
-          "earned": 1,
-          "detail": "confluentinc/cp-kafka:8.0.0 (recent)"
+          "passed": false,
+          "earned": 0,
+          "detail": "confluentinc/cp-kafka:7.5.0 (outdated)"
         },
         {
           "id": "quality.cancellation",
           "category": "quality",
           "description": "CancellationToken propagated (controller→repo) [roslyn]",
           "weight": 3,
-          "passed": true,
-          "earned": 3,
-          "detail": "controllers=true, repos=true"
+          "passed": false,
+          "earned": 0,
+          "detail": "controllers=false, repos=false"
         },
         {
           "id": "quality.dtos",
           "category": "quality",
           "description": "Uses response DTOs (no entity leakage) [roslyn]",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "dtoTypes=2, controllersUse=true, useCasesReturn=true"
+          "passed": false,
+          "earned": 0,
+          "detail": "dtoTypes=0, controllersUse=false, useCasesReturn=false"
         },
         {
           "id": "quality.errors",
           "category": "quality",
           "description": "Structured errors (ProblemDetails / IExceptionHandler / Result) [roslyn]",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "exHandler=false, problemDetails=false, result=true"
+          "passed": false,
+          "earned": 0,
+          "detail": "exHandler=false, problemDetails=false, result=false"
         },
         {
           "id": "quality.migrations",
@@ -602,22 +602,22 @@
       ]
     }
   ],
-  "totalEarned": 120,
+  "totalEarned": 108,
   "totalMax": 126,
-  "percent": 95.2,
+  "percent": 85.7,
   "stress": {
-    "totalRequests": 7815,
+    "totalRequests": 7097,
     "errors": 0,
     "errorRate": 0,
-    "rps": 521,
-    "p50": 99,
-    "p95": 144,
-    "p99": 154
+    "rps": 473.1,
+    "p50": 105,
+    "p95": 164,
+    "p99": 177
   },
   "notes": [],
   "engine": "roslyn",
   "integrity": {
     "passed": true,
-    "detail": "Postgres(creditcards) holds 2 base tables → schema was persisted to a real Postgres"
+    "detail": "Postgres(creditcard_db) holds 2 base tables → schema was persisted to a real Postgres"
   }
 }

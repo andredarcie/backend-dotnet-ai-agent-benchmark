@@ -1,12 +1,12 @@
 {
-  "name": "claude-sonnet-4-6-xhigh",
-  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-sonnet-4-6-xhigh",
+  "name": "claude-opus-4-8-xhigh/run1",
+  "path": "C:\\repos\\backend-dotnet-ai-agent-benchmark\\submissions\\claude-opus-4-8-xhigh",
   "booted": true,
   "categories": [
     {
       "category": "static",
       "title": "1. Static requirements",
-      "earned": 25,
+      "earned": 28,
       "max": 28,
       "checks": [
         {
@@ -109,9 +109,9 @@
           "category": "static",
           "description": "Targets .NET 10 [roslyn]",
           "weight": 3,
-          "passed": false,
-          "earned": 0,
-          "detail": "targetFrameworks: net9.0"
+          "passed": true,
+          "earned": 3,
+          "detail": "targetFrameworks: net10.0"
         }
       ]
     },
@@ -491,7 +491,7 @@
           "weight": 6,
           "passed": true,
           "earned": 6,
-          "detail": "errorRate=0.00% (0/7887)"
+          "detail": "errorRate=0.00% (0/7799)"
         },
         {
           "id": "stress.throughput",
@@ -500,7 +500,7 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "525.8 req/s, 7887 total"
+          "detail": "519.9 req/s, 7799 total"
         },
         {
           "id": "stress.p95",
@@ -509,14 +509,14 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "p95=142ms"
+          "detail": "p95=140ms"
         }
       ]
     },
     {
       "category": "quality",
       "title": "7. Best practices (quality)",
-      "earned": 12,
+      "earned": 13,
       "max": 18,
       "checks": [
         {
@@ -524,9 +524,9 @@
           "category": "quality",
           "description": "No hardcoded container_name (isolatable)",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "ok"
+          "passed": false,
+          "earned": 0,
+          "detail": "container_name is hardcoded"
         },
         {
           "id": "quality.kraft",
@@ -544,16 +544,16 @@
           "weight": 1,
           "passed": true,
           "earned": 1,
-          "detail": "apache/kafka:3.9.0 (recent)"
+          "detail": "confluentinc/cp-kafka:7.6.1 (recent)"
         },
         {
           "id": "quality.cancellation",
           "category": "quality",
           "description": "CancellationToken propagated (controller→repo) [roslyn]",
           "weight": 3,
-          "passed": false,
-          "earned": 0,
-          "detail": "controllers=false, repos=false"
+          "passed": true,
+          "earned": 3,
+          "detail": "controllers=true, repos=true"
         },
         {
           "id": "quality.dtos",
@@ -562,25 +562,25 @@
           "weight": 2,
           "passed": true,
           "earned": 2,
-          "detail": "dtoTypes=4, controllersUse=true, useCasesReturn=false"
+          "detail": "dtoTypes=2, controllersUse=false, useCasesReturn=true"
         },
         {
           "id": "quality.errors",
           "category": "quality",
           "description": "Structured errors (ProblemDetails / IExceptionHandler / Result) [roslyn]",
           "weight": 2,
-          "passed": false,
-          "earned": 0,
-          "detail": "exHandler=false, problemDetails=false, result=false"
+          "passed": true,
+          "earned": 2,
+          "detail": "exHandler=false, problemDetails=false, result=true"
         },
         {
           "id": "quality.migrations",
           "category": "quality",
           "description": "Production-grade schema management (EF migrations, bonus over EnsureCreated)",
           "weight": 2,
-          "passed": true,
-          "earned": 2,
-          "detail": "Migrations/ folder present"
+          "passed": false,
+          "earned": 0,
+          "detail": "EnsureCreated only"
         },
         {
           "id": "quality.nonRoot",
@@ -602,22 +602,22 @@
       ]
     }
   ],
-  "totalEarned": 117,
+  "totalEarned": 121,
   "totalMax": 126,
-  "percent": 92.9,
+  "percent": 96,
   "stress": {
-    "totalRequests": 7887,
+    "totalRequests": 7799,
     "errors": 0,
     "errorRate": 0,
-    "rps": 525.8,
-    "p50": 98,
-    "p95": 142,
-    "p99": 158
+    "rps": 519.9,
+    "p50": 99,
+    "p95": 140,
+    "p99": 154
   },
   "notes": [],
   "engine": "roslyn",
   "integrity": {
     "passed": true,
-    "detail": "Postgres(creditcarddb) holds 3 base tables → schema was persisted to a real Postgres"
+    "detail": "Postgres(creditcards) holds 2 base tables → schema was persisted to a real Postgres"
   }
 }

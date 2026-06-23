@@ -93,7 +93,7 @@ export function runQualityChecks(files: SourceFile[], roslyn: RoslynResult | nul
       ok ? 'publish in try/catch (no rethrow) or transactional outbox' : 'publish failure propagates (no catch, or catch rethrows)'));
   } else {
     const hasOutbox = !!anyMatch(cs, /class\s+\w*Outbox|DbSet<\s*\w*Outbox/i);
-    // Produce sits in a try, a catch actually handles it (logs / retries / enqueues — not a silent
+    // Produce sits in a try, a catch actually handles it (logs / retries / enqueues - not a silent
     // swallow), and no catch rethrows. A bare `catch {}` must NOT pass.
     const producesInTry = !!anyMatch(cs, /try[\s\S]{0,400}Produce/);
     const catchHandles = !!anyMatch(cs, /catch[^{]*\{[\s\S]{0,300}(Log|Console\.|Write|Retry|Enqueue|Save)/i);

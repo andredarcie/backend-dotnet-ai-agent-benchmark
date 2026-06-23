@@ -1,9 +1,9 @@
-# Benchmark report - `claude-sonnet-4-6-xhigh`
+# Benchmark report - `claude-haiku-4-5/run1`
 
-**Score: 117 / 126 (92.9%)** - booted ✅
+**Score: 102 / 126 (81%)** - booted ✅
 **Analysis engine:** `roslyn`
 
-**Runtime integrity (strict-db):** VERIFIED ✅ - Postgres(creditcarddb) holds 3 base tables → schema was persisted to a real Postgres
+**Runtime integrity (strict-db):** VERIFIED ✅ - Postgres(creditcard_db) holds 2 base tables → schema was persisted to a real Postgres
 
 | Category | Score |
 |----------|------:|
@@ -11,15 +11,15 @@
 | 2. Architecture (layering) | 10 / 10 |
 | 3. Build & boot | 15 / 15 |
 | 4. Functional behavior | 25 / 25 |
-| 5. Kafka integration | 20 / 20 |
+| 5. Kafka integration | 15 / 20 |
 | 6. Stress / load | 10 / 10 |
-| 7. Best practices (quality) | 12 / 18 |
-| **Total** | **117 / 126** |
+| 7. Best practices (quality) | 2 / 18 |
+| **Total** | **102 / 126** |
 
 ### Stress metrics
 
-- Requests: **7887** (525.8 req/s), errors: **0** (0.00%)
-- Latency: p50 **98ms**, p95 **142ms**, p99 **158ms**
+- Requests: **6945** (463 req/s), errors: **0** (0.00%)
+- Latency: p50 **111ms**, p95 **142ms**, p99 **166ms**
 
 ### 1. Static requirements - 25/28
 
@@ -32,11 +32,11 @@
 | ✅ | Compose has a Kafka service | 2/2 |  |
 | ✅ | At least 2 controllers [roslyn] | 3/3 | found: CreditCardsController, HealthController, TransactionsController |
 | ✅ | At least 2 entities (DbSet<> of real classes) [roslyn] | 3/3 | entities: CreditCard, Transaction |
-| ✅ | Uses EF Core (namespace + DbContext subclass) [roslyn] | 3/3 | efNamespace=true, dbContexts=[AppDbContext] |
+| ✅ | Uses EF Core (namespace + DbContext subclass) [roslyn] | 3/3 | efNamespace=true, dbContexts=[CreditCardDbContext] |
 | ✅ | Wires the Npgsql/Postgres provider (UseNpgsql) [roslyn] | 2/2 | UseNpgsql(...) found |
 | ✅ | Models a 1:N relationship (FK) [roslyn] | 2/2 |  |
 | ✅ | Kafka client + produce call [roslyn] | 2/2 | client=true, produce=true |
-| ❌ | Targets .NET 10 [roslyn] | 0/3 | targetFrameworks: net9.0 |
+| ❌ | Targets .NET 10 [roslyn] | 0/3 | targetFrameworks: net8.0 |
 
 ### 2. Architecture (layering) - 10/10
 
@@ -85,12 +85,12 @@
 | ✅ | DELETE /api/credit-cards/{id} → 204 | 1/1 | status=204 |
 | ✅ | GET deleted credit card → 404 | 1/1 | status=404 |
 
-### 5. Kafka integration - 20/20
+### 5. Kafka integration - 15/20
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ✅ | Kafka service has a healthcheck | 3/3 | kafka healthcheck found |
-| ✅ | Durable producer (Acks.All / idempotence) | 2/2 | Acks.All / idempotence configured |
+| ❌ | Kafka service has a healthcheck | 0/3 | no kafka healthcheck |
+| ❌ | Durable producer (Acks.All / idempotence) | 0/2 | default acks |
 | ✅ | Broker reachable on host (localhost:29092) | 5/5 | subscribed to "transactions" |
 | ✅ | Transaction create publishes to topic (value + key) | 8/8 | received event for txn 2; key="2" (expected "2") → match |
 | ✅ | Event message key = transaction id | 2/2 | key="2" (expected "2") |
@@ -99,20 +99,20 @@
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ✅ | Error rate < 1% | 6/6 | errorRate=0.00% (0/7887) |
-| ✅ | Sustained throughput ≥ 50 req/s | 2/2 | 525.8 req/s, 7887 total |
+| ✅ | Error rate < 1% | 6/6 | errorRate=0.00% (0/6945) |
+| ✅ | Sustained throughput ≥ 50 req/s | 2/2 | 463 req/s, 6945 total |
 | ✅ | p95 latency < 1000ms | 2/2 | p95=142ms |
 
-### 7. Best practices (quality) - 12/18
+### 7. Best practices (quality) - 2/18
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ✅ | No hardcoded container_name (isolatable) | 2/2 | ok |
-| ✅ | Kafka in KRaft mode (no Zookeeper) | 2/2 | no Zookeeper |
-| ✅ | Up-to-date Kafka image | 1/1 | apache/kafka:3.9.0 (recent) |
+| ❌ | No hardcoded container_name (isolatable) | 0/2 | container_name is hardcoded |
+| ❌ | Kafka in KRaft mode (no Zookeeper) | 0/2 | runs a Zookeeper service |
+| ❌ | Up-to-date Kafka image | 0/1 | confluentinc/cp-kafka:7.5.0 (outdated) |
 | ❌ | CancellationToken propagated (controller→repo) [roslyn] | 0/3 | controllers=false, repos=false |
-| ✅ | Uses response DTOs (no entity leakage) [roslyn] | 2/2 | dtoTypes=4, controllersUse=true, useCasesReturn=false |
+| ✅ | Uses response DTOs (no entity leakage) [roslyn] | 2/2 | dtoTypes=2, controllersUse=true, useCasesReturn=true |
 | ❌ | Structured errors (ProblemDetails / IExceptionHandler / Result) [roslyn] | 0/2 | exHandler=false, problemDetails=false, result=false |
-| ✅ | Production-grade schema management (EF migrations, bonus over EnsureCreated) | 2/2 | Migrations/ folder present |
+| ❌ | Production-grade schema management (EF migrations, bonus over EnsureCreated) | 0/2 | EnsureCreated only |
 | ❌ | Container runs as non-root (USER) | 0/1 |  |
-| ✅ | Publish failure handled gracefully (catch-and-log or outbox) [roslyn] | 3/3 | publish in try/catch (no rethrow) or transactional outbox |
+| ❌ | Publish failure handled gracefully (catch-and-log or outbox) [roslyn] | 0/3 | publish failure propagates (no catch, or catch rethrows) |

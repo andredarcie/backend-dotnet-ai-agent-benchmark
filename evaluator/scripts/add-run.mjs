@@ -1,8 +1,9 @@
 // Files a freshly-generated project as the next run of a model, so multi-run benchmarking is
 // one command. Usage:  npm run add-run -- <model> <path-to-generated-project>
-// It copies <path> into submissions/<model>__run<N+1>/ (skipping build dirs), where N is how many
-// runs that model already has. Then evaluate with:  npm run eval -- <model>__run<N>  (or all).
-import { existsSync, readdirSync, statSync, cpSync } from 'node:fs';
+// It copies <path> into submissions/<model>/run<N+1>/ (skipping build dirs), where N is the
+// highest run that model already has. Then evaluate with:  npm run eval -- <model>  (all runs)
+// or  npm run eval -- <model>/run<N>  (one run).
+import { existsSync, readdirSync, statSync, cpSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,23 +27,31 @@ if (!/^[a-z0-9-]+$/.test(model)) fail(`model name must be kebab-case [a-z0-9-]: 
 const srcAbs = path.resolve(src);
 if (!existsSync(srcAbs) || !statSync(srcAbs).isDirectory()) fail(`source is not a directory: ${srcAbs}`);
 
-// Count runs already grouped under this model (a bare `<model>` folder counts as one run too).
-const baseName = (n) => n.replace(/__.+$/, '');
-const existing = existsSync(SUBMISSIONS)
-  ? readdirSync(SUBMISSIONS, { withFileTypes: true }).filter((e) => e.isDirectory() && baseName(e.name) === model)
-  : [];
-const next = existing.length + 1;
-const destName = `${model}__run${next}`;
-const destAbs = path.join(SUBMISSIONS, destName);
-if (existsSync(destAbs)) fail(`${destName} already exists — remove it first`);
+const modelDir = path.join(SUBMISSIONS, model);
+if (existsSync(modelDir) && COMPOSE.some((f) => existsSync(path.join(modelDir, f))))
+  fail(`submissions/${model} is a flat project (compose at its root). Move it to submissions/${model}/run1/ first.`);
 
+// Next run index = highest existing run<N> + 1 (so runs stay sequential).
+let maxRun = 0;
+if (existsSync(modelDir)) {
+  for (const e of readdirSync(modelDir, { withFileTypes: true })) {
+    const m = e.isDirectory() && e.name.match(/^run(\d+)$/);
+    if (m) maxRun = Math.max(maxRun, parseInt(m[1], 10));
+  }
+}
+const next = maxRun + 1;
+const destAbs = path.join(modelDir, `run${next}`);
+if (existsSync(destAbs)) fail(`submissions/${model}/run${next} already exists - remove it first`);
+
+mkdirSync(modelDir, { recursive: true });
 cpSync(srcAbs, destAbs, {
   recursive: true,
   filter: (p) => !path.relative(srcAbs, p).split(path.sep).some((seg) => SKIP.has(seg)),
 });
 
 const hasCompose = COMPOSE.some((f) => existsSync(path.join(destAbs, f)));
-console.log(`✓ added submissions/${destName}  (run #${next} for "${model}")  ← ${srcAbs}`);
-if (!hasCompose) console.warn('⚠ no docker-compose file at the folder root — this run will fail to boot.');
-console.log(`  next: npm run eval -- ${destName}    (or: npm run eval  to run every submission)`);
+console.log(`✓ added submissions/${model}/run${next}  (run #${next} for "${model}")  ← ${srcAbs}`);
+if (!hasCompose) console.warn('⚠ no docker-compose file at the run root - this run will fail to boot.');
+console.log(`  next: npm run eval -- ${model}            (grade every run of this model)`);
+console.log(`  or:   npm run eval -- ${model}/run${next}      (grade just this run)`);
 console.log('  then: npm run eval -- --leaderboard');

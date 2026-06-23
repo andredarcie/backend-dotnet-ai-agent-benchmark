@@ -1,27 +1,27 @@
-# Benchmark report - `gpt-5-5-xhigh`
+# Benchmark report - `claude-sonnet-4-6-xhigh/run1`
 
-**Score: 120 / 126 (95.2%)** - booted ✅
+**Score: 117 / 126 (92.9%)** - booted ✅
 **Analysis engine:** `roslyn`
 
-**Runtime integrity (strict-db):** VERIFIED ✅ - Postgres(creditcards) holds 2 base tables → schema was persisted to a real Postgres
+**Runtime integrity (strict-db):** VERIFIED ✅ - Postgres(creditcarddb) holds 3 base tables → schema was persisted to a real Postgres
 
 | Category | Score |
 |----------|------:|
-| 1. Static requirements | 28 / 28 |
+| 1. Static requirements | 25 / 28 |
 | 2. Architecture (layering) | 10 / 10 |
 | 3. Build & boot | 15 / 15 |
 | 4. Functional behavior | 25 / 25 |
 | 5. Kafka integration | 20 / 20 |
 | 6. Stress / load | 10 / 10 |
 | 7. Best practices (quality) | 12 / 18 |
-| **Total** | **120 / 126** |
+| **Total** | **117 / 126** |
 
 ### Stress metrics
 
-- Requests: **7815** (521 req/s), errors: **0** (0.00%)
-- Latency: p50 **99ms**, p95 **144ms**, p99 **154ms**
+- Requests: **7887** (525.8 req/s), errors: **0** (0.00%)
+- Latency: p50 **98ms**, p95 **142ms**, p99 **158ms**
 
-### 1. Static requirements - 28/28
+### 1. Static requirements - 25/28
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
@@ -30,13 +30,13 @@
 | ✅ | Compose builds the API image (build:) | 2/2 |  |
 | ✅ | Dockerfile present | 2/2 | Dockerfile |
 | ✅ | Compose has a Kafka service | 2/2 |  |
-| ✅ | At least 2 controllers [roslyn] | 3/3 | found: CreditCardsController, TransactionsController |
+| ✅ | At least 2 controllers [roslyn] | 3/3 | found: CreditCardsController, HealthController, TransactionsController |
 | ✅ | At least 2 entities (DbSet<> of real classes) [roslyn] | 3/3 | entities: CreditCard, Transaction |
 | ✅ | Uses EF Core (namespace + DbContext subclass) [roslyn] | 3/3 | efNamespace=true, dbContexts=[AppDbContext] |
 | ✅ | Wires the Npgsql/Postgres provider (UseNpgsql) [roslyn] | 2/2 | UseNpgsql(...) found |
 | ✅ | Models a 1:N relationship (FK) [roslyn] | 2/2 |  |
 | ✅ | Kafka client + produce call [roslyn] | 2/2 | client=true, produce=true |
-| ✅ | Targets .NET 10 [roslyn] | 3/3 | targetFrameworks: net10.0 |
+| ❌ | Targets .NET 10 [roslyn] | 0/3 | targetFrameworks: net9.0 |
 
 ### 2. Architecture (layering) - 10/10
 
@@ -99,9 +99,9 @@
 
 | | Check | Pts | Detail |
 |--|-------|----:|--------|
-| ✅ | Error rate < 1% | 6/6 | errorRate=0.00% (0/7815) |
-| ✅ | Sustained throughput ≥ 50 req/s | 2/2 | 521 req/s, 7815 total |
-| ✅ | p95 latency < 1000ms | 2/2 | p95=144ms |
+| ✅ | Error rate < 1% | 6/6 | errorRate=0.00% (0/7887) |
+| ✅ | Sustained throughput ≥ 50 req/s | 2/2 | 525.8 req/s, 7887 total |
+| ✅ | p95 latency < 1000ms | 2/2 | p95=142ms |
 
 ### 7. Best practices (quality) - 12/18
 
@@ -109,10 +109,10 @@
 |--|-------|----:|--------|
 | ✅ | No hardcoded container_name (isolatable) | 2/2 | ok |
 | ✅ | Kafka in KRaft mode (no Zookeeper) | 2/2 | no Zookeeper |
-| ✅ | Up-to-date Kafka image | 1/1 | confluentinc/cp-kafka:8.0.0 (recent) |
-| ✅ | CancellationToken propagated (controller→repo) [roslyn] | 3/3 | controllers=true, repos=true |
-| ✅ | Uses response DTOs (no entity leakage) [roslyn] | 2/2 | dtoTypes=2, controllersUse=true, useCasesReturn=true |
-| ✅ | Structured errors (ProblemDetails / IExceptionHandler / Result) [roslyn] | 2/2 | exHandler=false, problemDetails=false, result=true |
-| ❌ | Production-grade schema management (EF migrations, bonus over EnsureCreated) | 0/2 | EnsureCreated only |
+| ✅ | Up-to-date Kafka image | 1/1 | apache/kafka:3.9.0 (recent) |
+| ❌ | CancellationToken propagated (controller→repo) [roslyn] | 0/3 | controllers=false, repos=false |
+| ✅ | Uses response DTOs (no entity leakage) [roslyn] | 2/2 | dtoTypes=4, controllersUse=true, useCasesReturn=false |
+| ❌ | Structured errors (ProblemDetails / IExceptionHandler / Result) [roslyn] | 0/2 | exHandler=false, problemDetails=false, result=false |
+| ✅ | Production-grade schema management (EF migrations, bonus over EnsureCreated) | 2/2 | Migrations/ folder present |
 | ❌ | Container runs as non-root (USER) | 0/1 |  |
-| ❌ | Publish failure handled gracefully (catch-and-log or outbox) [roslyn] | 0/3 | publish failure propagates (no catch, or catch rethrows) |
+| ✅ | Publish failure handled gracefully (catch-and-log or outbox) [roslyn] | 3/3 | publish in try/catch (no rethrow) or transactional outbox |

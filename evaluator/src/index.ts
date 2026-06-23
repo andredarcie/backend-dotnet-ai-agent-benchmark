@@ -91,12 +91,24 @@ function buildLeaderboardFromResults(): void {
     .forEach((r, i) => log(`  ${i + 1}. ${r.name.padEnd(24)} ${r.totalEarned}/${r.totalMax} (${r.percent}%)${r.integrity ? (r.integrity.passed ? '  strict-db ✅' : '  strict-db ❌') : ''}`));
 }
 
+// A submission is a folder with a compose file: either `submissions/<model>/` (flat/legacy) or
+// `submissions/<model>/<run>/` (the model/run layout). Names use "/" - e.g. "gpt-5-5-xhigh/run1".
 function listSubmissions(): string[] {
   if (!existsSync(SUBMISSIONS_DIR)) return [];
-  return readdirSync(SUBMISSIONS_DIR, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => e.name)
-    .sort();
+  const names: string[] = [];
+  for (const top of readdirSync(SUBMISSIONS_DIR, { withFileTypes: true })) {
+    if (!top.isDirectory()) continue;
+    const topDir = path.join(SUBMISSIONS_DIR, top.name);
+    if (findComposeFile(topDir)) {
+      names.push(top.name); // flat: submissions/<model>/
+      continue;
+    }
+    for (const sub of readdirSync(topDir, { withFileTypes: true })) {
+      if (sub.isDirectory() && findComposeFile(path.join(topDir, sub.name)))
+        names.push(`${top.name}/${sub.name}`); // nested: submissions/<model>/<run>/
+    }
+  }
+  return names.sort();
 }
 
 const functionalSkipped = (reason: string): CheckResult[] => [
@@ -322,7 +334,14 @@ async function main() {
   }
 
   const all = listSubmissions();
-  const targets = opts.names.length ? opts.names : all;
+  // A target may be a full submission ("gpt-5-5-xhigh/run1") or a bare model name ("gpt-5-5-xhigh"),
+  // which expands to all of that model's runs.
+  const expand = (t: string): string[] => {
+    if (all.includes(t)) return [t];
+    const runs = all.filter((s) => s.startsWith(t + '/'));
+    return runs.length ? runs : [t]; // unknown stays, reported below
+  };
+  const targets = [...new Set(opts.names.length ? opts.names.flatMap(expand) : all)];
 
   if (!targets.length) {
     log(c.red(`No submissions found in ${SUBMISSIONS_DIR}`));

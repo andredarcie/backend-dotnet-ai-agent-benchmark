@@ -1,0 +1,80 @@
+# Single-command benchmark harness.
+#
+#   cd evaluator-dotnet/harness
+#   docker compose up --build --exit-code-from evaluator
+#
+# It boots the submission (app + Postgres + Kafka) from its own compose file, runs OWASP ZAP (DAST)
+# and the bundled-tool evaluator against the LIVE system, and writes the report to ./results.
+# Pick the submission via TARGET in .env.
+
+name: bench-harness
+
+# Bring up the submission under test (publishes the app on host port 8080, Kafka on 29092).
+include:
+  - path: ../../submissions/${TARGET}/docker-compose.yml
+
+services:
+  # Tails the `transactions` topic for the whole run and records key<TAB>value per message, so the
+  # evaluator can confirm a real event was published (and keyed by id). Uses the in-network broker
+  # listener (kafka:9092) the submission advertises; writes to the shared ingest dir.
+  kafka-check:
+    image: edenhill/kcat:1.7.1
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        : > /shared/kafka.events
+        for i in $$(seq 1 90); do kcat -b $${BENCH_KAFKA_BOOTSTRAP} -L >/dev/null 2>&1 && break || sleep 2; done
+        echo '#connected' >> /shared/kafka.events
+        exec kcat -C -b $${BENCH_KAFKA_BOOTSTRAP} -t transactions -o beginning -u -q -f '%k\t%s\n' >> /shared/kafka.events 2>/dev/null
+    environment:
+      BENCH_KAFKA_BOOTSTRAP: ${BENCH_KAFKA_BOOTSTRAP:-kafka:9092}
+    volumes:
+      - ./shared:/shared:rw
+    restart: "no"
+
+  # OWASP ZAP baseline DAST against the live API. Intentionally a one-shot (restart: "no"): it scans,
+  # then EXITS so the evaluator's `service_completed_successfully` gate is satisfied. Its real exit code
+  # is captured to /zap/wrk/zap.exit (shared dir), so the evaluator ingests the scan result regardless
+  # of how the container itself terminates.
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - ./shared:/zap/wrk:rw
+    entrypoint: ["bash", "-lc"]
+    command:
+      - |
+        for i in $$(seq 1 60); do curl -sf ${BENCH_BASE_URL}/health >/dev/null 2>&1 && break || sleep 3; done
+        zap-baseline.py -t ${BENCH_BASE_URL} -m 2
+        echo $$? > /zap/wrk/zap.exit
+    restart: "no"
+
+  # The evaluator: Roslyn AST + every bundled tool + live probes (health/metrics, k6, Schemathesis).
+  #
+  # IMPORTANT: drive the run by the EVALUATOR's completion, not by any container exiting. The `zap`
+  # one-shot must EXIT to satisfy the depends_on gate below, so `--abort-on-container-exit` can tear
+  # the whole project down the instant zap exits — racing the evaluator's start. Prefer:
+  #
+  #   docker compose up --build --exit-code-from evaluator
+  #
+  # which keys teardown and the overall exit code to the evaluator finishing (it starts only once its
+  # `zap` dependency has completed). Do not remove the depends_on ordering gate.
+  evaluator:
+    build:
+      context: ..
+    depends_on:
+      zap:
+        condition: service_completed_successfully
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    environment:
+      BENCH_BASE_URL: ${BENCH_BASE_URL}
+      BENCH_INGEST_DIR: /shared
+      BENCH_K6_SCRIPT: /work/k6/script.js
+      BENCH_OPENAPI_PATH: ${BENCH_OPENAPI_PATH}
+    volumes:
+      - ../../submissions/${TARGET}:/target:rw   # rw so `dotnet test/restore` can write bin/obj
+      - ./results:/results:rw
+      - ./shared:/shared:rw
+      - ./k6:/work/k6:ro
+    command: ["/target", "--deep", "--ingest", "/shared", "--output", "/results"]
+    restart: "no"

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>BackendEvaluator</RootNamespace>
+    <AssemblyName>Evaluator</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <LangVersion>latest</LangVersion>
+    <!-- Reproducibility: pin the exact transitive dependency graph via a committed lock file. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Roslyn: the real C# compiler platform. Code-structure categories are analyzed via the
+         syntax tree (AST), not regex, so comments/strings/formatting/partial classes are handled correctly. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Let the test project reach internal helpers (Heuristics) without widening the public API. -->
+    <InternalsVisibleTo Include="Evaluator.Tests" />
+  </ItemGroup>
+
+  <!-- The test project lives under ./tests; keep its sources out of this (recursively-globbed) project. -->
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+  </ItemGroup>
+
+</Project>

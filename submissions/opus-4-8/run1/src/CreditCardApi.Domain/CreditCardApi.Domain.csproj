@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Domain layer: entities and business rules only.
+    No project or infrastructure references — dependencies point inward to here.
+  -->
+  <PropertyGroup>
+    <RootNamespace>CreditCardApi.Domain</RootNamespace>
+    <AssemblyName>CreditCardApi.Domain</AssemblyName>
+  </PropertyGroup>
+
+</Project>

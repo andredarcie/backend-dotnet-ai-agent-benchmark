@@ -1,4 +1,0 @@
-{
-  "points": 10,
-  "reason": "did not build/boot: (1) NU1605 - csproj pinned Microsoft.EntityFrameworkCore 9.0.0 but Npgsql 9.0.3 needs >= 9.0.1 (bumped EF Core to 9.0.3); (2) Kafka healthcheck probed localhost:9092 while the broker only listens on kafka:9092, so the container stayed unhealthy and the API never started (pointed the healthcheck at kafka:9092). Compose/deps only; .NET source untouched."
-}

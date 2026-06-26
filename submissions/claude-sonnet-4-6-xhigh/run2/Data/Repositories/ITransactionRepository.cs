@@ -1,8 +1,0 @@
-using CreditCardApi.Models;
-
-namespace CreditCardApi.Data.Repositories;
-
-public interface ITransactionRepository : IRepository<Transaction>
-{
-    Task<IEnumerable<Transaction>> GetByCreditCardIdAsync(int creditCardId);
-}

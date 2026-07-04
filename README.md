@@ -6,6 +6,10 @@ Docker). The **[.NET evaluator](./evaluator-dotnet)** walks the **13 categories*
 [`EVALUATION-CRITERIA.md`](./EVALUATION-CRITERIA.md) (Roslyn AST + a live contract oracle in deep mode)
 and produces a **weighted 0–5 score**.
 
+> 🌐 **Interactive site (PT/EN):** the criteria, scoring, methodology and a live leaderboard, explained
+> with diagrams — in [`docs/`](./docs), publishable via GitHub Pages at
+> **https://andredarcie.github.io/backend-dotnet-ai-agent-benchmark/**.
+
 ## 🏆 Leaderboard
 
 > Weighted **0–5** across the 13 categories, ranked by **per-model median** of **deep** runs. One model,

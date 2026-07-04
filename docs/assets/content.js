@@ -1,0 +1,633 @@
+/* ------------------------------------------------------------------ *
+ *  content.js — all authored, bilingual copy for the site.
+ *  Dynamic run/leaderboard data lives in data/data.js (generated).
+ *  UI strings: window.CONTENT.ui[lang][key]
+ *  Rubric:     window.CONTENT.criteria[] (each has {pt,en} fields)
+ * ------------------------------------------------------------------ */
+window.CONTENT = {
+
+  ui: {
+    pt: {
+      "lang.name": "PT",
+      "lang.switch": "English",
+      "theme.toggle": "Alternar tema",
+
+      "nav.overview": "Visão geral",
+      "nav.how": "Como funciona",
+      "nav.task": "A tarefa",
+      "nav.criteria": "Os 13 critérios",
+      "nav.scoring": "Pontuação",
+      "nav.methodology": "Metodologia",
+      "nav.leaderboard": "Leaderboard",
+      "nav.details": "Detalhes",
+      "nav.github": "GitHub",
+
+      "hero.eyebrow": "Benchmark de código de backend feito por IA",
+      "hero.kicker": "Um prompt · todo modelo · uma nota",
+      "hero.byline": "Um benchmark opinativo de André N. Darcie — a stack, a rubrica e os pesos refletem o backend que uso no dia a dia no trabalho.",
+      "hero.title.a": "Um prompt.",
+      "hero.title.b": "Todo modelo.",
+      "hero.title.c": "Uma nota.",
+      "hero.lede": "Cada modelo de IA recebe exatamente o mesmo pedido — construir uma API REST de cartão de crédito em .NET 10, com PostgreSQL e Kafka, tudo em Docker. Um avaliador automático percorre 13 categorias de qualidade e devolve uma nota ponderada de 0 a 5.",
+      "hero.cta.leaderboard": "Ver o leaderboard",
+      "hero.cta.how": "Como funciona",
+      "hero.details": "Ver os detalhes →",
+      "details.eyebrow": "Por dentro do benchmark",
+      "details.title": "Os detalhes",
+      "details.lede": "A tarefa que os modelos constroem, como uma métrica vira uma nota de 0 a 5, e por que as runs são repetidas.",
+      "details.back": "← Leaderboard",
+      "hero.stat.categories": "categorias avaliadas",
+      "hero.stat.weighted": "nota ponderada",
+      "hero.stat.local": "execução 100% local",
+      "hero.gauge.label": "Líder atual",
+      "hero.gauge.sub": "mediana das runs deep",
+      "hero.pipeline.prompt": "PROMPT.md",
+      "hero.pipeline.promptSub": "o mesmo para todos",
+      "hero.pipeline.model": "O modelo constrói",
+      "hero.pipeline.modelSub": "API .NET + Postgres + Kafka",
+      "hero.pipeline.eval": "Avaliador",
+      "hero.pipeline.evalSub": "Roslyn AST + oráculo ao vivo",
+      "hero.pipeline.score": "Nota 0–5",
+      "hero.pipeline.scoreSub": "ponderada por 13 pesos",
+
+      "how.eyebrow": "O funil",
+      "how.title": "Do prompt à nota, sem opinião humana no caminho crítico",
+      "how.lede": "O mesmo prompt vira um projeto inteiro. O avaliador em .NET 10 lê esse projeto de duas formas e transforma o que encontra em números reproduzíveis.",
+      "how.static.title": "Modo light (estático)",
+      "how.static.body": "Analisa o código-fonte com a árvore sintática do Roslyn e detecta pacotes/arquivos. Rápido, sem Docker, sem rede. A mesma fonte sempre produz a mesma nota.",
+      "how.deep.title": "Modo deep (dinâmico)",
+      "how.deep.body": "Sobe o projeto de verdade (app + Postgres + Kafka), dirige um oráculo de contrato contra a API viva, roda os testes, cobertura e as ferramentas locais (SAST/DAST/lint) — e só então escreve o relatório.",
+      "how.note": "Só as runs deep entram no ranking: elas exercitam o sistema de ponta a ponta. As categorias estáticas são determinísticas; as de runtime variam com a máquina, por isso repetimos as runs (veja Metodologia).",
+      "how.roslyn.title": "Roslyn AST, não regex",
+      "how.roslyn.body": "As checagens estáticas usam o compilador do C# como ferramenta de leitura: direção de dependência entre camadas, catch vazio, interfaces com uma única implementação, god classes. É medição, não busca de texto.",
+      "how.oracle.title": "Oráculo de contrato ao vivo",
+      "how.oracle.body": "No modo deep o avaliador vira um cliente da API: cria cartão e transação, confere 201/Location/id, força os 400 (FK inexistente, amount ≤ 0, campo obrigatório vazio), os 404 e 204, e observa o evento real chegando no tópico do Kafka.",
+
+      "task.eyebrow": "O que os modelos constroem",
+      "task.title": "Uma API de cartão de crédito pronta para produção",
+      "task.lede": "O spec funcional é só a linha de base. A régua é: isto deveria parecer um serviço que você colocaria no ar — o como importa tanto quanto o se os endpoints funcionam.",
+      "task.domain.title": "Domínio — 1:N",
+      "task.domain.body": "Um CreditCard tem muitas Transaction. Toda transação aponta para um cartão existente por chave estrangeira obrigatória.",
+      "task.event.title": "Evento no Kafka",
+      "task.event.body": "A cada transação criada com sucesso (POST → 201), a transação é publicada no tópico transactions, com a key igual ao id — depois de persistir, nunca antes.",
+      "task.rules.title": "Regras que o oráculo cobra",
+      "task.rule.fk": "creditCardId precisa referenciar um cartão existente, senão 400.",
+      "task.rule.amount": "amount tem de ser > 0, senão 400.",
+      "task.rule.required": "cardholderName, cardNumber e merchant não podem ser vazios.",
+      "task.rule.pan": "O número do cartão (PAN) é sensível: nunca em log, nunca em texto puro; CVV/PIN nunca são armazenados.",
+      "task.stack.title": "Stack fixa",
+      "task.card": "CreditCard",
+      "task.tx": "Transaction",
+      "task.oneToMany": "1 : N",
+
+      "criteria.eyebrow": "A rubrica",
+      "criteria.title": "Os 13 critérios, por peso",
+      "criteria.lede": "Cada categoria vale de 0 a 5 e tem um peso — a barra mostra quanto ela pesa na nota final. A cor marca quanto da avaliação é automática. Clique para abrir a explicação e o diagrama.",
+      "criteria.expand": "Abrir explicação",
+      "criteria.collapse": "Fechar",
+      "criteria.weight": "Peso",
+      "criteria.iso": "ISO/IEC 25010",
+      "criteria.look": "O que a gente procura",
+      "criteria.how": "Como é medido",
+      "criteria.liveScore": "Nesta run",
+      "criteria.noScore": "sem run ainda",
+      "criteria.sortWeight": "Por peso",
+      "criteria.sortOrder": "Por número",
+
+      "auto.FullAuto": "totalmente automático",
+      "auto.SemiOracle": "semi (oráculo)",
+      "auto.ProxyReview": "proxy + revisão",
+      "auto.FullAuto.desc": "A nota sai 100% da máquina, sem julgamento humano.",
+      "auto.SemiOracle.desc": "Automático a cada run depois de definir uma vez o gabarito/limiar (suite de aceitação, status esperados, SLO).",
+      "auto.ProxyReview.desc": "A máquina mede proxies objetivos, mas o veredito final pede revisão humana (triagem de SAST/DAST, 3NF, overengineering, qualidade da prosa).",
+      "auto.legend": "Legenda de automação",
+
+      "scoring.eyebrow": "Da métrica à nota",
+      "scoring.title": "Como a pontuação é calculada",
+      "scoring.lede": "Nada de nota chutada. Cada métrica é Pass, Partial ou Fail; o que não deu para medir vira Indeterminate e é excluído (não penaliza).",
+      "scoring.step1.title": "1 · Métrica",
+      "scoring.step1.body": "Pass = 1,0 · Partial = 0,5 · Fail = 0,0. Indeterminate sai da conta.",
+      "scoring.step2.title": "2 · Categoria",
+      "scoring.step2.body": "Média das métricas medidas, ponderada, × 5 → nota de 0 a 5 na categoria.",
+      "scoring.step3.title": "3 · Final",
+      "scoring.step3.body": "Média das categorias ponderada pelos pesos da rubrica, renormalizada sobre o que foi medido (a cobertura aparece no relatório).",
+      "scoring.scale.title": "A escala 0–5",
+      "scoring.scale.0": "Ausente ou não funcional",
+      "scoring.scale.1": "Presente, mas com falhas sérias",
+      "scoring.scale.2": "Funciona no caminho feliz, frágil",
+      "scoring.scale.3": "Adequado, segue o básico esperado",
+      "scoring.scale.4": "Sólido, com boas práticas aplicadas",
+      "scoring.scale.5": "Exemplar, pronto para produção",
+      "scoring.weights.title": "Onde o peso está",
+      "scoring.weights.body": "Domínio crítico (cartão de crédito): mais peso em Correção, Segurança, Mensageria e Persistência; menos em Documentação e Deploy. Pesos são uma calibração deliberada — não há consenso externo sobre eles.",
+
+      "method.eyebrow": "Por que confiar no número",
+      "method.title": "Metodologia",
+      "method.lede": "Modelos são estocásticos: o mesmo prompt gera um projeto diferente a cada vez. Uma única submissão é uma amostra fraca.",
+      "method.multi.title": "Muitas runs, mediana",
+      "method.multi.body": "O leaderboard agrupa as runs por modelo, ordena pela mediana das runs deep e mostra a dispersão (±σ, média, faixa, contagem). Modelos com menos de 5 runs ficam marcados como provisórios — trate diferenças dentro da dispersão como empate.",
+      "method.det.title": "Determinístico vs. runtime",
+      "method.det.body": "Categorias estáticas (Estático, Arquitetura, Qualidade) são determinísticas dado o Roslyn. Categorias de runtime (build/boot, funcional, Kafka, estresse) dependem de Docker e da máquina, então variam entre runs.",
+      "method.patch.title": "Política de patch",
+      "method.patch.body": "Um projeto é avaliado como o modelo o entregou — com uma exceção estreita: se falhar em compilar/subir por um motivo de uma linha (versão de pacote errada, healthcheck de Kafka quebrado), aplica-se o patch mínimo (só dependências/compose, nunca o código-fonte) e uma penalidade. Cada run patcheada carrega um marcador bench-patch.json.",
+      "method.patch.note": "Exceção à penalidade: um problema que não é culpa do modelo (uma tag de imagem removida do registry depois do treino) é patcheado sem penalidade.",
+
+      "lb.eyebrow": "Sempre evoluindo",
+      "lb.title": "Leaderboard",
+      "lb.lede": "Ordenado pela mediana por modelo da nota ponderada (0–5). Só runs deep contam. Rode docs/generate-data.ps1 depois de avaliar novas runs e esta tabela se atualiza sozinha.",
+      "lb.col.rank": "#",
+      "lb.col.model": "Modelo",
+      "lb.col.runs": "Runs",
+      "lb.col.median": "Mediana /5",
+      "lb.col.spread": "Dispersão (média ±σ, faixa)",
+      "lb.col.build": "Build",
+      "lb.col.boot": "Boot",
+      "lb.provisional": "provisório (< 5 runs)",
+      "lb.singleRun": "run única",
+      "lb.generated": "Gerado em",
+      "lb.empty": "Nenhuma run deep avaliada ainda. Rode o avaliador e depois docs/generate-data.ps1.",
+      "lb.detail.title": "Perfil por categoria",
+      "lb.detail.run": "Relatório da run",
+      "lb.detail.patch": "Patch aplicado",
+      "lb.detail.builds": "Compila",
+      "lb.detail.boots": "Sobe (/health)",
+      "lb.detail.coverage": "Cobertura da rubrica",
+      "lb.detail.close": "Fechar",
+      "lb.detail.metrics": "métricas",
+      "lb.detail.measured": "medidas",
+      "lb.detail.indeterminate": "indeterminadas",
+      "lb.status.Pass": "Passou",
+      "lb.status.Partial": "Parcial",
+      "lb.status.Fail": "Falhou",
+      "lb.status.Indeterminate": "Indeterminado",
+      "lb.yes": "sim",
+      "lb.no": "não",
+      "lb.viewProfile": "Ver perfil",
+
+      "footer.tagline": "Um prompt, muitos modelos, uma nota automática.",
+      "footer.author": "Feito por André N. Darcie · benchmark opinativo, baseado na stack que uso no trabalho.",
+      "footer.add.title": "Adicione seu modelo",
+      "footer.add.body": "Cole o PROMPT.md no modelo (sem dicas, sem a rubrica), salve a saída como uma run, avalie e regenere os dados.",
+      "footer.links": "Documentos",
+      "footer.link.prompt": "PROMPT.md — o prompt exato",
+      "footer.link.criteria": "EVALUATION-CRITERIA.md — a rubrica completa",
+      "footer.link.methodology": "METHODOLOGY.md — como ler o leaderboard",
+      "footer.link.evaluator": "evaluator-dotnet — o avaliador",
+      "footer.regen": "Regenerar os dados do site",
+      "footer.built": "Feito com Roslyn AST, um oráculo de contrato ao vivo e Docker.",
+
+      "misc.weightUnit": "%",
+      "misc.of5": "/5"
+    },
+
+    en: {
+      "lang.name": "EN",
+      "lang.switch": "Português",
+      "theme.toggle": "Toggle theme",
+
+      "nav.overview": "Overview",
+      "nav.how": "How it works",
+      "nav.task": "The task",
+      "nav.criteria": "The 13 criteria",
+      "nav.scoring": "Scoring",
+      "nav.methodology": "Methodology",
+      "nav.leaderboard": "Leaderboard",
+      "nav.details": "Details",
+      "nav.github": "GitHub",
+
+      "hero.eyebrow": "A benchmark of AI-written backend code",
+      "hero.kicker": "One prompt · every model · one score",
+      "hero.byline": "An opinionated benchmark by André N. Darcie — its stack, rubric and weights reflect the backend I work with day to day.",
+      "hero.title.a": "One prompt.",
+      "hero.title.b": "Every model.",
+      "hero.title.c": "One score.",
+      "hero.lede": "Every AI model gets the exact same brief — build a .NET 10 credit-card REST API with PostgreSQL and Kafka, all in Docker. An automated evaluator walks 13 quality categories and returns a weighted 0–5 score.",
+      "hero.cta.leaderboard": "See the leaderboard",
+      "hero.cta.how": "How it works",
+      "hero.details": "See the details →",
+      "details.eyebrow": "Inside the benchmark",
+      "details.title": "The details",
+      "details.lede": "The task the models build, how a metric becomes a 0–5 score, and why runs are repeated.",
+      "details.back": "← Leaderboard",
+      "hero.stat.categories": "categories scored",
+      "hero.stat.weighted": "weighted score",
+      "hero.stat.local": "runs 100% locally",
+      "hero.gauge.label": "Current leader",
+      "hero.gauge.sub": "median of deep runs",
+      "hero.pipeline.prompt": "PROMPT.md",
+      "hero.pipeline.promptSub": "same for everyone",
+      "hero.pipeline.model": "The model builds",
+      "hero.pipeline.modelSub": ".NET API + Postgres + Kafka",
+      "hero.pipeline.eval": "Evaluator",
+      "hero.pipeline.evalSub": "Roslyn AST + live oracle",
+      "hero.pipeline.score": "Score 0–5",
+      "hero.pipeline.scoreSub": "weighted across 13 categories",
+
+      "how.eyebrow": "The pipeline",
+      "how.title": "From prompt to score, with no human on the critical path",
+      "how.lede": "The same prompt becomes a whole project. The .NET 10 evaluator reads that project two ways and turns what it finds into reproducible numbers.",
+      "how.static.title": "Light mode (static)",
+      "how.static.body": "Analyses the source with Roslyn's syntax tree and detects packages/files. Fast, no Docker, no network. The same source always yields the same score.",
+      "how.deep.title": "Deep mode (dynamic)",
+      "how.deep.body": "Boots the project for real (app + Postgres + Kafka), drives a contract oracle against the live API, runs the tests, coverage and the local tools (SAST/DAST/lint) — and only then writes the report.",
+      "how.note": "Only deep runs enter the ranking: they exercise the system end to end. Static categories are deterministic; runtime ones vary with the host, which is why runs are repeated (see Methodology).",
+      "how.roslyn.title": "Roslyn AST, not regex",
+      "how.roslyn.body": "The static checks use the C# compiler as a reading tool: layer dependency direction, empty catch, single-implementation interfaces, god classes. It's measurement, not text search.",
+      "how.oracle.title": "Live contract oracle",
+      "how.oracle.body": "In deep mode the evaluator becomes an API client: it creates a card and a transaction, checks 201/Location/id, forces the 400s (missing FK, amount ≤ 0, empty required field), the 404s and 204s, and watches the real event land on the Kafka topic.",
+
+      "task.eyebrow": "What the models build",
+      "task.title": "A production-grade credit-card API",
+      "task.lede": "The functional spec is only the baseline. The bar: this should read like a service you'd actually ship — how it's built matters as much as whether the endpoints work.",
+      "task.domain.title": "Domain — 1:N",
+      "task.domain.body": "One CreditCard has many Transaction. Every transaction points at an existing card through a required foreign key.",
+      "task.event.title": "Kafka event",
+      "task.event.body": "On every successful transaction (POST → 201), the transaction is published to the transactions topic, keyed by its id — after it persists, never before.",
+      "task.rules.title": "Rules the oracle enforces",
+      "task.rule.fk": "creditCardId must reference an existing card, otherwise 400.",
+      "task.rule.amount": "amount must be > 0, otherwise 400.",
+      "task.rule.required": "cardholderName, cardNumber and merchant can't be empty.",
+      "task.rule.pan": "The card number (PAN) is sensitive: never logged, never in plain text; CVV/PIN are never stored.",
+      "task.stack.title": "Fixed stack",
+      "task.card": "CreditCard",
+      "task.tx": "Transaction",
+      "task.oneToMany": "1 : N",
+
+      "criteria.eyebrow": "The rubric",
+      "criteria.title": "The 13 criteria, by weight",
+      "criteria.lede": "Each category scores 0–5 and carries a weight — the bar shows how much it counts toward the final score. The colour marks how much of the assessment is automatic. Click to open the explanation and diagram.",
+      "criteria.expand": "Open explanation",
+      "criteria.collapse": "Close",
+      "criteria.weight": "Weight",
+      "criteria.iso": "ISO/IEC 25010",
+      "criteria.look": "What we look for",
+      "criteria.how": "How it's measured",
+      "criteria.liveScore": "This run",
+      "criteria.noScore": "no run yet",
+      "criteria.sortWeight": "By weight",
+      "criteria.sortOrder": "By number",
+
+      "auto.FullAuto": "full-auto",
+      "auto.SemiOracle": "semi (oracle)",
+      "auto.ProxyReview": "proxy + review",
+      "auto.FullAuto.desc": "The score comes 100% from the machine, with no human judgment.",
+      "auto.SemiOracle.desc": "Automatic every run after a one-time oracle/threshold is defined (acceptance suite, expected status codes, SLO).",
+      "auto.ProxyReview.desc": "The machine measures objective proxies, but the final verdict needs human review (SAST/DAST triage, 3NF, overengineering, prose quality).",
+      "auto.legend": "Automation legend",
+
+      "scoring.eyebrow": "From metric to score",
+      "scoring.title": "How the score is computed",
+      "scoring.lede": "No guessed scores. Each metric is Pass, Partial or Fail; anything that couldn't be measured becomes Indeterminate and is excluded (it doesn't penalise).",
+      "scoring.step1.title": "1 · Metric",
+      "scoring.step1.body": "Pass = 1.0 · Partial = 0.5 · Fail = 0.0. Indeterminate drops out.",
+      "scoring.step2.title": "2 · Category",
+      "scoring.step2.body": "Weighted mean of the measured metrics × 5 → a 0–5 score for the category.",
+      "scoring.step3.title": "3 · Final",
+      "scoring.step3.body": "Mean of the categories weighted by the rubric weights, renormalised over what was measured (coverage shows in the report).",
+      "scoring.scale.title": "The 0–5 scale",
+      "scoring.scale.0": "Absent or non-functional",
+      "scoring.scale.1": "Present, but with serious flaws",
+      "scoring.scale.2": "Works on the happy path, fragile",
+      "scoring.scale.3": "Adequate, follows the expected basics",
+      "scoring.scale.4": "Solid, with good practices applied",
+      "scoring.scale.5": "Exemplary, production-ready",
+      "scoring.weights.title": "Where the weight sits",
+      "scoring.weights.body": "Critical domain (a credit card): more weight on Correctness, Security, Messaging and Persistence; less on Documentation and Deploy. Weights are a deliberate calibration — there's no external consensus on them.",
+
+      "method.eyebrow": "Why trust the number",
+      "method.title": "Methodology",
+      "method.lede": "Models are stochastic: the same prompt yields a different project each time. A single submission is a weak sample.",
+      "method.multi.title": "Many runs, median",
+      "method.multi.body": "The leaderboard groups runs per model, ranks by the median of the deep runs and shows the spread (±σ, mean, range, count). Models with fewer than 5 runs are flagged provisional — treat gaps within the spread as ties.",
+      "method.det.title": "Deterministic vs. runtime",
+      "method.det.body": "Static categories (Static, Architecture, Quality) are deterministic given Roslyn. Runtime categories (build/boot, functional, Kafka, stress) depend on Docker and the host, so they vary run to run.",
+      "method.patch.title": "Patching policy",
+      "method.patch.body": "A project is graded as the model produced it — with one narrow exception: if it fails to build/boot for a one-line reason (wrong package version, broken Kafka healthcheck), a minimal patch is applied (dependencies/compose only, never the source) plus a penalty. Each patched run carries a bench-patch.json marker.",
+      "method.patch.note": "Exception to the penalty: an issue that isn't the model's fault (an image tag removed from a registry after training) is patched with no penalty.",
+
+      "lb.eyebrow": "Always evolving",
+      "lb.title": "Leaderboard",
+      "lb.lede": "Ranked by per-model median of the weighted score (0–5). Only deep runs count. Run docs/generate-data.ps1 after grading new runs and this table updates itself.",
+      "lb.col.rank": "#",
+      "lb.col.model": "Model",
+      "lb.col.runs": "Runs",
+      "lb.col.median": "Median /5",
+      "lb.col.spread": "Spread (mean ±σ, range)",
+      "lb.col.build": "Build",
+      "lb.col.boot": "Boot",
+      "lb.provisional": "provisional (< 5 runs)",
+      "lb.singleRun": "single run",
+      "lb.generated": "Generated",
+      "lb.empty": "No deep runs graded yet. Run the evaluator, then docs/generate-data.ps1.",
+      "lb.detail.title": "Per-category profile",
+      "lb.detail.run": "Run report",
+      "lb.detail.patch": "Patch applied",
+      "lb.detail.builds": "Builds",
+      "lb.detail.boots": "Boots (/health)",
+      "lb.detail.coverage": "Rubric coverage",
+      "lb.detail.close": "Close",
+      "lb.detail.metrics": "metrics",
+      "lb.detail.measured": "measured",
+      "lb.detail.indeterminate": "indeterminate",
+      "lb.status.Pass": "Pass",
+      "lb.status.Partial": "Partial",
+      "lb.status.Fail": "Fail",
+      "lb.status.Indeterminate": "Indeterminate",
+      "lb.yes": "yes",
+      "lb.no": "no",
+      "lb.viewProfile": "View profile",
+
+      "footer.tagline": "One prompt, many models, one automated score.",
+      "footer.author": "Made by André N. Darcie · an opinionated benchmark, based on the stack I use at work.",
+      "footer.add.title": "Add your model",
+      "footer.add.body": "Paste PROMPT.md into the model (no hints, no rubric), save the output as a run, grade it and regenerate the data.",
+      "footer.links": "Documents",
+      "footer.link.prompt": "PROMPT.md — the exact prompt",
+      "footer.link.criteria": "EVALUATION-CRITERIA.md — the full rubric",
+      "footer.link.methodology": "METHODOLOGY.md — how to read the leaderboard",
+      "footer.link.evaluator": "evaluator-dotnet — the evaluator",
+      "footer.regen": "Regenerate the site data",
+      "footer.built": "Built with Roslyn AST, a live contract oracle and Docker.",
+
+      "misc.weightUnit": "%",
+      "misc.of5": "/5"
+    }
+  },
+
+  /* ---- the 13 criteria; language-neutral facts + {pt,en} prose ---- */
+  criteria: [
+    {
+      number: 1, key: "functional", weightPct: 12, iso: "Functional suitability",
+      automation: "SemiOracle", diagram: "requestFlow",
+      title: { pt: "Correção funcional", en: "Functional Correctness" },
+      tagline: {
+        pt: "O sistema faz o que promete, do começo ao fim?",
+        en: "Does the system do what it promises, end to end?"
+      },
+      body: {
+        pt: "É o critério mais básico e o de maior peso: os endpoints existem, respondem e entregam o efeito certo. Nada de fachada — um endpoint que existe mas não persiste, não conta. O fluxo completo precisa fechar: HTTP → regra de negócio → persistência → evento.",
+        en: "The most basic criterion and the heaviest: the endpoints exist, respond and deliver the right effect. No façade — an endpoint that exists but doesn't persist doesn't count. The full flow must close: HTTP → business rule → persistence → event."
+      },
+      look: {
+        pt: ["Todos os endpoints do spec implementados e corretos", "Regras de domínio aplicadas (FK existe, amount > 0, campos obrigatórios)", "Casos de borda tratados, não só o caminho feliz", "100% dos testes de aceitação passando"],
+        en: ["Every endpoint in the spec implemented and correct", "Domain rules applied (FK exists, amount > 0, required fields)", "Edge cases handled, not just the happy path", "100% of acceptance tests passing"]
+      },
+      how: {
+        pt: "Um oráculo de caixa-preta dirige a API viva (Testcontainers) e confere cada status esperado; dotnet test roda a suíte do próprio projeto.",
+        en: "A black-box oracle drives the live API (Testcontainers) and checks every expected status; dotnet test runs the project's own suite."
+      }
+    },
+    {
+      number: 2, key: "architecture", weightPct: 10, iso: "Maintainability",
+      automation: "ProxyReview", diagram: "archLayers",
+      title: { pt: "Arquitetura e design", en: "Architecture & Design" },
+      tagline: {
+        pt: "As dependências apontam para dentro, e a complexidade é proporcional ao problema?",
+        en: "Do dependencies point inward, and is complexity proportional to the problem?"
+      },
+      body: {
+        pt: "Camadas claras — apresentação, aplicação, domínio, infraestrutura — com o domínio sem conhecer a infra. Trocar o banco ou o broker não deveria reescrever regra de negócio. E simplicidade conta: abstração só onde há ponto de variação real. Overengineering é defeito, não bônus.",
+        en: "Clear layers — presentation, application, domain, infrastructure — with the domain unaware of infra. Swapping the database or broker shouldn't rewrite business rules. And simplicity counts: abstraction only where there's a real variation point. Overengineering is a defect, not a bonus."
+      },
+      look: {
+        pt: ["Separação de camadas com dependências apontando para dentro", "Controllers finos, sem regra de negócio", "Sem god classes", "Poucas interfaces com uma só implementação (proxy de overengineering)"],
+        en: ["Layer separation with dependencies pointing inward", "Thin controllers, no business logic", "No god classes", "Few single-implementation interfaces (overengineering proxy)"]
+      },
+      how: {
+        pt: "Roslyn lê os usings para checar a direção das dependências e mede tamanho de classe e interfaces especulativas. O veredito sobre overengineering pede revisão humana.",
+        en: "Roslyn reads the usings to check dependency direction and measures class size and speculative interfaces. The overengineering verdict needs human review."
+      }
+    },
+    {
+      number: 3, key: "quality", weightPct: 8, iso: "Maintainability",
+      automation: "FullAuto", diagram: null,
+      title: { pt: "Qualidade de código", en: "Code Quality" },
+      tagline: {
+        pt: "Legível, idiomático e sem sujeira?",
+        en: "Readable, idiomatic and free of cruft?"
+      },
+      body: {
+        pt: "O micro-nível: nomes expressivos, métodos curtos, sem duplicação, sem catch vazio engolindo exceção, sem código morto nem TODO pendente. Analisadores ligados via .editorconfig e o projeto limpo no dotnet format. Sem micro-otimização sem benchmark que a justifique.",
+        en: "The micro level: expressive names, short methods, no duplication, no empty catch swallowing exceptions, no dead code or lingering TODOs. Analyzers on via .editorconfig and the project clean under dotnet format. No micro-optimisation without a benchmark to justify it."
+      },
+      look: {
+        pt: ["Sem catch vazio (exceção engolida)", "Sem TODO/FIXME/HACK pendente", "Analisadores/.editorconfig habilitados", "dotnet format limpo, 0 warnings de build"],
+        en: ["No empty catch (swallowed exception)", "No lingering TODO/FIXME/HACK", "Analyzers/.editorconfig enabled", "dotnet format clean, 0 build warnings"]
+      },
+      how: {
+        pt: "Totalmente automático: Roslyn conta catches vazios e TODOs, e o modo deep roda dotnet format e checa os warnings de build.",
+        en: "Full-auto: Roslyn counts empty catches and TODOs, and deep mode runs dotnet format and checks build warnings."
+      }
+    },
+    {
+      number: 4, key: "rest", weightPct: 11, iso: "Compatibility / Interoperability",
+      automation: "SemiOracle", diagram: "restStatus",
+      title: { pt: "Design da API REST", en: "REST API Design" },
+      tagline: {
+        pt: "O contrato HTTP é previsível, versionado e com erros padronizados?",
+        en: "Is the HTTP contract predictable, versioned and with standardised errors?"
+      },
+      body: {
+        pt: "Verbos e status codes corretos (nível 2 do Richardson), payloads consistentes em camelCase, paginação nas coleções, DTOs separados das entidades, versionamento e OpenAPI. Erros como Problem Details (RFC 9457, application/problem+json) — estruturados e acionáveis.",
+        en: "Correct verbs and status codes (Richardson level 2), consistent camelCase payloads, pagination on collections, DTOs separate from entities, versioning and OpenAPI. Errors as Problem Details (RFC 9457, application/problem+json) — structured and actionable."
+      },
+      look: {
+        pt: ["Verbos e status codes coerentes (201, 400, 404, 204…)", "Header Location no 201; JSON em camelCase", "Paginação, versionamento e OpenAPI expostos", "Erros em RFC 9457 (application/problem+json)"],
+        en: ["Coherent verbs and status codes (201, 400, 404, 204…)", "Location header on 201; camelCase JSON", "Pagination, versioning and OpenAPI exposed", "Errors in RFC 9457 (application/problem+json)"]
+      },
+      how: {
+        pt: "O oráculo ao vivo confere Location, camelCase e paginação na API real; Roslyn detecta verbos, ProblemDetails, DTOs e versionamento.",
+        en: "The live oracle checks Location, camelCase and pagination on the real API; Roslyn detects verbs, ProblemDetails, DTOs and versioning."
+      }
+    },
+    {
+      number: 5, key: "persistence", weightPct: 10, iso: "Reliability / Performance",
+      automation: "ProxyReview", diagram: "domain1n",
+      title: { pt: "Persistência e banco", en: "Persistence & Database" },
+      tagline: {
+        pt: "O banco garante integridade, e as queries são previsíveis?",
+        en: "Does the database guarantee integrity, and are the queries predictable?"
+      },
+      body: {
+        pt: "Schema modelado (3NF como alvo), integridade referencial por PK/FK no banco, índices nas colunas de FK e de filtro, migrações versionadas (não EnsureCreated), controle de concorrência e AsNoTracking nas leituras. Sem N+1 nem varredura sequencial no caminho quente.",
+        en: "Schema modelled (3NF as the target), referential integrity via PK/FK at the database level, indexes on FK and filter columns, versioned migrations (not EnsureCreated), concurrency control and AsNoTracking on reads. No N+1 and no sequential scans on the hot path."
+      },
+      look: {
+        pt: ["Migrações versionadas, não EnsureCreated", "FK/relacionamentos e índices definidos", "Controle de concorrência (otimista, rowversion)", "AsNoTracking nas leituras"],
+        en: ["Versioned migrations, not EnsureCreated", "FK/relationships and indexes defined", "Concurrency control (optimistic, rowversion)", "AsNoTracking on reads"]
+      },
+      how: {
+        pt: "Roslyn detecta migrações, FKs, índices, concorrência e AsNoTracking. 3NF e N+1 sob volume pedem revisão humana e banco vivo.",
+        en: "Roslyn detects migrations, FKs, indexes, concurrency and AsNoTracking. 3NF and N+1 under volume need human review and a live database."
+      }
+    },
+    {
+      number: 6, key: "messaging", weightPct: 11, iso: "Reliability / Compatibility",
+      automation: "FullAuto", diagram: "outbox",
+      title: { pt: "Mensageria", en: "Messaging" },
+      tagline: {
+        pt: "O banco e o broker ficam consistentes, mesmo com falha?",
+        en: "Do the database and the broker stay consistent, even on failure?"
+      },
+      body: {
+        pt: "O padrão é at-least-once → consumidor idempotente: reprocessar não duplica efeito. Um Transactional Outbox resolve o dual-write (grava a mensagem na mesma transação do banco), há caminho de dead-letter, e o offset só é commitado depois do processamento — nunca antes.",
+        en: "The default is at-least-once → idempotent consumer: reprocessing doesn't duplicate the effect. A Transactional Outbox solves the dual-write (it writes the message in the same DB transaction), there's a dead-letter path, and the offset is committed after processing — never before."
+      },
+      look: {
+        pt: ["Produtor durável (Acks.All / idempotência)", "Consumidor idempotente (dedupe por id)", "Transactional Outbox (consistência banco↔broker)", "Dead-letter e commit de offset após processar"],
+        en: ["Durable producer (Acks.All / idempotence)", "Idempotent consumer (dedupe by id)", "Transactional Outbox (DB↔broker consistency)", "Dead-letter and offset commit after processing"]
+      },
+      how: {
+        pt: "Roslyn detecta produtor durável, outbox, DLQ e commit manual; no deep, o harness observa o evento real chegando no tópico transactions com a key = id.",
+        en: "Roslyn detects the durable producer, outbox, DLQ and manual commit; in deep, the harness watches the real event land on the transactions topic keyed by id."
+      }
+    },
+    {
+      number: 7, key: "security", weightPct: 12, iso: "Security",
+      automation: "ProxyReview", diagram: "panMask",
+      title: { pt: "Segurança", en: "Security" },
+      tagline: {
+        pt: "Os dados do cartão estão protegidos e nada sensível vaza?",
+        en: "Is the card data protected and does nothing sensitive leak?"
+      },
+      body: {
+        pt: "Domínio crítico, peso máximo. Nada de segredo hardcoded (só env vars); todo input validado; rate limiting contra consumo abusivo. E a régua do PCI DSS: o PAN é protegido (cifrado/tokenizado/truncado) e nunca logado; dados sensíveis de autenticação (CVV, PIN, track) nunca são armazenados.",
+        en: "Critical domain, top weight. No hardcoded secrets (env vars only); every input validated; rate limiting against abusive consumption. And the PCI DSS bar: the PAN is protected (encrypted/tokenised/truncated) and never logged; sensitive authentication data (CVV, PIN, track) is never stored."
+      },
+      look: {
+        pt: ["Sem PAN válido (Luhn) embutido no código/config", "CVV/PIN/track nunca armazenados", "Validação de input e rate limiting", "Sem dependências com CVE High/Critical; TLS/HSTS em produção"],
+        en: ["No Luhn-valid PAN embedded in code/config", "CVV/PIN/track never stored", "Input validation and rate limiting", "No High/Critical CVE dependencies; TLS/HSTS in production"]
+      },
+      how: {
+        pt: "Roslyn e regex de PAN varrem código/config; SCA lista dependências vulneráveis. SAST/DAST e o teste de BOLA pedem triagem e veredito humano.",
+        en: "Roslyn and a PAN regex scan code/config; SCA lists vulnerable dependencies. SAST/DAST and the BOLA test need triage and a human verdict."
+      }
+    },
+    {
+      number: 8, key: "resilience", weightPct: 8, iso: "Reliability",
+      automation: "FullAuto", diagram: "resilience",
+      title: { pt: "Resiliência e erros", en: "Resilience & Error Handling" },
+      tagline: {
+        pt: "Falhas transitórias são absorvidas sem intervenção manual?",
+        en: "Are transient failures absorbed without manual intervention?"
+      },
+      body: {
+        pt: "Um handler global de exceções (sem vazar stack trace ao cliente), health checks de liveness e readiness, e políticas de retry/timeout/circuit breaker (Polly) nas chamadas ao banco e ao Kafka. Graceful shutdown para drenar antes de encerrar.",
+        en: "A single global exception handler (no stack traces leaking to the client), liveness and readiness health checks, and retry/timeout/circuit-breaker policies (Polly) on calls to the database and Kafka. Graceful shutdown to drain before terminating."
+      },
+      look: {
+        pt: ["Handler global de exceções, sem vazar stack trace", "Health checks (liveness/readiness)", "Retry/timeout/circuit breaker (Polly)", "Graceful shutdown e cancelamento propagado"],
+        en: ["Global exception handler, no stack-trace leak", "Health checks (liveness/readiness)", "Retry/timeout/circuit breaker (Polly)", "Graceful shutdown and propagated cancellation"]
+      },
+      how: {
+        pt: "Roslyn detecta Polly, health checks, handler global e shutdown; o oráculo confere que um erro devolve corpo limpo, sem stack trace.",
+        en: "Roslyn detects Polly, health checks, the global handler and shutdown; the oracle checks that an error returns a clean body, no stack trace."
+      }
+    },
+    {
+      number: 9, key: "testing", weightPct: 8, iso: "Enabler",
+      automation: "FullAuto", diagram: "pyramid",
+      title: { pt: "Testes", en: "Testing" },
+      tagline: {
+        pt: "Os testes provam que as regras valem — e pegam bugs?",
+        en: "Do the tests prove the rules hold — and catch bugs?"
+      },
+      body: {
+        pt: "Uma pirâmide saudável: base larga de testes unitários das regras de negócio, mais testes de integração (Testcontainers) da API, banco e mensageria. Cobertura coletada (Coverlet). Cobrir o caminho crítico, não só a porcentagem crua. Mutation testing (Stryker) é opcional.",
+        en: "A healthy pyramid: a wide base of unit tests for business rules, plus integration tests (Testcontainers) of the API, database and messaging. Coverage collected (Coverlet). Cover the critical path, not just the raw percentage. Mutation testing (Stryker) is optional."
+      },
+      look: {
+        pt: ["Projeto de teste com framework (xUnit/NUnit)", "Pirâmide: unitário + integração", "Cobertura ≥ 80% no caminho crítico (Coverlet)", "Testes de aceitação de caixa-preta"],
+        en: ["Test project with a framework (xUnit/NUnit)", "Pyramid: unit + integration", "Coverage ≥ 80% on the critical path (Coverlet)", "Black-box acceptance tests"]
+      },
+      how: {
+        pt: "Roslyn classifica a pirâmide e detecta a ferramenta de cobertura; o deep roda os testes e mede a cobertura real.",
+        en: "Roslyn classifies the pyramid and detects the coverage tool; deep runs the tests and measures real coverage."
+      }
+    },
+    {
+      number: 10, key: "observability", weightPct: 4, iso: "Enabler",
+      automation: "FullAuto", diagram: "pillars",
+      title: { pt: "Observabilidade", en: "Observability" },
+      tagline: {
+        pt: "Dá para diagnosticar um incidente sem adicionar código?",
+        en: "Can you diagnose an incident without adding code?"
+      },
+      body: {
+        pt: "Os três pilares — logs, métricas e traces (modelo OpenTelemetry) — com um correlation id que atravessa a operação inteira (HTTP → evento → consumo). Logs estruturados em JSON, métricas dos quatro sinais de ouro do SRE, e endpoints /health e /metrics.",
+        en: "The three pillars — logs, metrics and traces (the OpenTelemetry model) — with a correlation id that threads through the whole operation (HTTP → event → consumption). Structured JSON logs, metrics for the SRE four golden signals, and /health and /metrics endpoints."
+      },
+      look: {
+        pt: ["OpenTelemetry (traces/métricas/logs)", "Logs estruturados em JSON", "Correlation id ponta a ponta", "/health e /metrics respondendo ao vivo"],
+        en: ["OpenTelemetry (traces/metrics/logs)", "Structured JSON logs", "End-to-end correlation id", "/health and /metrics responding live"]
+      },
+      how: {
+        pt: "Roslyn detecta o SDK do OpenTelemetry, logs estruturados e correlação; o oráculo confere /health e /metrics vivos.",
+        en: "Roslyn detects the OpenTelemetry SDK, structured logs and correlation; the oracle checks /health and /metrics live."
+      }
+    },
+    {
+      number: 11, key: "performance", weightPct: 3, iso: "Performance efficiency",
+      automation: "SemiOracle", diagram: null,
+      title: { pt: "Performance e escala", en: "Performance & Scalability" },
+      tagline: {
+        pt: "Aguenta dezenas de requisições concorrentes sem 5xx nem travar?",
+        en: "Does it survive dozens of concurrent requests with no 5xx and no hangs?"
+      },
+      body: {
+        pt: "I/O assíncrono e não-bloqueante em toda parte (sem sync-over-async), API stateless para escalar horizontalmente, e paginação nas coleções. Otimização guiada por medição, não por palpite — micro-otimização sem benchmark é penalizada (veja Arquitetura e Qualidade).",
+        en: "Async, non-blocking I/O throughout (no sync-over-async), a stateless API to scale horizontally, and pagination on collections. Measurement-guided optimisation, not guesswork — micro-optimisation without a benchmark is penalised (see Architecture and Quality)."
+      },
+      look: {
+        pt: ["I/O assíncrono, sem .Wait()/.Result", "API stateless (escala horizontal)", "Paginação nas coleções", "Sobrevive à carga concorrente: 0 5xx, sem travar"],
+        en: ["Async I/O, no .Wait()/.Result", "Stateless API (horizontal scaling)", "Pagination on collections", "Survives concurrent load: 0 5xx, no hangs"]
+      },
+      how: {
+        pt: "Roslyn conta métodos async e detecta sync-over-async e estado em memória; o oráculo dispara requisições concorrentes e mede 5xx e latência.",
+        en: "Roslyn counts async methods and detects sync-over-async and in-memory state; the oracle fires concurrent requests and measures 5xx and latency."
+      }
+    },
+    {
+      number: 12, key: "portability", weightPct: 2, iso: "Portability",
+      automation: "FullAuto", diagram: null,
+      title: { pt: "Portabilidade e deploy", en: "Portability & Deploy" },
+      tagline: {
+        pt: "clone → up → run funciona em qualquer máquina?",
+        en: "Does clone → up → run work on any machine?"
+      },
+      body: {
+        pt: "Configuração externalizada em env vars (12-Factor III/IV), serviços de apoio plugáveis, dependências pinadas, um Dockerfile rodando como usuário não-root e o docker-compose que sobe tudo com um comando. Uma pipeline de CI que compila, testa e faz lint.",
+        en: "Config externalised in env vars (12-Factor III/IV), pluggable backing services, pinned dependencies, a Dockerfile running as a non-root user and the docker-compose that brings everything up with one command. A CI pipeline that builds, tests and lints."
+      },
+      look: {
+        pt: ["Dockerfile (não-root) e docker-compose", "Config só via env vars (0 segredo no código)", "Dependências pinadas (lock file / global.json / CPM)", "Pipeline de CI presente"],
+        en: ["Dockerfile (non-root) and docker-compose", "Config only via env vars (0 secrets in code)", "Pinned dependencies (lock file / global.json / CPM)", "CI pipeline present"]
+      },
+      how: {
+        pt: "Totalmente automático: detecção de Dockerfile, compose, env config, pinning, CI e usuário não-root; hadolint no deep.",
+        en: "Full-auto: detection of Dockerfile, compose, env config, pinning, CI and non-root user; hadolint in deep."
+      }
+    },
+    {
+      number: 13, key: "documentation", weightPct: 1, iso: "Maintainability / Usability",
+      automation: "ProxyReview", diagram: null,
+      title: { pt: "Documentação", en: "Documentation" },
+      tagline: {
+        pt: "Um dev novo sobe o projeto seguindo só o README?",
+        en: "Can a new dev bring the project up following only the README?"
+      },
+      body: {
+        pt: "Um README com propósito, stack, pré-requisitos e como rodar; a API documentada em OpenAPI/Swagger; doc comments nos contratos públicos. A presença das seções é automática — a qualidade da prosa pede revisão humana.",
+        en: "A README with purpose, stack, prerequisites and how to run; the API documented in OpenAPI/Swagger; doc comments on public contracts. Section presence is automatic — the prose quality needs human review."
+      },
+      look: {
+        pt: ["README com propósito + setup + como rodar", "API documentada (OpenAPI/Swagger)", "Doc comments nos contratos públicos", "Sem links quebrados"],
+        en: ["README with purpose + setup + how to run", "API documented (OpenAPI/Swagger)", "Doc comments on public contracts", "No broken links"]
+      },
+      how: {
+        pt: "A presença de seções, OpenAPI e doc comments é detectada automaticamente; a qualidade do texto pede revisão humana.",
+        en: "Section presence, OpenAPI and doc comments are detected automatically; the prose quality needs human review."
+      }
+    }
+  ]
+};

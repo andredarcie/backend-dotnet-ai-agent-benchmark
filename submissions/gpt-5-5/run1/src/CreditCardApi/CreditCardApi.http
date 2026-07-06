@@ -1,0 +1,8 @@
+﻿@CreditCardApi_HostAddress = http://localhost:8080
+
+GET {{CreditCardApi_HostAddress}}/health
+Accept: application/json
+
+###
+GET {{CreditCardApi_HostAddress}}/api/credit-cards
+Accept: application/json

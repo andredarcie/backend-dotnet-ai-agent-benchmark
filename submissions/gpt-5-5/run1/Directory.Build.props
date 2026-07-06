@@ -1,0 +1,9 @@
+﻿<Project>
+  <PropertyGroup>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <NoWarn>$(NoWarn);CS1591;CA1859;CA1873</NoWarn>
+  </PropertyGroup>
+</Project>
+
+

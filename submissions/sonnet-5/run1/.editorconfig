@@ -1,0 +1,69 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.cs]
+indent_size = 4
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.cs]
+# --- Language conventions ---
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_new_line_before_open_brace = all
+dotnet_sort_system_directives_first = true
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+dotnet_style_readonly_field = true:warning
+dotnet_style_predefined_type_for_locals_parameters_members = true:warning
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+
+# --- Naming: interfaces start with I ---
+dotnet_naming_symbols.interface_symbols.applicable_kinds = interface
+dotnet_naming_symbols.interface_symbols.applicable_accessibilities = *
+dotnet_naming_style.interface_style.required_prefix = I
+dotnet_naming_style.interface_style.capitalization = pascal_case
+dotnet_naming_rule.interfaces_start_with_i.symbols = interface_symbols
+dotnet_naming_rule.interfaces_start_with_i.style = interface_style
+dotnet_naming_rule.interfaces_start_with_i.severity = warning
+
+# --- Dead code / unused ---
+dotnet_diagnostic.IDE0051.severity = warning
+dotnet_diagnostic.IDE0052.severity = warning
+dotnet_diagnostic.IDE0005.severity = warning
+dotnet_diagnostic.CS8618.severity = warning
+
+# CA1031: this codebase catches System.Exception only at deliberate boundaries — health checks and
+# background-worker loops that must log-and-continue rather than crash the process — and every such
+# catch logs the exception; it is never swallowed silently.
+dotnet_diagnostic.CA1031.severity = none
+
+[*.{csproj,props,targets}]
+indent_size = 2
+
+# EF Core migrations/snapshots are tool-generated; they follow EF's own template, not this repo's style.
+[**/Migrations/*.cs]
+generated_code = true
+csharp_style_namespace_declarations = block_scoped:silent
+dotnet_diagnostic.IDE0005.severity = none
+dotnet_diagnostic.IDE0161.severity = none
+
+# CA1707: test method names use the Method_Scenario_ExpectedResult convention (underscores are the point).
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none

@@ -70,38 +70,67 @@ public class ScoringTests
     [Fact]
     public void CapForExecutability_caps_at_1_when_build_fails()
     {
-        var (s, reason) = Scoring.CapForExecutability(4.8, builds: false, boots: true);
+        // build failure caps regardless of mode
+        var (s, reason) = Scoring.CapForExecutability(4.8, builds: false, boots: true, deep: true, hasRunnableSystem: true);
         Assert.Equal(1.0, s);
         Assert.NotNull(reason);
     }
 
     [Fact]
-    public void CapForExecutability_caps_at_2_5_when_boot_fails()
+    public void CapForExecutability_caps_at_1_5_when_deep_boot_fails()
     {
-        var (s, reason) = Scoring.CapForExecutability(4.8, builds: true, boots: false);
-        Assert.Equal(2.5, s);
+        // has a runnable system but /health never came up ⇒ grave boot cap (1.5)
+        var (s, reason) = Scoring.CapForExecutability(4.8, builds: true, boots: false, deep: true, hasRunnableSystem: true);
+        Assert.Equal(1.5, s);
+        Assert.NotNull(reason);
+    }
+
+    [Fact]
+    public void CapForExecutability_caps_a_deep_run_that_was_never_booted_even_if_boots_unknown()
+    {
+        // THE RUN IS THE MEASUREMENT: a deep run that never observed a healthy boot (boots == null, e.g.
+        // a static-only invocation) is NOT a free pass — it is capped exactly like an outright boot failure.
+        var (s, reason) = Scoring.CapForExecutability(4.9, builds: true, boots: null, deep: true, hasRunnableSystem: true);
+        Assert.Equal(1.5, s);
+        Assert.NotNull(reason);
+    }
+
+    [Fact]
+    public void CapForExecutability_caps_at_1_when_no_runnable_system()
+    {
+        // no docker-compose.yml at all ⇒ no runnable system delivered ⇒ as grave as not compiling (1.0)
+        var (s, reason) = Scoring.CapForExecutability(4.27, builds: true, boots: null, deep: true, hasRunnableSystem: false);
+        Assert.Equal(1.0, s);
         Assert.NotNull(reason);
     }
 
     [Fact]
     public void CapForExecutability_build_failure_takes_precedence_over_boot()
     {
-        var (s, _) = Scoring.CapForExecutability(4.8, builds: false, boots: false);
+        var (s, _) = Scoring.CapForExecutability(4.8, builds: false, boots: false, deep: true, hasRunnableSystem: true);
         Assert.Equal(1.0, s);
     }
 
     [Fact]
     public void CapForExecutability_never_raises_an_already_lower_score_but_still_flags()
     {
-        var (s, reason) = Scoring.CapForExecutability(0.7, builds: false, boots: true);
+        var (s, reason) = Scoring.CapForExecutability(0.7, builds: false, boots: true, deep: true, hasRunnableSystem: true);
         Assert.Equal(0.7, s);
         Assert.NotNull(reason);
     }
 
     [Fact]
-    public void CapForExecutability_no_cap_when_executable_or_unknown()
+    public void CapForExecutability_no_cap_when_deep_and_verified_running()
     {
-        Assert.Equal((4.8, (string?)null), Scoring.CapForExecutability(4.8, true, true));
-        Assert.Equal((4.8, (string?)null), Scoring.CapForExecutability(4.8, null, null));
+        // the only way to earn an uncapped deep score: actually booted and observed healthy
+        Assert.Equal((4.8, (string?)null), Scoring.CapForExecutability(4.8, true, true, deep: true, hasRunnableSystem: true));
+    }
+
+    [Fact]
+    public void CapForExecutability_light_mode_is_not_boot_gated()
+    {
+        // light (non-deep) mode is static-only by design and excluded from the ranked leaderboard, so it
+        // is not gated on boot even though builds/boots are unknown.
+        Assert.Equal((4.8, (string?)null), Scoring.CapForExecutability(4.8, null, null, deep: false, hasRunnableSystem: true));
     }
 }

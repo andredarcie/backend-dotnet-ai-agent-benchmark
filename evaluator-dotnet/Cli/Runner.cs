@@ -156,8 +156,13 @@ public static class Runner
         // Weighted final over categories that produced a score (renormalized), on the 0..5 scale.
         (report.WeightedScore, report.Coverage) = Scoring.Aggregate(report.Categories);
 
-        // Cap the headline when the submission failed the build/boot gate.
-        (report.WeightedScore, report.ScoreCapReason) = Scoring.CapForExecutability(report.WeightedScore, report.Builds, report.Boots);
+        // Cap the headline when the submission failed the executability gate. A deep score is only
+        // trustworthy if the system actually ran and was verified live — so no runnable compose, or no
+        // observed healthy boot, caps the score hard (see Scoring.CapForExecutability). The run is the
+        // measurement; static signals alone cannot certify a project works.
+        bool hasRunnableSystem = project.AnyFile("docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml");
+        (report.WeightedScore, report.ScoreCapReason) = Scoring.CapForExecutability(
+            report.WeightedScore, report.Builds, report.Boots, deep, hasRunnableSystem);
         if (report.ScoreCapReason != null) Console.WriteLine($"  {report.ScoreCapReason}");
 
         // A run minimally patched to build/boot is graded on its merits, then docked (bench-patch.json).

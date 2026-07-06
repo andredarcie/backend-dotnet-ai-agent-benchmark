@@ -546,6 +546,15 @@
     });
   }
 
+  // Bar colour by SCORE (not by automation level): 0/5 red -> 5/5 green, on a red->amber->green
+  // hue ramp. Full bar (5.0) reads clearly green; a low category reads red. Null (not measured) stays muted.
+  function scoreColor(sc) {
+    if (sc == null) return "var(--muted)";
+    var q = Math.max(0, Math.min(1, sc / 5));
+    var hue = Math.round(q * 138);   // 0 = red, 138 = green
+    return "hsl(" + hue + " 64% 46%)";
+  }
+
   function leaderboardDetail(r) {
     var run = representativeRun(r.model);
     if (!run) return '<p style="color:var(--muted);font-family:var(--font-mono);font-size:13px">' + esc(t("lb.empty")) + "</p>";
@@ -556,7 +565,7 @@
       var pct = sc != null ? (sc / 5) * 100 : 0;
       var av = AUTO_VAR[c.automation];
       return '<div class="catrow"><span class="catrow__name"><span style="width:8px;height:8px;border-radius:50%;flex:none;background:var(' + av + ')"></span>' + esc(c.title[lang]) + "</span>" +
-        '<span class="catrow__track"><span class="catrow__fill" style="width:' + pct + '%;background:var(' + av + ')"></span></span>' +
+        '<span class="catrow__track"><span class="catrow__fill" style="width:' + pct + '%;background:' + scoreColor(sc) + '"></span></span>' +
         '<span class="catrow__val">' + (sc != null ? fx(sc, 1) : "—") + "</span></div>";
     }).join("");
 

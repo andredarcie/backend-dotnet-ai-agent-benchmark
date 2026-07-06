@@ -1,9 +1,8 @@
-# Evaluation Report — opus-4-8/run1
+# Evaluation Report — fable-5/run1
 
-- **Date (UTC):** 2026-07-06 18:30:50Z
+- **Date (UTC):** 2026-07-06 18:24:20Z
 - **Mode:** deep
-- **Weighted final score:** 4.27/5
-- **Patch penalty:** −0.4 (minimal build/boot patch — Dockerfile COPY referenced CreditCardApi.sln but the project ships CreditCardApi.slnx; minimal build-blocker fix (build config only, no source/logic change). Model's own defect, so the penalty applies.)
+- **Weighted final score:** 4.80/5
 - **Coverage:** 100 % of categories
 - **Executable:** build = yes · boot (/health) = yes
 - **Local tools detected:** dotnet, spectral, semgrep, trivy, gitleaks, sqlfluff, hadolint, markdownlint, lychee, k6, dotnet-outdated, swagger-cli
@@ -12,23 +11,23 @@
 
 | # | Category | Auto | Score | Weight | Review |
 |---|----------|------|-------|--------|--------|
-| 1 | Functional Suitability / Correctness | 🟡 | 4.8/5 | 12% | yes |
+| 1 | Functional Suitability / Correctness | 🟡 | 5.0/5 | 12% | yes |
 | 2 | Architecture & Design | 🟠 | 5.0/5 | 10% | yes |
-| 3 | Code Quality | 🟢 | 3.0/5 | 8% | — |
-| 4 | REST API Design | 🟡 | 4.7/5 | 11% | yes |
+| 3 | Code Quality | 🟢 | 5.0/5 | 8% | — |
+| 4 | REST API Design | 🟡 | 4.4/5 | 11% | yes |
 | 5 | Persistence & Database | 🟠 | 5.0/5 | 10% | yes |
 | 6 | Messaging | 🟢 | 5.0/5 | 11% | — |
-| 7 | Security | 🟠 | 4.1/5 | 12% | yes |
+| 7 | Security | 🟠 | 4.7/5 | 12% | yes |
 | 8 | Resilience & Error Handling | 🟢 | 5.0/5 | 8% | — |
-| 9 | Tests (enabler) | 🟢 | 5.0/5 | 8% | — |
+| 9 | Tests (enabler) | 🟢 | 3.8/5 | 8% | — |
 | 10 | Observability (enabler) | 🟢 | 5.0/5 | 4% | — |
 | 11 | Performance & Scalability | 🟡 | 5.0/5 | 3% | yes |
 | 12 | Portability, Configuration & Deploy | 🟢 | 5.0/5 | 2% | — |
-| 13 | Documentation | 🟠 | 4.1/5 | 1% | yes |
+| 13 | Documentation | 🟠 | 4.7/5 | 1% | yes |
 
 ## 1. Functional Suitability / Correctness 🟡
 
-**Score:** 4.8/5 · **Weight:** 12% · **Automation:** semi (oracle 1x)
+**Score:** 5.0/5 · **Weight:** 12% · **Automation:** semi (oracle 1x)
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -52,16 +51,16 @@
 | ✅ | get-tx-404 | HTTP 404 | GET missing transaction -> 404 |
 | ✅ | card-transactions-200 | HTTP 200 | GET card's transactions -> 200 |
 | ✅ | card-transactions-404 | HTTP 404 | transactions of a missing card -> 404 |
-| ✅ | update-card-2xx | HTTP 204 | PUT existing card -> 200/204 |
+| ✅ | update-card-2xx | HTTP 200 | PUT existing card -> 200/204 |
 | ✅ | update-card-404 | HTTP 404 | PUT missing card -> 404 |
-| ✅ | update-tx-2xx | HTTP 204 | PUT existing transaction -> 200/204 |
+| ✅ | update-tx-2xx | HTTP 200 | PUT existing transaction -> 200/204 |
 | ✅ | update-tx-404 | HTTP 404 | PUT missing transaction -> 404 |
 | ✅ | delete-tx-204 | HTTP 204 | DELETE transaction -> 204 |
 | ✅ | delete-tx-404 | HTTP 404 | DELETE missing transaction -> 404 |
 | ✅ | delete-card-204 | HTTP 204 | DELETE card -> 204 |
 | ✅ | delete-card-404 | HTTP 404 | DELETE missing card -> 404 |
-| ❌ | schemathesis | violations found | API conforms to its OpenAPI contract (Schemathesis) |
-| ✅ | test-pass-rate | 23/23 passed | 100% of tests pass |
+| ❔ | schemathesis | indeterminate<br/>_schemathesis could not load/collect the OpenAPI schema — not scored_ | API conforms to its OpenAPI contract (Schemathesis) |
+| ✅ | test-pass-rate | 62/62 passed | 100% of tests pass |
 
 
 ## 2. Architecture & Design 🟠
@@ -73,27 +72,27 @@
 | ✅ | layering | yes | layer separation (domain/infra/presentation) |
 | ✅ | application-layer | yes | application/use-case layer present |
 | ✅ | dependency-direction | 0 leaks | domain does not reference infrastructure (Roslyn usings) |
-| ✅ | overengineering-proxy | 1/6 interfaces with <=1 impl | few speculative abstractions |
-| ✅ | no-god-class | largest type: 179 lines | no 'god classes' (<=600 lines) |
+| ❔ | overengineering-proxy | indeterminate<br/>_4/4 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); flagged for human review, not scored_ | few speculative abstractions |
+| ✅ | no-god-class | largest type: 250 lines | no 'god classes' (<=600 lines) |
 
 > ℹ️ PROXY: layering needs layer rules (oracle) and the overengineering verdict needs human review. NDepend/SonarQube can deepen this.
 
 ## 3. Code Quality 🟢
 
-**Score:** 3.0/5 · **Weight:** 8% · **Automation:** full-auto
+**Score:** 5.0/5 · **Weight:** 8% · **Automation:** full-auto
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
-| ❌ | no-empty-catch | 2 | no empty catch (no swallowed exceptions) |
+| ✅ | no-empty-catch | 0 | no empty catch (no swallowed exceptions) |
 | ✅ | no-todos | 0 | no pending TODO/FIXME/HACK |
 | ✅ | analyzers-enabled | yes | analyzers/.editorconfig enabled |
-| ❌ | format | formatting diverges | code is formatted (dotnet format) |
+| ✅ | format | no changes | code is formatted (dotnet format) |
 | ✅ | build-warnings | 0 warning(s) | 0 build warnings |
 
 
 ## 4. REST API Design 🟡
 
-**Score:** 4.7/5 · **Weight:** 11% · **Automation:** semi (oracle 1x)
+**Score:** 4.4/5 · **Weight:** 11% · **Automation:** semi (oracle 1x)
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -105,10 +104,10 @@
 | ✅ | dtos | yes | separates DTOs from domain entities |
 | ✅ | create-card-location | http://host.docker.internal:8080/api/credit-cards/1 | 201 carries a Location header |
 | ✅ | json-camelcase | camelCase | JSON properties are camelCase |
-| ❌ | problem-details-live | application/json | errors use application/problem+json (RFC 9457) |
+| ✅ | problem-details-live | application/problem+json | errors use application/problem+json (RFC 9457) |
 | ✅ | pagination | pageSize=1 -> 1 item(s) | collection honors a page size |
 | ✅ | create-tx-location | http://host.docker.internal:8080/api/transactions/1 | 201 carries a Location header |
-| ✅ | openapi-populated | 12 operation(s) across 6 path(s) | served OpenAPI documents its operations |
+| ❌ | openapi-populated | 0 operations (empty paths)<br/>_the OpenAPI document is served but declares no endpoints — an empty contract_ | served OpenAPI documents its operations |
 
 > ℹ️ No static OpenAPI file found (spec is likely generated at runtime); run --deep to generate and lint it.
 
@@ -140,13 +139,13 @@
 | ✅ | dlq | yes | dead-letter queue for failures |
 | ✅ | offset-after-process | yes | commit offset after processing (auto-commit off) |
 | ✅ | messaging-tests | yes | messaging integration tests (Testcontainers-Kafka) |
-| ✅ | kafka-event-live | 251 event(s), key=id | transaction event published, keyed by id |
+| ✅ | kafka-event-live | 832 event(s), key=id | transaction event published, keyed by id |
 
 > ℹ️ Deep messaging checks (publish-duplicate -> single effect; kill consumer mid-process; Schema Registry compatibility) require a Kafka container and the app running.
 
 ## 7. Security 🟠
 
-**Score:** 4.1/5 · **Weight:** 12% · **Automation:** proxy + review
+**Score:** 4.7/5 · **Weight:** 12% · **Automation:** proxy + review
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -156,7 +155,7 @@
 | ✅ | validation | yes | input validation |
 | ✅ | rate-limit | yes | rate limiting (OWASP API #4) |
 | ✅ | tls | HSTS configured | TLS/HSTS configured for production |
-| ❌ | secrets | leaks found<br/>_review gitleaks findings_ | no hardcoded secrets (gitleaks) |
+| ✅ | secrets | 0 leaks | no hardcoded secrets (gitleaks) |
 | ✅ | sca | none reported | 0 High/Critical dependencies |
 | ✅ | sca-trivy | none High/Critical | 0 High/Critical vulnerabilities (Trivy) |
 | ✅ | sast | clean | no SAST findings (Semgrep) |
@@ -182,7 +181,7 @@
 
 ## 9. Tests (enabler) 🟢
 
-**Score:** 5.0/5 · **Weight:** 8% · **Automation:** full-auto
+**Score:** 3.8/5 · **Weight:** 8% · **Automation:** full-auto
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -190,7 +189,7 @@
 | ✅ | pyramid | unit=True, integration=True | pyramid: unit + integration |
 | ✅ | coverage-tool | yes | coverage tool (Coverlet) |
 | ❔ | mutation-tool | indeterminate<br/>_optional per the task — absence is not penalized_ | mutation testing (Stryker.NET, optional) |
-| ✅ | coverage | 83 % (2 report(s) merged) | line coverage >=80% |
+| 🟨 | coverage | 68 % (2 report(s) merged) | line coverage >=80% |
 
 
 ## 10. Observability (enabler) 🟢
@@ -214,11 +213,11 @@
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
-| ✅ | async-io | 50 async methods | asynchronous/non-blocking I/O |
+| ✅ | async-io | 100 async methods | asynchronous/non-blocking I/O |
 | ✅ | no-sync-over-async | none | no sync-over-async blocking (.Wait/.GetResult) |
 | ✅ | stateless | no obvious in-memory state | stateless API (horizontal scaling) |
 | ✅ | pagination | yes | pagination on collections (scaling proxy) |
-| ✅ | concurrency | 60 reqs @20 concurrent: 0 5xx, max 408ms | survives concurrent load (no 5xx / hangs) |
+| ✅ | concurrency | 60 reqs @20 concurrent: 0 5xx, max 51ms | survives concurrent load (no 5xx / hangs) |
 | ✅ | load | thresholds met | load test meets SLO thresholds (k6) |
 
 
@@ -240,12 +239,12 @@
 
 ## 13. Documentation 🟠
 
-**Score:** 4.1/5 · **Weight:** 1% · **Automation:** proxy + review
+**Score:** 4.7/5 · **Weight:** 1% · **Automation:** proxy + review
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
 | ✅ | readme | yes | README present |
-| 🟨 | readme-sections | 2/3 | README with purpose+setup+run |
+| ✅ | readme-sections | 3/3 | README with purpose+setup+run |
 | ✅ | api-docs | yes | API documentation (OpenAPI/Swagger) |
 | ✅ | doc-comments | yes | doc comments / XML docs |
 | 🟨 | markdownlint | violations | README passes markdownlint |

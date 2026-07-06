@@ -1,6 +1,6 @@
 {
-  "Target": "opus-4-8/run1",
-  "EvaluatedAtUtc": "2026-07-06 18:30:50Z",
+  "Target": "fable-5/run1",
+  "EvaluatedAtUtc": "2026-07-06 18:24:20Z",
   "Deep": true,
   "Environment": [
     "dotnet",
@@ -166,7 +166,7 @@
         },
         {
           "Name": "update-card-2xx",
-          "Observed": "HTTP 204",
+          "Observed": "HTTP 200",
           "Target": "PUT existing card -\u003E 200/204",
           "Status": "Pass",
           "Weight": 0.5
@@ -180,7 +180,7 @@
         },
         {
           "Name": "update-tx-2xx",
-          "Observed": "HTTP 204",
+          "Observed": "HTTP 200",
           "Target": "PUT existing transaction -\u003E 200/204",
           "Status": "Pass",
           "Weight": 0.5
@@ -222,14 +222,15 @@
         },
         {
           "Name": "schemathesis",
-          "Observed": "violations found",
+          "Observed": "indeterminate",
           "Target": "API conforms to its OpenAPI contract (Schemathesis)",
-          "Status": "Fail",
-          "Weight": 1
+          "Status": "Indeterminate",
+          "Weight": 1,
+          "Note": "schemathesis could not load/collect the OpenAPI schema \u2014 not scored"
         },
         {
           "Name": "test-pass-rate",
-          "Observed": "23/23 passed",
+          "Observed": "62/62 passed",
           "Target": "100% of tests pass",
           "Status": "Pass",
           "Weight": 2
@@ -239,9 +240,9 @@
       "MissingTools": [],
       "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE1",
-      "Score": 4.8,
-      "MeasuredCount": 29,
-      "IndeterminateCount": 1
+      "Score": 5,
+      "MeasuredCount": 28,
+      "IndeterminateCount": 2
     },
     {
       "Number": 2,
@@ -272,14 +273,15 @@
         },
         {
           "Name": "overengineering-proxy",
-          "Observed": "1/6 interfaces with \u003C=1 impl",
+          "Observed": "indeterminate",
           "Target": "few speculative abstractions",
-          "Status": "Pass",
-          "Weight": 0.5
+          "Status": "Indeterminate",
+          "Weight": 0.5,
+          "Note": "4/4 single-implementation interfaces \u2014 normal DIP ports (repository/UoW/publisher); flagged for human review, not scored"
         },
         {
           "Name": "no-god-class",
-          "Observed": "largest type: 179 lines",
+          "Observed": "largest type: 250 lines",
           "Target": "no \u0027god classes\u0027 (\u003C=600 lines)",
           "Status": "Pass",
           "Weight": 0.5
@@ -292,8 +294,8 @@
       "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE0",
       "Score": 5,
-      "MeasuredCount": 5,
-      "IndeterminateCount": 0
+      "MeasuredCount": 4,
+      "IndeterminateCount": 1
     },
     {
       "Number": 3,
@@ -303,9 +305,9 @@
       "Metrics": [
         {
           "Name": "no-empty-catch",
-          "Observed": "2",
+          "Observed": "0",
           "Target": "no empty catch (no swallowed exceptions)",
-          "Status": "Fail",
+          "Status": "Pass",
           "Weight": 1
         },
         {
@@ -324,9 +326,9 @@
         },
         {
           "Name": "format",
-          "Observed": "formatting diverges",
+          "Observed": "no changes",
           "Target": "code is formatted (dotnet format)",
-          "Status": "Fail",
+          "Status": "Pass",
           "Weight": 1
         },
         {
@@ -341,7 +343,7 @@
       "MissingTools": [],
       "RequiresHumanReview": false,
       "Badge": "\uD83D\uDFE2",
-      "Score": 3,
+      "Score": 5,
       "MeasuredCount": 5,
       "IndeterminateCount": 0
     },
@@ -409,9 +411,9 @@
         },
         {
           "Name": "problem-details-live",
-          "Observed": "application/json",
+          "Observed": "application/problem\u002Bjson",
           "Target": "errors use application/problem\u002Bjson (RFC 9457)",
-          "Status": "Fail",
+          "Status": "Pass",
           "Weight": 0.5
         },
         {
@@ -430,10 +432,11 @@
         },
         {
           "Name": "openapi-populated",
-          "Observed": "12 operation(s) across 6 path(s)",
+          "Observed": "0 operations (empty paths)",
           "Target": "served OpenAPI documents its operations",
-          "Status": "Pass",
-          "Weight": 1
+          "Status": "Fail",
+          "Weight": 1,
+          "Note": "the OpenAPI document is served but declares no endpoints \u2014 an empty contract"
         }
       ],
       "Notes": [
@@ -442,7 +445,7 @@
       "MissingTools": [],
       "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE1",
-      "Score": 4.7,
+      "Score": 4.4,
       "MeasuredCount": 12,
       "IndeterminateCount": 0
     },
@@ -557,7 +560,7 @@
         },
         {
           "Name": "kafka-event-live",
-          "Observed": "251 event(s), key=id",
+          "Observed": "832 event(s), key=id",
           "Target": "transaction event published, keyed by id",
           "Status": "Pass",
           "Weight": 1
@@ -624,11 +627,10 @@
         },
         {
           "Name": "secrets",
-          "Observed": "leaks found",
+          "Observed": "0 leaks",
           "Target": "no hardcoded secrets (gitleaks)",
-          "Status": "Fail",
-          "Weight": 1,
-          "Note": "review gitleaks findings"
+          "Status": "Pass",
+          "Weight": 1
         },
         {
           "Name": "sca",
@@ -666,7 +668,7 @@
       "MissingTools": [],
       "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE0",
-      "Score": 4.1,
+      "Score": 4.7,
       "MeasuredCount": 10,
       "IndeterminateCount": 1
     },
@@ -768,9 +770,9 @@
         },
         {
           "Name": "coverage",
-          "Observed": "83 % (2 report(s) merged)",
+          "Observed": "68 % (2 report(s) merged)",
           "Target": "line coverage \u003E=80%",
-          "Status": "Pass",
+          "Status": "Partial",
           "Weight": 2
         }
       ],
@@ -778,7 +780,7 @@
       "MissingTools": [],
       "RequiresHumanReview": false,
       "Badge": "\uD83D\uDFE2",
-      "Score": 5,
+      "Score": 3.8,
       "MeasuredCount": 4,
       "IndeterminateCount": 1
     },
@@ -854,7 +856,7 @@
       "Metrics": [
         {
           "Name": "async-io",
-          "Observed": "50 async methods",
+          "Observed": "100 async methods",
           "Target": "asynchronous/non-blocking I/O",
           "Status": "Pass",
           "Weight": 1
@@ -882,7 +884,7 @@
         },
         {
           "Name": "concurrency",
-          "Observed": "60 reqs @20 concurrent: 0 5xx, max 408ms",
+          "Observed": "60 reqs @20 concurrent: 0 5xx, max 51ms",
           "Target": "survives concurrent load (no 5xx / hangs)",
           "Status": "Pass",
           "Weight": 1
@@ -989,9 +991,9 @@
         },
         {
           "Name": "readme-sections",
-          "Observed": "2/3",
+          "Observed": "3/3",
           "Target": "README with purpose\u002Bsetup\u002Brun",
-          "Status": "Partial",
+          "Status": "Pass",
           "Weight": 1
         },
         {
@@ -1029,15 +1031,13 @@
       "MissingTools": [],
       "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE0",
-      "Score": 4.1,
+      "Score": 4.7,
       "MeasuredCount": 6,
       "IndeterminateCount": 0
     }
   ],
-  "WeightedScore": 4.27,
+  "WeightedScore": 4.8,
   "Coverage": 1,
   "Builds": true,
-  "Boots": true,
-  "PatchPenalty": 0.4,
-  "PatchReason": "Dockerfile COPY referenced CreditCardApi.sln but the project ships CreditCardApi.slnx; minimal build-blocker fix (build config only, no source/logic change). Model\u0027s own defect, so the penalty applies."
+  "Boots": true
 }

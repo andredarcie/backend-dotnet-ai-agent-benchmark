@@ -30,6 +30,11 @@ public sealed class ArchitectureEvaluator : CategoryEvaluatorBase
             ? Pass("dependency-direction", "0 leaks", "domain does not reference infrastructure (Roslyn usings)")
             : Fail("dependency-direction", $"{f.DomainInfraLeakFiles} domain file(s) reference infra", "domain does not reference infrastructure"));
 
+        // Single-implementation interfaces are the standard Dependency-Inversion seam at layer boundaries
+        // (I*Repository / IUnitOfWork / I*Publisher) — the very pattern the layering & dependency-direction
+        // checks above REWARD, and each has a second implementation in practice (the test doubles). So a
+        // high single-impl ratio is surfaced for HUMAN REVIEW as informational (Indeterminate, excluded
+        // from the score), never an automatic penalty that contradicts the same category's other metrics.
         if (f.InterfaceCount == 0)
             r.Metrics.Add(Pass("overengineering-proxy", "no interfaces", "few speculative abstractions", weight: 0.5));
         else
@@ -37,8 +42,8 @@ public sealed class ArchitectureEvaluator : CategoryEvaluatorBase
             double ratio = (double)f.SingleImplementationInterfaces / f.InterfaceCount;
             r.Metrics.Add(ratio <= 0.5
                 ? Pass("overengineering-proxy", $"{f.SingleImplementationInterfaces}/{f.InterfaceCount} interfaces with <=1 impl", "few speculative abstractions", weight: 0.5)
-                : Partial("overengineering-proxy", $"{f.SingleImplementationInterfaces}/{f.InterfaceCount} interfaces with <=1 impl", "few speculative abstractions",
-                    "many single-implementation interfaces may indicate overengineering - review for a real variation point", 0.5));
+                : Unknown("overengineering-proxy", "few speculative abstractions",
+                    $"{f.SingleImplementationInterfaces}/{f.InterfaceCount} single-implementation interfaces — normal DIP ports (repository/UoW/publisher); flagged for human review, not scored", 0.5));
         }
 
         r.Metrics.Add(f.LargestTypeLines <= 600

@@ -78,7 +78,11 @@ public sealed class SecurityEvaluator : CategoryEvaluatorBase
                         ? Pass("sca-trivy", "none High/Critical", "0 High/Critical vulnerabilities (Trivy)", weight: 0.5)
                         : Fail("sca-trivy", "High/Critical found", "0 High/Critical vulnerabilities (Trivy)", "review Trivy SCA findings", 0.5),
                 weight: 0.5, timeoutMs: 300_000);
-            RunTool(ctx, r, "semgrep", $"--error --quiet --config auto \"{p.Root}\"", "sast", "no SAST findings (Semgrep)",
+            // Scope SAST to the APPLICATION: this benchmark's Security criterion is the API's posture (PAN,
+            // secrets, injection, validation), per PROMPT.md — not CI supply-chain hygiene. Excluding
+            // .github/ keeps semgrep from scoring "pin your GitHub Actions to a SHA", a real but tangential
+            // nit the task never asks for.
+            RunTool(ctx, r, "semgrep", $"--error --quiet --config auto --exclude .github \"{p.Root}\"", "sast", "no SAST findings (Semgrep)",
                 o => o.ExitCode == 0 ? Pass("sast", "clean", "no SAST findings (Semgrep)")
                                      : Partial("sast", "findings (triage needed)", "no SAST findings (Semgrep)"), timeoutMs: 300_000);
         }

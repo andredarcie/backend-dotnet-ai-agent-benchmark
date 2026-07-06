@@ -25,7 +25,13 @@ services:
         : > /shared/kafka.events
         for i in $$(seq 1 90); do kcat -b $${BENCH_KAFKA_BOOTSTRAP} -L >/dev/null 2>&1 && break || sleep 2; done
         echo '#connected' >> /shared/kafka.events
-        exec kcat -C -b $${BENCH_KAFKA_BOOTSTRAP} -t transactions -o beginning -u -q -f '%k\t%s\n' >> /shared/kafka.events 2>/dev/null
+        # Keep tailing for the whole run. If the `transactions` topic does not exist yet, kcat exits
+        # immediately; loop-and-retry instead of dying (a single early exit would otherwise abort the
+        # whole compose project). Once the topic exists this latches on and tails until teardown.
+        while true; do
+          kcat -C -b $${BENCH_KAFKA_BOOTSTRAP} -t transactions -o beginning -u -q -f '%k\t%s\n' >> /shared/kafka.events 2>/dev/null
+          sleep 3
+        done
     environment:
       BENCH_KAFKA_BOOTSTRAP: ${BENCH_KAFKA_BOOTSTRAP:-kafka:9092}
     volumes:
@@ -45,7 +51,9 @@ services:
     command:
       - |
         for i in $$(seq 1 60); do curl -sf ${BENCH_BASE_URL}/health >/dev/null 2>&1 && break || sleep 3; done
-        zap-baseline.py -t ${BENCH_BASE_URL} -m 2
+        # Absolute path: the `bash -lc` login shell re-sources /etc/profile and drops /zap/ from PATH,
+        # so the bare `zap-baseline.py` is not found (exits 127). /zap/zap-baseline.py always resolves.
+        /zap/zap-baseline.py -t ${BENCH_BASE_URL} -m 2
         echo $$? > /zap/wrk/zap.exit
     restart: "no"
 
@@ -71,10 +79,17 @@ services:
       BENCH_INGEST_DIR: /shared
       BENCH_K6_SCRIPT: /work/k6/script.js
       BENCH_OPENAPI_PATH: ${BENCH_OPENAPI_PATH}
+      # The submission's integration tests use Testcontainers; without a Docker socket they cannot start
+      # their Postgres/Kafka and their coverage report comes out EMPTY (which used to zero the coverage
+      # score of a well-tested project). Mount the host socket and tell Testcontainers how to reach the
+      # sibling containers it launches (Docker-outside-of-Docker on Docker Desktop).
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+      TESTCONTAINERS_RYUK_DISABLED: "true"
     volumes:
       - ../../submissions/${TARGET}:/target:rw   # rw so `dotnet test/restore` can write bin/obj
       - ./results:/results:rw
       - ./shared:/shared:rw
       - ./k6:/work/k6:ro
+      - /var/run/docker.sock:/var/run/docker.sock   # so the submission's Testcontainers integration tests run (real coverage)
     command: ["/target", "--deep", "--ingest", "/shared", "--output", "/results"]
     restart: "no"

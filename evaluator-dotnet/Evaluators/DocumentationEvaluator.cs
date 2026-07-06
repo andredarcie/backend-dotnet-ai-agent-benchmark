@@ -40,13 +40,25 @@ public sealed class DocumentationEvaluator : CategoryEvaluatorBase
         r.Metrics.Add(Bool("doc-comments", xmlDoc, "doc comments / XML docs", weight: 0.5));
 
         // Real tools.
+        // markdownlint with a consistent, deliberately lenient benchmark ruleset (below): scores real
+        // README problems (broken tables, unclosed fences, heading order), NOT cosmetic column discipline
+        // that PROMPT.md never asks for. A Node runtime crash is Indeterminate, not "violations".
         if (readmeFile != null)
-            RunTool(ctx, r, "markdownlint", $"\"{readmeFile}\"", "markdownlint", "README passes markdownlint",
-                o => o.Success ? Pass("markdownlint", "clean", "README passes markdownlint", weight: 0.5)
+        {
+            var cfg = MarkdownlintConfigPath();
+            var cfgArg = cfg != null ? $"-c \"{cfg}\" " : "";
+            RunTool(ctx, r, "markdownlint", $"{cfgArg}\"{readmeFile}\"", "markdownlint", "README passes markdownlint",
+                o => CouldNotRun(o, "SyntaxError", "node:internal", "Cannot find module", "internal/modules")
+                        ? Unknown("markdownlint", "README passes markdownlint", "markdownlint could not run (runtime error) — not scored", 0.5)
+                   : o.Success ? Pass("markdownlint", "clean", "README passes markdownlint", weight: 0.5)
                                : Partial("markdownlint", "violations", "README passes markdownlint", weight: 0.5), weight: 0.5);
+        }
 
+        // lychee: exclude loopback/localhost — a README documenting the service's own local endpoints
+        // (http://localhost:8080/health, /swagger, …) is correct docs, not a broken link; those hosts are
+        // simply not listening during the lint phase.
         if (ctx.Options.Deep && readmeFile != null)
-            RunTool(ctx, r, "lychee", $"--no-progress \"{readmeFile}\"", "links", "no broken links (lychee)",
+            RunTool(ctx, r, "lychee", $"--no-progress --exclude-loopback --exclude localhost \"{readmeFile}\"", "links", "no broken links (lychee)",
                 o => o.Success ? Pass("links", "no broken links", "no broken links (lychee)", weight: 0.5)
                                : Partial("links", "broken link(s)", "no broken links (lychee)", weight: 0.5), weight: 0.5);
 
@@ -55,4 +67,22 @@ public sealed class DocumentationEvaluator : CategoryEvaluatorBase
     }
 
     private static string? SafeRead(string path) { try { return File.ReadAllText(path); } catch { return null; } }
+
+    /// <summary>
+    /// Writes the benchmark's markdownlint ruleset to a temp file and returns its path (or null on failure).
+    /// Disables the purely cosmetic rules — MD013 (line length) and MD034 (bare URLs: a README legitimately
+    /// shows endpoint URLs like http://localhost:8080/swagger) — while <c>"default": true</c> keeps every
+    /// structural rule on. Passing this with <c>-c</c> lints every submission identically and stops a
+    /// submission from shipping its own all-disabling config to game the check.
+    /// </summary>
+    private static string? MarkdownlintConfigPath()
+    {
+        try
+        {
+            var path = Path.Combine(Path.GetTempPath(), "bench-markdownlint.json");
+            File.WriteAllText(path, "{ \"default\": true, \"MD013\": false, \"MD034\": false }");
+            return path;
+        }
+        catch { return null; }
+    }
 }

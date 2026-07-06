@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text.RegularExpressions;
 using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
@@ -58,27 +56,26 @@ public sealed class TestsEvaluator : CategoryEvaluatorBase
             {
                 // Coverlet writes coverage.cobertura.xml under TestResults/ DURING the run — a directory the
                 // inspector's startup snapshot excludes (IgnoreDirs) — so search the live filesystem here,
-                // not the snapshot, or the freshly-produced report would never be found.
-                string? cobertura;
-                try
-                {
-                    cobertura = Directory.EnumerateFiles(p.Root, "coverage.cobertura.xml", SearchOption.AllDirectories)
-                        .OrderByDescending(File.GetLastWriteTimeUtc).FirstOrDefault();
-                }
-                catch { cobertura = null; }
-                if (cobertura == null)
+                // not the snapshot, or the freshly-produced report would never be found. There is ONE report
+                // PER TEST PROJECT (unit vs integration cover different assemblies), so MERGE them (union of
+                // covered lines) instead of reading a single file: reading only one silently understates —
+                // or, if that suite could not run, zeroes — the real coverage.
+                List<string> reports;
+                try { reports = Directory.EnumerateFiles(p.Root, "coverage.cobertura.xml", SearchOption.AllDirectories).ToList(); }
+                catch { reports = new List<string>(); }
+                if (reports.Count == 0)
                     r.Metrics.Add(Unknown("coverage", "line coverage >=80%", "no coverage.cobertura.xml produced", 2));
                 else
                 {
-                    MetricResult metric = Unknown("coverage", "line coverage >=80%", "could not read cobertura line-rate", 2);
-                    try
+                    var merged = CoberturaCoverage.Merge(reports);
+                    if (!merged.Any)
+                        r.Metrics.Add(Unknown("coverage", "line coverage >=80%", "coverage reports had no measurable lines", 2));
+                    else
                     {
-                        var m = Regex.Match(File.ReadAllText(cobertura), "line-rate=\"([0-9.]+)\"");
-                        if (m.Success && double.TryParse(m.Groups[1].Value, CultureInfo.InvariantCulture, out var rate))
-                            metric = Grade("coverage", rate >= 0.8 ? 1 : rate >= 0.5 ? 0.5 : 0, $"{rate:P0}", "line coverage >=80%", weight: 2);
+                        double rate = merged.LineRate;
+                        r.Metrics.Add(Grade("coverage", rate >= 0.8 ? 1 : rate >= 0.5 ? 0.5 : 0,
+                            $"{rate:P0} ({merged.Reports} report(s) merged)", "line coverage >=80%", weight: 2));
                     }
-                    catch { }
-                    r.Metrics.Add(metric);
                 }
             }
         }

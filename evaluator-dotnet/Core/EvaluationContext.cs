@@ -36,6 +36,18 @@ public sealed class EvaluationContext
         if (_dotnetTestRan) return _dotnetTest;
         _dotnetTestRan = true;
         if (!Tools.IsAvailable("dotnet")) return _dotnetTest = null;
+
+        // Delete any PRE-EXISTING coverage reports (stale from an earlier run, or committed into the
+        // submission) before testing, so the coverage merge in TestsEvaluator counts ONLY reports this run
+        // produces. Otherwise a leftover — or a hand-committed cobertura.xml — would inflate or outright game
+        // the coverage figure.
+        try
+        {
+            foreach (var stale in Directory.EnumerateFiles(Project.Root, "coverage.cobertura.xml", SearchOption.AllDirectories))
+                try { File.Delete(stale); } catch { /* best-effort */ }
+        }
+        catch { /* best-effort */ }
+
         Log("    running dotnet test (shared) ...");
         string args = SolutionPath != null
             ? $"test \"{SolutionPath}\" --nologo --collect:\"XPlat Code Coverage\" --verbosity quiet"

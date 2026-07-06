@@ -44,15 +44,27 @@ public sealed class FunctionalCorrectnessEvaluator : CategoryEvaluatorBase
             r.Notes.Add("Live contract oracle could not resolve the credit-cards/transactions routes; correctness measured statically only.");
         }
 
-        // Fuzz the API against its own OpenAPI as a complementary check (catches schema drift).
+        // Fuzz the API against its own OpenAPI as a complementary check (catches schema drift). The spec
+        // path is AUTO-DISCOVERED (ASP.NET Core's native OpenAPI serves /openapi/v1.json, Swashbuckle
+        // serves /swagger/v1/swagger.json) instead of hard-coding one path that 404s for half the stacks.
+        // schemathesis v4 is used because v3 cannot even parse OpenAPI 3.1 (what .NET emits) — it collects
+        // 0 operations and reports an empty suite, which must never be read as "the API has violations".
         if (!string.IsNullOrEmpty(ctx.Options.BaseUrl))
         {
-            var spec = ctx.Options.BaseUrl.TrimEnd('/') + (Environment.GetEnvironmentVariable("BENCH_OPENAPI_PATH") ?? "/swagger/v1/swagger.json");
-            RunTool(ctx, r, "schemathesis", $"run \"{spec}\" --checks all --hypothesis-max-examples=20", "schemathesis",
-                "API conforms to its OpenAPI contract (Schemathesis)",
-                o => o.Success ? Pass("schemathesis", "conforms", "API conforms to its OpenAPI contract (Schemathesis)", weight: 1)
-                               : Fail("schemathesis", "violations found", "API conforms to its OpenAPI contract (Schemathesis)", weight: 1),
-                weight: 1, timeoutMs: 240_000);
+            var spec = OpenApiProbe.Discover(ctx.Options.BaseUrl)?.Url;
+            if (spec == null)
+                r.Metrics.Add(Unknown("schemathesis", "API conforms to its OpenAPI contract (Schemathesis)",
+                    "no OpenAPI document served (tried /openapi/v1.json, /swagger/v1/swagger.json, …) — not scored", 1));
+            else
+                RunTool(ctx, r, "schemathesis", $"run \"{spec}\" --checks all -n 20", "schemathesis",
+                    "API conforms to its OpenAPI contract (Schemathesis)",
+                    o => CouldNotRun(o, "Schema Loading Error", "Empty test suite", "No checks were performed",
+                                        "Collected API operations: 0", "No such option", "is not one of", "not fully supported")
+                            ? Unknown("schemathesis", "API conforms to its OpenAPI contract (Schemathesis)",
+                                      "schemathesis could not load/collect the OpenAPI schema — not scored", 1)
+                       : o.Success ? Pass("schemathesis", "conforms", "API conforms to its OpenAPI contract (Schemathesis)", weight: 1)
+                                   : Fail("schemathesis", "violations found", "API conforms to its OpenAPI contract (Schemathesis)", weight: 1),
+                    weight: 1, timeoutMs: 240_000);
         }
 
         // Real tool: run the shared suite once (see EvaluationContext.RunDotnetTestOnce, collected with

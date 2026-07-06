@@ -36,6 +36,16 @@ public abstract class CategoryEvaluatorBase : ICategoryEvaluator
          : Fail(name, observed, target, note, weight);
 
     /// <summary>
+    /// True when a tool ran but its output shows it could not actually perform its check — a schema-load
+    /// error, a runtime/interpreter crash, an unrecognized-flag error, an empty/uncollected test suite —
+    /// as opposed to legitimately reporting a violation. Such a result MUST become Indeterminate (excluded
+    /// from the score), never a Fail/Partial: a broken or misconfigured tool is not a defect of the
+    /// submission. Callers pass the substrings that identify "the tool never really ran" for that tool.
+    /// </summary>
+    protected static bool CouldNotRun(ToolOutcome o, params string[] signatures)
+        => signatures.Any(s => o.Combined.Contains(s, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
     /// Runs a local support tool when it is installed and turns the result into a metric; when the
     /// tool is missing, records an Indeterminate metric (excluded from the score) plus an install hint,
     /// so the report shows the tool is wired but not present. Returns whether the tool ran.

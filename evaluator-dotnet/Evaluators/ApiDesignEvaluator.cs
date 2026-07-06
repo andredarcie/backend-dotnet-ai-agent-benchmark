@@ -45,6 +45,22 @@ public sealed class ApiDesignEvaluator : CategoryEvaluatorBase
             foreach (var check in contract.Checks.Where(c => c.Area == BackendEvaluator.Core.ContractArea.RestDesign))
                 r.Metrics.Add(check.ToMetric());
 
+        // The served OpenAPI document must actually DOCUMENT the API. The static `openapi` metric above
+        // only proves the middleware is wired; a doc that is served but declares zero operations
+        // (e.g. AddOpenApi() failing to discover the controllers -> "paths": {}) is an empty, useless
+        // contract — a real API-design defect that presence-detection alone silently passes.
+        if (!string.IsNullOrEmpty(ctx.Options.BaseUrl))
+        {
+            var doc = OpenApiProbe.Discover(ctx.Options.BaseUrl);
+            if (doc == null)
+                r.Metrics.Add(Unknown("openapi-populated", "served OpenAPI documents its operations", "no OpenAPI document served — not scored"));
+            else if (doc.Operations > 0)
+                r.Metrics.Add(Pass("openapi-populated", $"{doc.Operations} operation(s) across {doc.Paths} path(s)", "served OpenAPI documents its operations"));
+            else
+                r.Metrics.Add(Fail("openapi-populated", "0 operations (empty paths)", "served OpenAPI documents its operations",
+                    "the OpenAPI document is served but declares no endpoints — an empty contract"));
+        }
+
         // Real tools on a spec file, when one is present.
         var spec = p.FindByNamePattern(@"^(openapi|swagger)\.(json|ya?ml)$").FirstOrDefault();
         if (spec != null)

@@ -104,7 +104,8 @@ bare comment still counts as swallowing); no dead code or `TODO`/`FIXME`; analyz
 
 **REST API design** — correct verbs and status codes; return errors as **RFC 9457 Problem Details**
 (`application/problem+json`); use **DTOs** in and out (never expose EF entities); paginate collections;
-expose **OpenAPI/Swagger**; version the API.
+expose **OpenAPI/Swagger** whose document actually **describes every endpoint** (a served-but-empty spec
+does not count); version the API.
 
 **Persistence** — **EF Core migrations** (not `EnsureCreated`); FK constraints and **indexes** on FK /
 filter columns; concurrency control (e.g. rowversion); `AsNoTracking` on read paths; no N+1 queries.
@@ -124,9 +125,9 @@ readiness** health checks; retries / timeouts / circuit breakers on Kafka and th
 graceful shutdown.
 
 **Testing** — xUnit or NUnit; **unit** tests for business rules plus **integration** tests (e.g.
-Testcontainers) in a healthy pyramid; collect coverage (**Coverlet**); cover the endpoints with
-**black-box/acceptance tests** that prove the rules hold (FK exists, `amount > 0`, required fields).
-Mutation testing (**Stryker.NET**) is **optional**.
+Testcontainers) in a healthy pyramid; collect coverage (**Coverlet**) and aim for **≥80% line coverage**;
+cover the endpoints with **black-box/acceptance tests** that prove the rules hold (FK exists, `amount > 0`,
+required fields). Mutation testing (**Stryker.NET**) is **optional**.
 
 **Observability** — **OpenTelemetry** (traces / metrics / logs); **structured** JSON logs; a request /
 correlation id propagated end to end; a `/health` and a `/metrics` endpoint.

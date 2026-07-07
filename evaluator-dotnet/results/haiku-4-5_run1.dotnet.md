@@ -2,8 +2,8 @@
 
 - **Date (UTC):** 2026-07-06 22:26:12Z
 - **Mode:** deep
-- **Weighted final score:** 1.00/5
-- **⚠️ Score capped:** capped at 1.0/5 — source does not compile (dotnet build failed)
+- **Weighted final score:** 0.50/5
+- **⚠️ Score capped:** capped at 0.5/5 — source does not compile (dotnet build failed)
 - **Coverage:** 100 % of categories
 - **Executable:** build = **NO** · boot (/health) = n/a
 - **Local tools detected:** dotnet, spectral, semgrep, trivy, gitleaks, sqlfluff, hadolint, markdownlint, lychee, k6, dotnet-outdated, swagger-cli

@@ -28,8 +28,12 @@ public static class Scoring
     // attributes") only show it LOOKS right. So a deep run that never booted has demonstrated nothing —
     // and, because unmeasured metrics are excluded (not failed), it would otherwise keep a near-perfect
     // static score. We refuse to certify that: no live boot ⇒ a grave cap.
-    public const double BuildFailCap = 1.0;         // dotnet build failed: source does not compile
-    public const double NoRunnableSystemCap = 1.0;  // no docker-compose.yml at all: no runnable system was delivered
+    // The caps form a monotonic severity gradient keyed on how far the submission got: the less it ran,
+    // the harder the cap. Whoever doesn't even compile is punished the most, because they demonstrated the
+    // least — didn't even produce buildable code < compiled but shipped no runnable system < ran but never
+    // became healthy.
+    public const double BuildFailCap = 0.5;         // dotnet build failed: source does not compile — the gravest failure
+    public const double NoRunnableSystemCap = 1.0;  // compiles but no docker-compose.yml: no runnable system was delivered
     public const double BootFailCap = 1.5;          // has a compose but never became healthy / was never verified running
 
     /// <summary>

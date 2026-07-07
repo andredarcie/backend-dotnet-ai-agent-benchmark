@@ -768,8 +768,8 @@
       "IndeterminateCount": 0
     }
   ],
-  "WeightedScore": 1,
+  "WeightedScore": 0.5,
   "Coverage": 1,
   "Builds": false,
-  "ScoreCapReason": "capped at 1.0/5 \u2014 source does not compile (dotnet build failed)"
+  "ScoreCapReason": "capped at 0.5/5 \u2014 source does not compile (dotnet build failed)"
 }

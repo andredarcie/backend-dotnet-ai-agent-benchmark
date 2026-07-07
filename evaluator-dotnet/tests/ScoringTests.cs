@@ -68,11 +68,12 @@ public class ScoringTests
     }
 
     [Fact]
-    public void CapForExecutability_caps_at_1_when_build_fails()
+    public void CapForExecutability_caps_at_0_5_when_build_fails()
     {
-        // build failure caps regardless of mode
+        // build failure is the gravest cap (0.5) and applies regardless of mode: whoever doesn't even
+        // compile is punished the most.
         var (s, reason) = Scoring.CapForExecutability(4.8, builds: false, boots: true, deep: true, hasRunnableSystem: true);
-        Assert.Equal(1.0, s);
+        Assert.Equal(0.5, s);
         Assert.NotNull(reason);
     }
 
@@ -98,7 +99,8 @@ public class ScoringTests
     [Fact]
     public void CapForExecutability_caps_at_1_when_no_runnable_system()
     {
-        // no docker-compose.yml at all ⇒ no runnable system delivered ⇒ as grave as not compiling (1.0)
+        // no docker-compose.yml at all ⇒ no runnable system delivered ⇒ capped at 1.0 (worse than a
+        // boot-fail, but not as grave as source that doesn't even compile)
         var (s, reason) = Scoring.CapForExecutability(4.27, builds: true, boots: null, deep: true, hasRunnableSystem: false);
         Assert.Equal(1.0, s);
         Assert.NotNull(reason);
@@ -108,14 +110,14 @@ public class ScoringTests
     public void CapForExecutability_build_failure_takes_precedence_over_boot()
     {
         var (s, _) = Scoring.CapForExecutability(4.8, builds: false, boots: false, deep: true, hasRunnableSystem: true);
-        Assert.Equal(1.0, s);
+        Assert.Equal(0.5, s);
     }
 
     [Fact]
     public void CapForExecutability_never_raises_an_already_lower_score_but_still_flags()
     {
-        var (s, reason) = Scoring.CapForExecutability(0.7, builds: false, boots: true, deep: true, hasRunnableSystem: true);
-        Assert.Equal(0.7, s);
+        var (s, reason) = Scoring.CapForExecutability(0.3, builds: false, boots: true, deep: true, hasRunnableSystem: true);
+        Assert.Equal(0.3, s);
         Assert.NotNull(reason);
     }
 

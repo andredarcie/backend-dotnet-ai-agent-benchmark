@@ -2,7 +2,7 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 9 — Tests (🟢 full-auto, enabler).
+/// <summary>Category 9 — Tests (🟢 deterministic, enabler).
 /// Tools: dotnet test + Coverlet (XPlat Code Coverage) for real line coverage; Stryker.NET for mutation.
 /// Roslyn/packages detect the framework and the pyramid shape.</summary>
 public sealed class TestsEvaluator : CategoryEvaluatorBase

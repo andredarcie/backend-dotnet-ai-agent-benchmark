@@ -11,7 +11,6 @@ public sealed class CategoryResult
     public List<string> Notes { get; } = new();
     public List<string> MissingTools { get; } = new();
 
-    public bool RequiresHumanReview => Automation != AutomationLevel.FullAuto;
     public string Badge => Automation.Badge();
 
     /// <summary>0..5, or null when nothing could be measured (all metrics indeterminate / no tools).</summary>

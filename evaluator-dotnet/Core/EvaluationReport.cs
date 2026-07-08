@@ -23,10 +23,4 @@ public sealed class EvaluationReport
 
     /// <summary>Set when the score was capped because the submission doesn't build/boot.</summary>
     public string? ScoreCapReason { get; set; }
-
-    /// <summary>Penalty (0..5 points) subtracted because the run needed a minimal build/boot patch.</summary>
-    public double? PatchPenalty { get; set; }
-
-    /// <summary>Why the run was patched (from the submission's bench-patch.json marker).</summary>
-    public string? PatchReason { get; set; }
 }

@@ -165,14 +165,9 @@ public static class Runner
             report.WeightedScore, report.Builds, report.Boots, deep, hasRunnableSystem);
         if (report.ScoreCapReason != null) Console.WriteLine($"  {report.ScoreCapReason}");
 
-        // A run minimally patched to build/boot is graded on its merits, then docked (bench-patch.json).
-        if (ReadPatchMarker(targetPath) is { } patch)
-        {
-            report.PatchPenalty = patch.points;
-            report.PatchReason = patch.reason;
-            report.WeightedScore = Scoring.ApplyPatchPenalty(report.WeightedScore, patch.points);
-            Console.WriteLine($"  patch penalty: -{patch.points:0.0} ({patch.reason})");
-        }
+        // Fully automated, no human in the loop: a submission is scored exactly as the model produced it.
+        // There is no patching step — a build/boot blocker is handled by the deterministic executability
+        // gate above (CapForExecutability), never by a hand-authored fix.
 
         ConsoleReporter.Print(report, Console.WriteLine);
 
@@ -310,22 +305,6 @@ public static class Runner
         return i < 0 ? (norm, "run1") : (norm[..i], norm[(i + 1)..]);
     }
 
-    /// <summary>Reads a submission's bench-patch.json marker: {"points": &lt;0..5&gt;, "reason": "..."}.</summary>
-    private static (double points, string reason)? ReadPatchMarker(string targetPath)
-    {
-        var file = Path.Combine(targetPath, "bench-patch.json");
-        if (!File.Exists(file)) return null;
-        try
-        {
-            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(file));
-            var root = doc.RootElement;
-            double points = root.TryGetProperty("points", out var p) && p.ValueKind == System.Text.Json.JsonValueKind.Number ? p.GetDouble() : 0;
-            string reason = root.TryGetProperty("reason", out var r) && r.ValueKind == System.Text.Json.JsonValueKind.String ? r.GetString() ?? "" : "minimal build/boot patch";
-            return points > 0 ? (points, reason) : null;
-        }
-        catch { return null; }
-    }
-
     private static IEnumerable<string> DetectTools(ToolRunner tools)
     {
         foreach (var tool in ToolCatalog.Tools.Keys)
@@ -417,7 +396,7 @@ public static class Runner
           -h, --help            Show this help.
 
         Output: console report + <target>.dotnet.json + <target>.dotnet.md
-        Automation legend: full-auto (green) | semi/oracle (yellow) | proxy+review (orange).
+        Measurement legend (all 100% automated): deterministic (green) | oracle (yellow) | proxy (orange).
         """);
     }
 }

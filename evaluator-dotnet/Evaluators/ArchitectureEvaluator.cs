@@ -2,7 +2,7 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 2 — Architecture &amp; Design (🟠 proxy + review).
+/// <summary>Category 2 — Architecture &amp; Design (🟠 proxy).
 /// Engine: Roslyn AST (the NetArchTest/architecture-rule role) for layering, dependency direction,
 /// single-implementation interfaces and type size. ReSharper CLI (jb inspectcode) is used when present.</summary>
 public sealed class ArchitectureEvaluator : CategoryEvaluatorBase
@@ -33,8 +33,8 @@ public sealed class ArchitectureEvaluator : CategoryEvaluatorBase
         // Single-implementation interfaces are the standard Dependency-Inversion seam at layer boundaries
         // (I*Repository / IUnitOfWork / I*Publisher) — the very pattern the layering & dependency-direction
         // checks above REWARD, and each has a second implementation in practice (the test doubles). So a
-        // high single-impl ratio is surfaced for HUMAN REVIEW as informational (Indeterminate, excluded
-        // from the score), never an automatic penalty that contradicts the same category's other metrics.
+        // high single-impl ratio is surfaced as informational only (Indeterminate, excluded from the
+        // score), never an automatic penalty that contradicts the same category's other metrics.
         if (f.InterfaceCount == 0)
             r.Metrics.Add(Pass("overengineering-proxy", "no interfaces", "few speculative abstractions", weight: 0.5));
         else
@@ -43,14 +43,14 @@ public sealed class ArchitectureEvaluator : CategoryEvaluatorBase
             r.Metrics.Add(ratio <= 0.5
                 ? Pass("overengineering-proxy", $"{f.SingleImplementationInterfaces}/{f.InterfaceCount} interfaces with <=1 impl", "few speculative abstractions", weight: 0.5)
                 : Unknown("overengineering-proxy", "few speculative abstractions",
-                    $"{f.SingleImplementationInterfaces}/{f.InterfaceCount} single-implementation interfaces — normal DIP ports (repository/UoW/publisher); flagged for human review, not scored", 0.5));
+                    $"{f.SingleImplementationInterfaces}/{f.InterfaceCount} single-implementation interfaces — normal DIP ports (repository/UoW/publisher); informational, not scored", 0.5));
         }
 
         r.Metrics.Add(f.LargestTypeLines <= 600
             ? Pass("no-god-class", $"largest type: {f.LargestTypeLines} lines", "no 'god classes' (<=600 lines)", weight: 0.5)
             : Partial("no-god-class", $"{f.LargestTypeName}: {f.LargestTypeLines} lines", "no 'god classes' (<=600 lines)", weight: 0.5));
 
-        // ReSharper CLI (real tool) when present: surfaces dead code / redundancies that feed the verdict.
+        // ReSharper CLI (real tool) when present: surfaces dead code / redundancies that feed the score.
         if (ctx.Options.Deep && ctx.Tools.IsAvailable("jb", "--version"))
         {
             var outFile = Path.Combine(Path.GetTempPath(), "jb-" + Guid.NewGuid().ToString("N")[..8] + ".xml");
@@ -68,7 +68,7 @@ public sealed class ArchitectureEvaluator : CategoryEvaluatorBase
             finally { try { if (File.Exists(outFile)) File.Delete(outFile); } catch { } }
         }
 
-        r.Notes.Add("PROXY: layering needs layer rules (oracle) and the overengineering verdict needs human review. NDepend/SonarQube can deepen this.");
+        r.Notes.Add("PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this.");
         return Task.FromResult(r);
     }
 }

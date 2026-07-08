@@ -2,7 +2,7 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 5 — Persistence &amp; Database (🟠 proxy + review).
+/// <summary>Category 5 — Persistence &amp; Database (🟠 proxy).
 /// Tools: sqlfluff (SQL lint). Roslyn detects migrations vs EnsureCreated, FK/relationships, indexes,
 /// concurrency tokens and AsNoTracking. EXPLAIN/SchemaCrawler need a live DB (--deep).</summary>
 public sealed class PersistenceEvaluator : CategoryEvaluatorBase
@@ -38,7 +38,7 @@ public sealed class PersistenceEvaluator : CategoryEvaluatorBase
                                : Partial("sqlfluff", "violations found", "SQL with no violations (sqlfluff)", weight: 0.5), weight: 0.5);
 
         if (ctx.Options.Deep && !ctx.Tools.IsAvailable("schemacrawler")) r.MissingTools.Add("schemacrawler");
-        r.Notes.Add("PROXY: 3NF / justified denormalization need functional-dependency analysis (human review). N+1, seq scans and EXPLAIN need a live DB (--deep + container, e.g. via pg_stat_statements/HypoPG).");
+        r.Notes.Add("PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN).");
         return Task.FromResult(r);
     }
 }

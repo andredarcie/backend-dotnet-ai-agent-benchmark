@@ -2,7 +2,7 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 10 — Observability (🟢 full-auto, enabler).
+/// <summary>Category 10 — Observability (🟢 deterministic, enabler).
 /// Roslyn/packages detect OpenTelemetry, structured logging, the metrics endpoint, correlation and
 /// health wiring. Live scraping (Prometheus / OTel Collector) needs the app running (--deep).</summary>
 public sealed class ObservabilityEvaluator : CategoryEvaluatorBase

@@ -45,19 +45,4 @@ public class LeaderboardTests
         var rows = Leaderboard.Aggregate(new[] { new RunScore("_baseline/reference", "run1", 5.0) });
         Assert.True(rows[0].IsBaseline);
     }
-
-    [Theory]
-    [InlineData(4.7, 0.4, 4.3)]
-    [InlineData(0.2, 0.4, 0.0)]   // clamps at 0
-    [InlineData(5.0, 0.0, 5.0)]
-    public void ApplyPatchPenalty_subtracts_and_clamps(double score, double penalty, double expected)
-    {
-        Assert.Equal(expected, Scoring.ApplyPatchPenalty(score, penalty));
-    }
-
-    [Fact]
-    public void ApplyPatchPenalty_passes_null_through()
-    {
-        Assert.Null(Scoring.ApplyPatchPenalty(null, 0.4));
-    }
 }

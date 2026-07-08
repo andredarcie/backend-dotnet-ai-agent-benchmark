@@ -12,9 +12,9 @@ public static class AutomationLevelExtensions
 
     public static string Label(this AutomationLevel a) => a switch
     {
-        AutomationLevel.FullAuto => "full-auto",
-        AutomationLevel.SemiOracle => "semi (oracle 1x)",
-        AutomationLevel.ProxyReview => "proxy + review",
+        AutomationLevel.FullAuto => "deterministic",
+        AutomationLevel.SemiOracle => "oracle",
+        AutomationLevel.ProxyReview => "proxy",
         _ => "?",
     };
 }

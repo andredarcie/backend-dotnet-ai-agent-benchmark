@@ -9,25 +9,25 @@
 
 ## Summary
 
-| # | Category | Auto | Score | Weight | Review |
-|---|----------|------|-------|--------|--------|
-| 1 | Functional Suitability / Correctness | 🟡 | 4.8/5 | 12% | yes |
-| 2 | Architecture & Design | 🟠 | 5.0/5 | 10% | yes |
-| 3 | Code Quality | 🟢 | 5.0/5 | 8% | — |
-| 4 | REST API Design | 🟡 | 5.0/5 | 11% | yes |
-| 5 | Persistence & Database | 🟠 | 5.0/5 | 10% | yes |
-| 6 | Messaging | 🟢 | 5.0/5 | 11% | — |
-| 7 | Security | 🟠 | 4.1/5 | 12% | yes |
-| 8 | Resilience & Error Handling | 🟢 | 5.0/5 | 8% | — |
-| 9 | Tests (enabler) | 🟢 | 2.5/5 | 8% | — |
-| 10 | Observability (enabler) | 🟢 | 5.0/5 | 4% | — |
-| 11 | Performance & Scalability | 🟡 | 5.0/5 | 3% | yes |
-| 12 | Portability, Configuration & Deploy | 🟢 | 5.0/5 | 2% | — |
-| 13 | Documentation | 🟠 | 4.7/5 | 1% | yes |
+| # | Category | Measure | Score | Weight |
+|---|----------|---------|-------|--------|
+| 1 | Functional Suitability / Correctness | 🟡 | 4.8/5 | 12% |
+| 2 | Architecture & Design | 🟠 | 5.0/5 | 10% |
+| 3 | Code Quality | 🟢 | 5.0/5 | 8% |
+| 4 | REST API Design | 🟡 | 5.0/5 | 11% |
+| 5 | Persistence & Database | 🟠 | 5.0/5 | 10% |
+| 6 | Messaging | 🟢 | 5.0/5 | 11% |
+| 7 | Security | 🟠 | 4.1/5 | 12% |
+| 8 | Resilience & Error Handling | 🟢 | 5.0/5 | 8% |
+| 9 | Tests (enabler) | 🟢 | 2.5/5 | 8% |
+| 10 | Observability (enabler) | 🟢 | 5.0/5 | 4% |
+| 11 | Performance & Scalability | 🟡 | 5.0/5 | 3% |
+| 12 | Portability, Configuration & Deploy | 🟢 | 5.0/5 | 2% |
+| 13 | Documentation | 🟠 | 4.7/5 | 1% |
 
 ## 1. Functional Suitability / Correctness 🟡
 
-**Score:** 4.8/5 · **Weight:** 12% · **Automation:** semi (oracle 1x)
+**Score:** 4.8/5 · **Weight:** 12% · **Automation:** oracle
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -65,21 +65,21 @@
 
 ## 2. Architecture & Design 🟠
 
-**Score:** 5.0/5 · **Weight:** 10% · **Automation:** proxy + review
+**Score:** 5.0/5 · **Weight:** 10% · **Automation:** proxy
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
 | ✅ | layering | yes | layer separation (domain/infra/presentation) |
 | ✅ | application-layer | yes | application/use-case layer present |
 | ✅ | dependency-direction | 0 leaks | domain does not reference infrastructure (Roslyn usings) |
-| ❔ | overengineering-proxy | indeterminate<br/>_2/3 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); flagged for human review, not scored_ | few speculative abstractions |
+| ❔ | overengineering-proxy | indeterminate<br/>_2/3 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); informational, not scored_ | few speculative abstractions |
 | ✅ | no-god-class | largest type: 163 lines | no 'god classes' (<=600 lines) |
 
-> ℹ️ PROXY: layering needs layer rules (oracle) and the overengineering verdict needs human review. NDepend/SonarQube can deepen this.
+> ℹ️ PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this.
 
 ## 3. Code Quality 🟢
 
-**Score:** 5.0/5 · **Weight:** 8% · **Automation:** full-auto
+**Score:** 5.0/5 · **Weight:** 8% · **Automation:** deterministic
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -92,7 +92,7 @@
 
 ## 4. REST API Design 🟡
 
-**Score:** 5.0/5 · **Weight:** 11% · **Automation:** semi (oracle 1x)
+**Score:** 5.0/5 · **Weight:** 11% · **Automation:** oracle
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -113,7 +113,7 @@
 
 ## 5. Persistence & Database 🟠
 
-**Score:** 5.0/5 · **Weight:** 10% · **Automation:** proxy + review
+**Score:** 5.0/5 · **Weight:** 10% · **Automation:** proxy
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -123,12 +123,12 @@
 | ✅ | concurrency | yes | concurrency control (optimistic) |
 | ✅ | read-perf | yes | AsNoTracking on reads (efficiency proxy) |
 
-> ℹ️ PROXY: 3NF / justified denormalization need functional-dependency analysis (human review). N+1, seq scans and EXPLAIN need a live DB (--deep + container, e.g. via pg_stat_statements/HypoPG).
+> ℹ️ PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN).
 > ⚠️ Missing tools: schemacrawler
 
 ## 6. Messaging 🟢
 
-**Score:** 5.0/5 · **Weight:** 11% · **Automation:** full-auto
+**Score:** 5.0/5 · **Weight:** 11% · **Automation:** deterministic
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -145,7 +145,7 @@
 
 ## 7. Security 🟠
 
-**Score:** 4.1/5 · **Weight:** 12% · **Automation:** proxy + review
+**Score:** 4.1/5 · **Weight:** 12% · **Automation:** proxy
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -161,11 +161,11 @@
 | ✅ | sast | clean | no SAST findings (Semgrep) |
 | 🟨 | dast-zap | warnings<br/>_review ZAP warnings_ | OWASP ZAP baseline clean |
 
-> ℹ️ PROXY: SAST/DAST findings need false-positive triage and the BOLA test needs an oracle scenario (user A vs resource of B). Final verdict = human review.
+> ℹ️ PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep.
 
 ## 8. Resilience & Error Handling 🟢
 
-**Score:** 5.0/5 · **Weight:** 8% · **Automation:** full-auto
+**Score:** 5.0/5 · **Weight:** 8% · **Automation:** deterministic
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -181,7 +181,7 @@
 
 ## 9. Tests (enabler) 🟢
 
-**Score:** 2.5/5 · **Weight:** 8% · **Automation:** full-auto
+**Score:** 2.5/5 · **Weight:** 8% · **Automation:** deterministic
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -194,7 +194,7 @@
 
 ## 10. Observability (enabler) 🟢
 
-**Score:** 5.0/5 · **Weight:** 4% · **Automation:** full-auto
+**Score:** 5.0/5 · **Weight:** 4% · **Automation:** deterministic
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -209,7 +209,7 @@
 
 ## 11. Performance & Scalability 🟡
 
-**Score:** 5.0/5 · **Weight:** 3% · **Automation:** semi (oracle 1x)
+**Score:** 5.0/5 · **Weight:** 3% · **Automation:** oracle
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -223,7 +223,7 @@
 
 ## 12. Portability, Configuration & Deploy 🟢
 
-**Score:** 5.0/5 · **Weight:** 2% · **Automation:** full-auto
+**Score:** 5.0/5 · **Weight:** 2% · **Automation:** deterministic
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -239,7 +239,7 @@
 
 ## 13. Documentation 🟠
 
-**Score:** 4.7/5 · **Weight:** 1% · **Automation:** proxy + review
+**Score:** 4.7/5 · **Weight:** 1% · **Automation:** proxy
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -250,5 +250,5 @@
 | 🟨 | markdownlint | violations | README passes markdownlint |
 | ✅ | links | no broken links | no broken links (lychee) |
 
-> ℹ️ PROXY: section/link presence is automatic, but the QUALITY of the prose needs human review.
+> ℹ️ PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically.
 

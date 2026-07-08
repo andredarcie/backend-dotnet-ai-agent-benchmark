@@ -2,7 +2,7 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 6 — Messaging (🟢 full-auto).
+/// <summary>Category 6 — Messaging (🟢 deterministic).
 /// Roslyn detects the client, durable producer, idempotent-consumer/Outbox/DLQ patterns and offset
 /// handling. Integration checks (Testcontainers-Kafka / Schema Registry / Pact) run with --deep.</summary>
 public sealed class MessagingEvaluator : CategoryEvaluatorBase

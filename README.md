@@ -17,23 +17,24 @@ and produces a **weighted 0–5 score**.
 
 | # | Model | Runs | Score (median /5) | Build | Boot |
 |--:|-------|:---:|:---:|:---:|:---:|
-| 1 | `opus-4-8` | 1 | **4.40 / 5** | ✅ | ✅ |
+| 1 | `sonnet-5` | 1 | **4.84 / 5** | ✅ | ✅ |
+| 2 | `fable-5` | 1 | **4.80 / 5** | ✅ | ✅ |
+| 3 | `gpt-5-5` | 1 | **4.66 / 5** | ✅ | ✅ |
+| 4 | `opus-4-8` | 1 | **1.50 / 5** | ✅ | ❌ |
+| 5 | `gemini` | 1 | **1.00 / 5** | ✅ | ❌ |
+| 6 | `haiku-4-5` | 1 | **0.50 / 5** | ❌ | ❌ |
 
-**Per-category — `opus-4-8/run1` (deep):**
+Scores are produced **100% by the `evaluator-dotnet` tool** — no human, no LLM. A submission is graded
+exactly as the model produced it; a build/boot blocker is not patched but capped by the executability
+gate (no compile ≤ 0.5, no runnable system ≤ 1.0, never boots ≤ 1.5). That is why `opus-4-8` lands at
+1.50 (its Dockerfile `COPY`s `CreditCardApi.sln` while the project ships `.slnx`, so the image never
+builds), `gemini` at 1.00 (ships no docker-compose) and `haiku-4-5` at 0.50 (source does not compile).
 
-| # | Category | Auto | /5 | # | Category | Auto | /5 |
-|--:|----------|:--:|:--:|--:|----------|:--:|:--:|
-| 1 | Functional / Correctness | 🟡 | 5.0 | 8 | Resilience & Errors | 🟢 | 5.0 |
-| 2 | Architecture & Design | 🟠 | 5.0 | 9 | Tests | 🟢 | 5.0 |
-| 3 | Code Quality | 🟢 | 3.0 | 10 | Observability | 🟢 | 5.0 |
-| 4 | REST API Design | 🟡 | 4.7 | 11 | Performance | 🟡 | 5.0 |
-| 5 | Persistence & Database | 🟠 | 5.0 | 12 | Portability & Deploy | 🟢 | 5.0 |
-| 6 | Messaging | 🟢 | 5.0 | 13 | Documentation | 🟠 | 4.2 |
-| 7 | Security | 🟠 | 5.0 | | | | |
-
-Badges: 🟢 full-auto · 🟡 semi (oracle) · 🟠 proxy + review.
-**Per-metric analysis, caps and penalties** are in each run's report →
-[`evaluator-dotnet/results/opus-4-8_run1.dotnet.md`](./evaluator-dotnet/results/opus-4-8_run1.dotnet.md).
+Measurement badges (**all 100% automated**, the colour only marks how *directly* a category is measured):
+🟢 deterministic · 🟡 oracle · 🟠 proxy. **Per-category scores, per-metric analysis and the cap reason**
+are in each run's report under
+[`evaluator-dotnet/results/`](./evaluator-dotnet/results/) (e.g. the top run,
+[`sonnet-5_run1.dotnet.md`](./evaluator-dotnet/results/sonnet-5_run1.dotnet.md)).
 
 ## Run it
 

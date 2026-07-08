@@ -82,7 +82,7 @@ window.CONTENT = {
 
       "criteria.eyebrow": "A rubrica",
       "criteria.title": "Os 13 critérios, por peso",
-      "criteria.lede": "Cada categoria vale de 0 a 5 e tem um peso — a barra mostra quanto ela pesa na nota final. A cor marca quanto da avaliação é automática. Clique para abrir a explicação e o diagrama.",
+      "criteria.lede": "Cada categoria vale de 0 a 5 e tem um peso — a barra mostra quanto ela pesa na nota final. A cor marca quão direta é a medição — todas as notas saem 100% da máquina. Clique para abrir a explicação e o diagrama.",
       "criteria.expand": "Abrir explicação",
       "criteria.collapse": "Fechar",
       "criteria.weight": "Peso",
@@ -94,13 +94,13 @@ window.CONTENT = {
       "criteria.sortWeight": "Por peso",
       "criteria.sortOrder": "Por número",
 
-      "auto.FullAuto": "totalmente automático",
-      "auto.SemiOracle": "semi (oráculo)",
-      "auto.ProxyReview": "proxy + revisão",
-      "auto.FullAuto.desc": "A nota sai 100% da máquina, sem julgamento humano.",
-      "auto.SemiOracle.desc": "Automático a cada run depois de definir uma vez o gabarito/limiar (suite de aceitação, status esperados, SLO).",
-      "auto.ProxyReview.desc": "A máquina mede proxies objetivos, mas o veredito final pede revisão humana (triagem de SAST/DAST, 3NF, overengineering, qualidade da prosa).",
-      "auto.legend": "Legenda de automação",
+      "auto.FullAuto": "determinístico",
+      "auto.SemiOracle": "oráculo",
+      "auto.ProxyReview": "proxy",
+      "auto.FullAuto.desc": "Pontuado 100% pela máquina a partir de análise estática — o mesmo código-fonte sempre gera a mesma nota.",
+      "auto.SemiOracle.desc": "Pontuado 100% pela máquina a cada run contra um oráculo/limiar definido uma vez (suite de aceitação, status esperados, SLO).",
+      "auto.ProxyReview.desc": "Pontuado 100% pela máquina a partir de um proxy objetivo (métricas de acoplamento, contagem de violações de regra, checagens de presença) — sem humano no processo.",
+      "auto.legend": "Como cada categoria é medida (tudo 100% automático)",
 
       "scoring.eyebrow": "Da métrica à nota",
       "scoring.title": "Como a pontuação é calculada",
@@ -128,9 +128,9 @@ window.CONTENT = {
       "method.multi.body": "O leaderboard agrupa as runs por modelo, ordena pela mediana das runs deep e mostra a dispersão (±σ, média, faixa, contagem). Modelos com menos de 5 runs ficam marcados como provisórios — trate diferenças dentro da dispersão como empate.",
       "method.det.title": "Determinístico vs. runtime",
       "method.det.body": "Categorias estáticas (Estático, Arquitetura, Qualidade) são determinísticas dado o Roslyn. Categorias de runtime (build/boot, funcional, Kafka, estresse) dependem de Docker e da máquina, então variam entre runs.",
-      "method.patch.title": "Política de patch",
-      "method.patch.body": "Um projeto é avaliado como o modelo o entregou — com uma exceção estreita: se falhar em compilar/subir por um motivo de uma linha (versão de pacote errada, healthcheck de Kafka quebrado), aplica-se o patch mínimo (só dependências/compose, nunca o código-fonte) e uma penalidade. Cada run patcheada carrega um marcador bench-patch.json.",
-      "method.patch.note": "Exceção à penalidade: um problema que não é culpa do modelo (uma tag de imagem removida do registry depois do treino) é patcheado sem penalidade.",
+      "method.patch.title": "Avaliado como entregue",
+      "method.patch.body": "Nenhum humano edita a submissão. Ela é pontuada exatamente como o modelo a gerou — sem patches. Um bloqueio de build/boot não é \"consertado\": é tratado pela trava de executabilidade, que limita a nota de quem não compila (≤0,5), não entrega um sistema executável (≤1,0) ou nunca sobe saudável (≤1,5).",
+      "method.patch.note": "A nota vem 100% da ferramenta evaluator-dotnet — sem LLM, sem humano no caminho crítico.",
 
       "lb.eyebrow": "Sempre evoluindo",
       "lb.title": "Leaderboard",
@@ -148,7 +148,7 @@ window.CONTENT = {
       "lb.empty": "Nenhuma run deep avaliada ainda. Rode o avaliador e depois docs/generate-data.ps1.",
       "lb.detail.title": "Perfil por categoria",
       "lb.detail.run": "Relatório da run",
-      "lb.detail.patch": "Patch aplicado",
+      "lb.detail.patch": "Nota limitada",
       "lb.detail.builds": "Compila",
       "lb.detail.boots": "Sobe (/health)",
       "lb.detail.coverage": "Cobertura da rubrica",
@@ -255,7 +255,7 @@ window.CONTENT = {
 
       "criteria.eyebrow": "The rubric",
       "criteria.title": "The 13 criteria, by weight",
-      "criteria.lede": "Each category scores 0–5 and carries a weight — the bar shows how much it counts toward the final score. The colour marks how much of the assessment is automatic. Click to open the explanation and diagram.",
+      "criteria.lede": "Each category scores 0–5 and carries a weight — the bar shows how much it counts toward the final score. The colour marks how directly it is measured — every score is produced 100% by the machine. Click to open the explanation and diagram.",
       "criteria.expand": "Open explanation",
       "criteria.collapse": "Close",
       "criteria.weight": "Weight",
@@ -267,13 +267,13 @@ window.CONTENT = {
       "criteria.sortWeight": "By weight",
       "criteria.sortOrder": "By number",
 
-      "auto.FullAuto": "full-auto",
-      "auto.SemiOracle": "semi (oracle)",
-      "auto.ProxyReview": "proxy + review",
-      "auto.FullAuto.desc": "The score comes 100% from the machine, with no human judgment.",
-      "auto.SemiOracle.desc": "Automatic every run after a one-time oracle/threshold is defined (acceptance suite, expected status codes, SLO).",
-      "auto.ProxyReview.desc": "The machine measures objective proxies, but the final verdict needs human review (SAST/DAST triage, 3NF, overengineering, prose quality).",
-      "auto.legend": "Automation legend",
+      "auto.FullAuto": "deterministic",
+      "auto.SemiOracle": "oracle",
+      "auto.ProxyReview": "proxy",
+      "auto.FullAuto.desc": "Scored 100% by the machine from static analysis — the same source always yields the same score.",
+      "auto.SemiOracle.desc": "Scored 100% by the machine every run against a fixed oracle/threshold defined once (acceptance suite, expected status codes, SLO).",
+      "auto.ProxyReview.desc": "Scored 100% by the machine from an objective proxy (coupling metrics, rule-violation counts, presence checks) — no human in the loop.",
+      "auto.legend": "How each category is measured (all 100% automated)",
 
       "scoring.eyebrow": "From metric to score",
       "scoring.title": "How the score is computed",
@@ -301,9 +301,9 @@ window.CONTENT = {
       "method.multi.body": "The leaderboard groups runs per model, ranks by the median of the deep runs and shows the spread (±σ, mean, range, count). Models with fewer than 5 runs are flagged provisional — treat gaps within the spread as ties.",
       "method.det.title": "Deterministic vs. runtime",
       "method.det.body": "Static categories (Static, Architecture, Quality) are deterministic given Roslyn. Runtime categories (build/boot, functional, Kafka, stress) depend on Docker and the host, so they vary run to run.",
-      "method.patch.title": "Patching policy",
-      "method.patch.body": "A project is graded as the model produced it — with one narrow exception: if it fails to build/boot for a one-line reason (wrong package version, broken Kafka healthcheck), a minimal patch is applied (dependencies/compose only, never the source) plus a penalty. Each patched run carries a bench-patch.json marker.",
-      "method.patch.note": "Exception to the penalty: an issue that isn't the model's fault (an image tag removed from a registry after training) is patched with no penalty.",
+      "method.patch.title": "Graded as submitted",
+      "method.patch.body": "No human ever edits a submission. It is scored exactly as the model produced it — no patches. A build/boot blocker is never \"fixed\": it is handled by the executability gate, which caps the score of anything that doesn't compile (≤0.5), ships no runnable system (≤1.0), or never boots healthy (≤1.5).",
+      "method.patch.note": "The score comes 100% from the evaluator-dotnet tool — no LLM, no human on the critical path.",
 
       "lb.eyebrow": "Always evolving",
       "lb.title": "Leaderboard",
@@ -321,7 +321,7 @@ window.CONTENT = {
       "lb.empty": "No deep runs graded yet. Run the evaluator, then docs/generate-data.ps1.",
       "lb.detail.title": "Per-category profile",
       "lb.detail.run": "Run report",
-      "lb.detail.patch": "Patch applied",
+      "lb.detail.patch": "Score capped",
       "lb.detail.builds": "Builds",
       "lb.detail.boots": "Boots (/health)",
       "lb.detail.coverage": "Rubric coverage",
@@ -394,8 +394,8 @@ window.CONTENT = {
         en: ["Layer separation with dependencies pointing inward", "Thin controllers, no business logic", "No god classes", "Few single-implementation interfaces (overengineering proxy)"]
       },
       how: {
-        pt: "Roslyn lê os usings para checar a direção das dependências e mede tamanho de classe e interfaces especulativas. O veredito sobre overengineering pede revisão humana.",
-        en: "Roslyn reads the usings to check dependency direction and measures class size and speculative interfaces. The overengineering verdict needs human review."
+        pt: "Roslyn lê os usings para checar a direção das dependências e mede tamanho de classe e interfaces especulativas. Camadas e overengineering são pontuados automaticamente a partir dessas métricas.",
+        en: "Roslyn reads the usings to check dependency direction and measures class size and speculative interfaces. Layering and overengineering are scored automatically from those metrics."
       }
     },
     {
@@ -457,8 +457,8 @@ window.CONTENT = {
         en: ["Versioned migrations, not EnsureCreated", "FK/relationships and indexes defined", "Concurrency control (optimistic, rowversion)", "AsNoTracking on reads"]
       },
       how: {
-        pt: "Roslyn detecta migrações, FKs, índices, concorrência e AsNoTracking. 3NF e N+1 sob volume pedem revisão humana e banco vivo.",
-        en: "Roslyn detects migrations, FKs, indexes, concurrency and AsNoTracking. 3NF and N+1 under volume need human review and a live database."
+        pt: "Roslyn detecta migrações, FKs, índices, concorrência e AsNoTracking; o formato do schema (heurísticas de 3NF) é pontuado automaticamente, e sinais de N+1/seq-scan usam o banco vivo no modo deep.",
+        en: "Roslyn detects migrations, FKs, indexes, concurrency and AsNoTracking; schema shape (3NF heuristics) is scored automatically, and N+1/seq-scan signals use the live database in deep mode."
       }
     },
     {
@@ -499,8 +499,8 @@ window.CONTENT = {
         en: ["No Luhn-valid PAN embedded in code/config", "CVV/PIN/track never stored", "Input validation and rate limiting", "No High/Critical CVE dependencies; TLS/HSTS in production"]
       },
       how: {
-        pt: "Roslyn e regex de PAN varrem código/config; SCA lista dependências vulneráveis. SAST/DAST e o teste de BOLA pedem triagem e veredito humano.",
-        en: "Roslyn and a PAN regex scan code/config; SCA lists vulnerable dependencies. SAST/DAST and the BOLA test need triage and a human verdict."
+        pt: "Roslyn e regex de PAN varrem código/config; SCA lista dependências vulneráveis. SAST/DAST e o teste de BOLA são pontuados automaticamente a partir da saída das ferramentas e do oráculo ao vivo.",
+        en: "Roslyn and a PAN regex scan code/config; SCA lists vulnerable dependencies. SAST/DAST and the BOLA test are scored automatically from the tools' output and the live oracle."
       }
     },
     {
@@ -617,16 +617,16 @@ window.CONTENT = {
         en: "Can a new dev bring the project up following only the README?"
       },
       body: {
-        pt: "Um README com propósito, stack, pré-requisitos e como rodar; a API documentada em OpenAPI/Swagger; doc comments nos contratos públicos. A presença das seções é automática — a qualidade da prosa pede revisão humana.",
-        en: "A README with purpose, stack, prerequisites and how to run; the API documented in OpenAPI/Swagger; doc comments on public contracts. Section presence is automatic — the prose quality needs human review."
+        pt: "Um README com propósito, stack, pré-requisitos e como rodar; a API documentada em OpenAPI/Swagger; doc comments nos contratos públicos. Presença de seções, completude do OpenAPI e cobertura de doc comments são pontuadas automaticamente.",
+        en: "A README with purpose, stack, prerequisites and how to run; the API documented in OpenAPI/Swagger; doc comments on public contracts. Section presence, OpenAPI completeness and doc-comment coverage are all scored automatically."
       },
       look: {
         pt: ["README com propósito + setup + como rodar", "API documentada (OpenAPI/Swagger)", "Doc comments nos contratos públicos", "Sem links quebrados"],
         en: ["README with purpose + setup + how to run", "API documented (OpenAPI/Swagger)", "Doc comments on public contracts", "No broken links"]
       },
       how: {
-        pt: "A presença de seções, OpenAPI e doc comments é detectada automaticamente; a qualidade do texto pede revisão humana.",
-        en: "Section presence, OpenAPI and doc comments are detected automatically; the prose quality needs human review."
+        pt: "A presença de seções, a completude do OpenAPI e a cobertura de doc comments são pontuadas automaticamente.",
+        en: "Section presence, OpenAPI completeness and doc-comment coverage are all scored automatically."
       }
     }
   ]

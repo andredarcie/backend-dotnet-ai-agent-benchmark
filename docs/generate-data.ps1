@@ -86,12 +86,11 @@ foreach ($f in $files) {
             number              = $c.Number
             name                = $c.Name
             weight              = $c.Weight
-            automation          = $c.Automation   # FullAuto | SemiOracle | ProxyReview
+            automation          = $c.Automation   # FullAuto | SemiOracle | ProxyReview (measurement method; all 100% automated)
             badge               = $c.Badge
             score               = $c.Score
             measuredCount       = $c.MeasuredCount
             indeterminateCount  = $c.IndeterminateCount
-            requiresHumanReview = $c.RequiresHumanReview
             notes               = @($c.Notes)
             missingTools        = @($c.MissingTools)
             metrics             = $metrics
@@ -108,8 +107,7 @@ foreach ($f in $files) {
         coverage       = $r.Coverage
         builds         = [bool]$r.Builds
         boots          = [bool]$r.Boots
-        patchPenalty   = $r.PatchPenalty
-        patchReason    = $r.PatchReason
+        scoreCapReason = $r.ScoreCapReason
         environment    = @($r.Environment)
         categories     = $categories
     }

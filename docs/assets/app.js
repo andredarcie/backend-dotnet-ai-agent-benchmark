@@ -569,8 +569,8 @@
         '<span class="catrow__val">' + (sc != null ? fx(sc, 1) : "—") + "</span></div>";
     }).join("");
 
-    var pen = (run.patchPenalty && run.patchPenalty > 0)
-      ? '<div class="runmeta__patch"><b>' + esc(t("lb.detail.patch")) + " · −" + fx(run.patchPenalty, 1) + "</b>" + esc(run.patchReason || "") + "</div>"
+    var pen = run.scoreCapReason
+      ? '<div class="runmeta__patch"><b>' + esc(t("lb.detail.patch")) + "</b>" + esc(run.scoreCapReason) + "</div>"
       : "";
 
     var meta =

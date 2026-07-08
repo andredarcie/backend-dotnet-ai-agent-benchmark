@@ -66,11 +66,4 @@ public static class Scoring
     }
 
     private static double CapTo(double? score, double cap) => score is double v ? Math.Min(v, cap) : cap;
-
-    /// <summary>
-    /// Subtracts a patch penalty (a run minimally patched to build/boot is graded on its merits, then
-    /// docked) and clamps to [0, 5]. The penalty is recorded by the submission's bench-patch.json marker.
-    /// </summary>
-    public static double? ApplyPatchPenalty(double? score, double penaltyPoints)
-        => score is double s ? Math.Clamp(Math.Round(s - penaltyPoints, 2), 0, 5) : score;
 }

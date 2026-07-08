@@ -237,7 +237,6 @@
       ],
       "Notes": [],
       "MissingTools": [],
-      "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE1",
       "Score": 4.8,
       "MeasuredCount": 29,
@@ -276,7 +275,7 @@
           "Target": "few speculative abstractions",
           "Status": "Indeterminate",
           "Weight": 0.5,
-          "Note": "2/3 single-implementation interfaces \u2014 normal DIP ports (repository/UoW/publisher); flagged for human review, not scored"
+          "Note": "2/3 single-implementation interfaces \u2014 normal DIP ports (repository/UoW/publisher); informational, not scored"
         },
         {
           "Name": "no-god-class",
@@ -287,10 +286,9 @@
         }
       ],
       "Notes": [
-        "PROXY: layering needs layer rules (oracle) and the overengineering verdict needs human review. NDepend/SonarQube can deepen this."
+        "PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this."
       ],
       "MissingTools": [],
-      "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE0",
       "Score": 5,
       "MeasuredCount": 4,
@@ -340,7 +338,6 @@
       ],
       "Notes": [],
       "MissingTools": [],
-      "RequiresHumanReview": false,
       "Badge": "\uD83D\uDFE2",
       "Score": 5,
       "MeasuredCount": 5,
@@ -441,7 +438,6 @@
         "No static OpenAPI file found (spec is likely generated at runtime); run --deep to generate and lint it."
       ],
       "MissingTools": [],
-      "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE1",
       "Score": 5,
       "MeasuredCount": 12,
@@ -490,12 +486,11 @@
         }
       ],
       "Notes": [
-        "PROXY: 3NF / justified denormalization need functional-dependency analysis (human review). N\u002B1, seq scans and EXPLAIN need a live DB (--deep \u002B container, e.g. via pg_stat_statements/HypoPG)."
+        "PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN)."
       ],
       "MissingTools": [
         "schemacrawler"
       ],
-      "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE0",
       "Score": 5,
       "MeasuredCount": 5,
@@ -568,7 +563,6 @@
         "Deep messaging checks (publish-duplicate -\u003E single effect; kill consumer mid-process; Schema Registry compatibility) require a Kafka container and the app running."
       ],
       "MissingTools": [],
-      "RequiresHumanReview": false,
       "Badge": "\uD83D\uDFE2",
       "Score": 5,
       "MeasuredCount": 8,
@@ -662,10 +656,9 @@
         }
       ],
       "Notes": [
-        "PROXY: SAST/DAST findings need false-positive triage and the BOLA test needs an oracle scenario (user A vs resource of B). Final verdict = human review."
+        "PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep."
       ],
       "MissingTools": [],
-      "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE0",
       "Score": 4.1,
       "MeasuredCount": 10,
@@ -726,7 +719,6 @@
       "MissingTools": [
         "toxiproxy-cli"
       ],
-      "RequiresHumanReview": false,
       "Badge": "\uD83D\uDFE2",
       "Score": 5,
       "MeasuredCount": 6,
@@ -777,7 +769,6 @@
       ],
       "Notes": [],
       "MissingTools": [],
-      "RequiresHumanReview": false,
       "Badge": "\uD83D\uDFE2",
       "Score": 2.5,
       "MeasuredCount": 4,
@@ -841,7 +832,6 @@
       ],
       "Notes": [],
       "MissingTools": [],
-      "RequiresHumanReview": false,
       "Badge": "\uD83D\uDFE2",
       "Score": 5,
       "MeasuredCount": 7,
@@ -898,7 +888,6 @@
       ],
       "Notes": [],
       "MissingTools": [],
-      "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE1",
       "Score": 5,
       "MeasuredCount": 6,
@@ -969,7 +958,6 @@
       ],
       "Notes": [],
       "MissingTools": [],
-      "RequiresHumanReview": false,
       "Badge": "\uD83D\uDFE2",
       "Score": 5,
       "MeasuredCount": 8,
@@ -1025,10 +1013,9 @@
         }
       ],
       "Notes": [
-        "PROXY: section/link presence is automatic, but the QUALITY of the prose needs human review."
+        "PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically."
       ],
       "MissingTools": [],
-      "RequiresHumanReview": true,
       "Badge": "\uD83D\uDFE0",
       "Score": 4.7,
       "MeasuredCount": 6,

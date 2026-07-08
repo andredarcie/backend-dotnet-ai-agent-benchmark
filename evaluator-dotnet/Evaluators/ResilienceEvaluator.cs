@@ -2,7 +2,7 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 8 — Resilience &amp; Error Handling (🟢 full-auto).
+/// <summary>Category 8 — Resilience &amp; Error Handling (🟢 deterministic).
 /// Roslyn detects Polly policies, health checks, the global exception handler, graceful shutdown and
 /// timeouts/cancellation. Real fault injection (Toxiproxy) needs the app running (--deep).</summary>
 public sealed class ResilienceEvaluator : CategoryEvaluatorBase

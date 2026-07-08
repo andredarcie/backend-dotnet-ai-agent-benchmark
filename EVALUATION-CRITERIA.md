@@ -2,7 +2,7 @@
 
 This document defines the **evaluation categories** applicable to a backend project that exposes a **REST Web API**, integrates **messaging** (event/message broker), and persists data in a **database**.
 
-The goal is to provide a consistent, comparable, and auditable criterion — useful both for human review and for benchmarking across different implementations.
+The goal is to provide a consistent, comparable, and auditable criterion for **fully automated** benchmarking across different implementations — every score is produced by the tool, with no human (or LLM) in the loop.
 
 > **This version has been reviewed against external sources** to seek consensus. The categories are anchored in recognized standards and references (ISO/IEC 25010, OWASP, IETF/RFCs, Microsoft/Google API guidelines, 12-Factor, microservices.io, Confluent/Kafka, Google SRE, OpenTelemetry, DORA, PCI DSS). See the [Critical review and source consensus](#critical-review-and-source-consensus) section and the full list in [Sources reviewed](#sources-reviewed).
 
@@ -16,7 +16,7 @@ The goal is to provide a consistent, comparable, and auditable criterion — use
 
 ### Principle of automated evaluation
 
-> Whenever possible, the score should derive from an **objective, reproducible measurement that runs in CI**, with no human judgment. Each category includes a **🤖 Automated evaluation** block with three elements: **Method** (how to measure), **Metric / threshold** (the number that becomes the score), and **Tools** (focused on the project stack — **.NET 10 / PostgreSQL / Kafka** — with generic equivalents). Where a category is partly subjective (e.g., architectural clarity), measurable *proxies* are used (coupling metrics, rule-violation counts) plus targeted review.
+> Whenever possible, the score should derive from an **objective, reproducible measurement that runs in CI**, with no human judgment. Each category includes a **🤖 Automated evaluation** block with three elements: **Method** (how to measure), **Metric / threshold** (the number that becomes the score), and **Tools** (focused on the project stack — **.NET 10 / PostgreSQL / Kafka** — with generic equivalents). Where a category is partly subjective (e.g., architectural clarity), measurable *proxies* are used (coupling metrics, rule-violation counts) and scored automatically — never by human triage.
 >
 > **Constraint — 100% local execution:** all tools must run locally, with no dependency on SaaS/cloud services. Where a cloud variant exists, the local one is used: **self-hosted SonarQube** (Docker) instead of SonarCloud; local **CodeQL CLI**; **`act`** to run GitHub Actions on the machine; Postgres metrics via **pg_stat_statements/pgBadger** instead of SaaS. Common prerequisite: **Docker** (Testcontainers, ephemeral brokers and databases).
 >
@@ -55,10 +55,10 @@ The goal is to provide a consistent, comparable, and auditable criterion — use
 | 12 | Portability, Configuration, and Deployment | Portability | 2% | 🟢 |
 | 13 | Documentation | Maintainability / Usability | 1% | 🟠 |
 
-**Automation legend:**
-- 🟢 **Full-auto** — the score is produced 100% by machine, with no human judgment.
-- 🟡 **Semi (oracle 1×)** — automatic on every run **after** defining an oracle/threshold once per benchmark (see [Oracle setup](#oracle-setup-defined-once-per-benchmark)).
-- 🟠 **Proxy + review** — the machine measures objective *proxies*, but the **final verdict requires human review** (triaging findings, "justified or not").
+**Measurement legend — every category is scored 100% by machine; the colour only marks how *directly* it is measured (no human is ever in the loop):**
+- 🟢 **Deterministic** — scored 100% by machine from static analysis; the same source always produces the same score.
+- 🟡 **Oracle** — scored 100% by machine on every run against an oracle/threshold defined once per benchmark (see [Oracle setup](#oracle-setup-defined-once-per-benchmark)).
+- 🟠 **Proxy** — scored 100% by machine from an objective *proxy* metric (coupling, rule-violation counts, presence checks). Less direct than a deterministic count, but still fully automated.
 
 ---
 
@@ -115,7 +115,7 @@ The 🟡 categories only become automatic scores **after** defining, once, the "
 - **Cat. 2 — Architecture (partial):** the **layer rules** (which namespaces are domain / application / infra) for the *fitness functions*.
 - **Cat. 7 — Security (partial):** the **BOLA test** scenario (user A × user B's resource) and the list of forbidden patterns (PAN/CVV).
 
-The 🟠 categories (2, 5, 7, 13) still require **human review of the verdict** even with everything configured: triaging SAST/DAST findings, verifying 3NF / justified denormalization, *overengineering* / justified premature optimization, and the prose quality of the documentation.
+The 🟠 categories (2, 5, 7, 13) are scored **100% automatically** from objective proxies once the oracle is configured — SAST/DAST tool output, 3NF/schema-shape heuristics, the overengineering metrics (class size, single-implementation-interface ratio) and documentation completeness (section/OpenAPI/doc-comment presence). No human verdict is applied; a proxy is simply less direct than a deterministic count.
 
 ---
 

@@ -1,5 +1,5 @@
 {
-    "generatedAtUtc":  "2026-07-07 00:05:25Z",
+    "generatedAtUtc":  "2026-07-08 23:17:19Z",
     "provisionalThreshold":  5,
     "modelCount":  6,
     "runCount":  6,
@@ -48,14 +48,14 @@
                         {
                             "model":  "opus-4-8",
                             "runs":  1,
-                            "median":  4.27,
-                            "mean":  4.27,
+                            "median":  1.5,
+                            "mean":  1.5,
                             "stdDev":  0,
-                            "min":  4.27,
-                            "max":  4.27,
+                            "min":  1.5,
+                            "max":  1.5,
                             "provisional":  true,
                             "allBuild":  true,
-                            "allBoot":  true,
+                            "allBoot":  false,
                             "rank":  4
                         },
                         {
@@ -96,8 +96,7 @@
                      "coverage":  1,
                      "builds":  true,
                      "boots":  true,
-                     "patchPenalty":  null,
-                     "patchReason":  null,
+                     "scoreCapReason":  null,
                      "environment":  [
                                          "dotnet",
                                          "spectral",
@@ -122,7 +121,6 @@
                                             "score":  5,
                                             "measuredCount":  28,
                                             "indeterminateCount":  2,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
 
                                                       ],
@@ -381,9 +379,8 @@
                                             "score":  5,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: layering needs layer rules (oracle) and the overengineering verdict needs human review. NDepend/SonarQube can deepen this."
+                                                          "PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this."
                                                       ],
                                             "missingTools":  [
 
@@ -419,7 +416,7 @@
                                                                 "target":  "few speculative abstractions",
                                                                 "status":  "Indeterminate",
                                                                 "weight":  0.5,
-                                                                "note":  "4/4 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); flagged for human review, not scored"
+                                                                "note":  "4/4 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); informational, not scored"
                                                             },
                                                             {
                                                                 "name":  "no-god-class",
@@ -440,7 +437,6 @@
                                             "score":  5,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -499,7 +495,6 @@
                                             "score":  4.4,
                                             "measuredCount":  12,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
                                                           "No static OpenAPI file found (spec is likely generated at runtime); run --deep to generate and lint it."
                                                       ],
@@ -614,9 +609,8 @@
                                             "score":  5,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: 3NF / justified denormalization need functional-dependency analysis (human review). N+1, seq scans and EXPLAIN need a live DB (--deep + container, e.g. via pg_stat_statements/HypoPG)."
+                                                          "PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN)."
                                                       ],
                                             "missingTools":  [
                                                                  "schemacrawler"
@@ -673,7 +667,6 @@
                                             "score":  5,
                                             "measuredCount":  8,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Deep messaging checks (publish-duplicate -\u003e single effect; kill consumer mid-process; Schema Registry compatibility) require a Kafka container and the app running."
                                                       ],
@@ -756,9 +749,8 @@
                                             "score":  4.7,
                                             "measuredCount":  10,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: SAST/DAST findings need false-positive triage and the BOLA test needs an oracle scenario (user A vs resource of B). Final verdict = human review."
+                                                          "PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep."
                                                       ],
                                             "missingTools":  [
 
@@ -863,7 +855,6 @@
                                             "score":  5,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Real fault injection (Toxiproxy) and recovery measurement need --deep + a running container."
                                                       ],
@@ -930,7 +921,6 @@
                                             "score":  3.8,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -989,7 +979,6 @@
                                             "score":  5,
                                             "measuredCount":  7,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -1064,7 +1053,6 @@
                                             "score":  5,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
 
                                                       ],
@@ -1131,7 +1119,6 @@
                                             "score":  5,
                                             "measuredCount":  8,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -1214,9 +1201,8 @@
                                             "score":  4.7,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: section/link presence is automatic, but the QUALITY of the prose needs human review."
+                                                          "PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically."
                                                       ],
                                             "missingTools":  [
 
@@ -1284,8 +1270,7 @@
                      "coverage":  1,
                      "builds":  true,
                      "boots":  false,
-                     "patchPenalty":  null,
-                     "patchReason":  null,
+                     "scoreCapReason":  "capped at 1.0/5 — no docker-compose.yml: the submission delivers no runnable system (never exercised)",
                      "environment":  [
                                          "dotnet",
                                          "spectral",
@@ -1310,7 +1295,6 @@
                                             "score":  5,
                                             "measuredCount":  3,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
                                                           "SEMI: pass --base-url (the harness does) to run the live contract oracle that measures real per-endpoint correctness."
                                                       ],
@@ -1361,9 +1345,8 @@
                                             "score":  3.6,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: layering needs layer rules (oracle) and the overengineering verdict needs human review. NDepend/SonarQube can deepen this."
+                                                          "PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this."
                                                       ],
                                             "missingTools":  [
 
@@ -1399,7 +1382,7 @@
                                                                 "target":  "few speculative abstractions",
                                                                 "status":  "Indeterminate",
                                                                 "weight":  0.5,
-                                                                "note":  "5/5 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); flagged for human review, not scored"
+                                                                "note":  "5/5 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); informational, not scored"
                                                             },
                                                             {
                                                                 "name":  "no-god-class",
@@ -1420,7 +1403,6 @@
                                             "score":  3,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -1479,7 +1461,6 @@
                                             "score":  4.5,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
                                                           "No static OpenAPI file found (spec is likely generated at runtime); run --deep to generate and lint it.",
                                                           "SEMI: pass --base-url (the harness does) to assert live status codes / Location / Problem Details / pagination."
@@ -1547,9 +1528,8 @@
                                             "score":  5,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: 3NF / justified denormalization need functional-dependency analysis (human review). N+1, seq scans and EXPLAIN need a live DB (--deep + container, e.g. via pg_stat_statements/HypoPG)."
+                                                          "PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN)."
                                                       ],
                                             "missingTools":  [
                                                                  "schemacrawler"
@@ -1606,7 +1586,6 @@
                                             "score":  5,
                                             "measuredCount":  7,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Deep messaging checks (publish-duplicate -\u003e single effect; kill consumer mid-process; Schema Registry compatibility) require a Kafka container and the app running."
                                                       ],
@@ -1681,9 +1660,8 @@
                                             "score":  4.3,
                                             "measuredCount":  9,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: SAST/DAST findings need false-positive triage and the BOLA test needs an oracle scenario (user A vs resource of B). Final verdict = human review."
+                                                          "PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep."
                                                       ],
                                             "missingTools":  [
 
@@ -1780,7 +1758,6 @@
                                             "score":  5,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Real fault injection (Toxiproxy) and recovery measurement need --deep + a running container."
                                                       ],
@@ -1839,7 +1816,6 @@
                                             "score":  2.5,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -1898,7 +1874,6 @@
                                             "score":  5,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -1957,7 +1932,6 @@
                                             "score":  5,
                                             "measuredCount":  4,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
                                                           "SEMI: the latency/throughput score needs a target SLO (oracle) and a load test against the running API (k6, set up by the docker-compose harness)."
                                                       ],
@@ -2008,7 +1982,6 @@
                                             "score":  1.5,
                                             "measuredCount":  7,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -2083,9 +2056,8 @@
                                             "score":  2.5,
                                             "measuredCount":  3,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: section/link presence is automatic, but the QUALITY of the prose needs human review."
+                                                          "PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically."
                                                       ],
                                             "missingTools":  [
 
@@ -2129,8 +2101,7 @@
                      "coverage":  1,
                      "builds":  true,
                      "boots":  true,
-                     "patchPenalty":  null,
-                     "patchReason":  null,
+                     "scoreCapReason":  null,
                      "environment":  [
                                          "dotnet",
                                          "spectral",
@@ -2155,7 +2126,6 @@
                                             "score":  4.8,
                                             "measuredCount":  29,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
 
                                                       ],
@@ -2414,9 +2384,8 @@
                                             "score":  5,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: layering needs layer rules (oracle) and the overengineering verdict needs human review. NDepend/SonarQube can deepen this."
+                                                          "PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this."
                                                       ],
                                             "missingTools":  [
 
@@ -2452,7 +2421,7 @@
                                                                 "target":  "few speculative abstractions",
                                                                 "status":  "Indeterminate",
                                                                 "weight":  0.5,
-                                                                "note":  "2/3 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); flagged for human review, not scored"
+                                                                "note":  "2/3 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); informational, not scored"
                                                             },
                                                             {
                                                                 "name":  "no-god-class",
@@ -2473,7 +2442,6 @@
                                             "score":  5,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -2532,7 +2500,6 @@
                                             "score":  5,
                                             "measuredCount":  12,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
                                                           "No static OpenAPI file found (spec is likely generated at runtime); run --deep to generate and lint it."
                                                       ],
@@ -2647,9 +2614,8 @@
                                             "score":  5,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: 3NF / justified denormalization need functional-dependency analysis (human review). N+1, seq scans and EXPLAIN need a live DB (--deep + container, e.g. via pg_stat_statements/HypoPG)."
+                                                          "PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN)."
                                                       ],
                                             "missingTools":  [
                                                                  "schemacrawler"
@@ -2706,7 +2672,6 @@
                                             "score":  5,
                                             "measuredCount":  8,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Deep messaging checks (publish-duplicate -\u003e single effect; kill consumer mid-process; Schema Registry compatibility) require a Kafka container and the app running."
                                                       ],
@@ -2789,9 +2754,8 @@
                                             "score":  4.1,
                                             "measuredCount":  10,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: SAST/DAST findings need false-positive triage and the BOLA test needs an oracle scenario (user A vs resource of B). Final verdict = human review."
+                                                          "PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep."
                                                       ],
                                             "missingTools":  [
 
@@ -2896,7 +2860,6 @@
                                             "score":  5,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Real fault injection (Toxiproxy) and recovery measurement need --deep + a running container."
                                                       ],
@@ -2963,7 +2926,6 @@
                                             "score":  2.5,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -3022,7 +2984,6 @@
                                             "score":  5,
                                             "measuredCount":  7,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -3097,7 +3058,6 @@
                                             "score":  5,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
 
                                                       ],
@@ -3164,7 +3124,6 @@
                                             "score":  5,
                                             "measuredCount":  8,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -3247,9 +3206,8 @@
                                             "score":  4.7,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: section/link presence is automatic, but the QUALITY of the prose needs human review."
+                                                          "PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically."
                                                       ],
                                             "missingTools":  [
 
@@ -3317,8 +3275,7 @@
                      "coverage":  1,
                      "builds":  false,
                      "boots":  false,
-                     "patchPenalty":  null,
-                     "patchReason":  null,
+                     "scoreCapReason":  "capped at 0.5/5 — source does not compile (dotnet build failed)",
                      "environment":  [
                                          "dotnet",
                                          "spectral",
@@ -3343,7 +3300,6 @@
                                             "score":  5,
                                             "measuredCount":  2,
                                             "indeterminateCount":  2,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
                                                           "SEMI: pass --base-url (the harness does) to run the live contract oracle that measures real per-endpoint correctness."
                                                       ],
@@ -3394,9 +3350,8 @@
                                             "score":  5,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: layering needs layer rules (oracle) and the overengineering verdict needs human review. NDepend/SonarQube can deepen this."
+                                                          "PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this."
                                                       ],
                                             "missingTools":  [
 
@@ -3432,7 +3387,7 @@
                                                                 "target":  "few speculative abstractions",
                                                                 "status":  "Indeterminate",
                                                                 "weight":  0.5,
-                                                                "note":  "3/3 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); flagged for human review, not scored"
+                                                                "note":  "3/3 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); informational, not scored"
                                                             },
                                                             {
                                                                 "name":  "no-god-class",
@@ -3453,7 +3408,6 @@
                                             "score":  3.8,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -3512,7 +3466,6 @@
                                             "score":  4.5,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
                                                           "No static OpenAPI file found (spec is likely generated at runtime); run --deep to generate and lint it.",
                                                           "SEMI: pass --base-url (the harness does) to assert live status codes / Location / Problem Details / pagination."
@@ -3580,9 +3533,8 @@
                                             "score":  4.3,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: 3NF / justified denormalization need functional-dependency analysis (human review). N+1, seq scans and EXPLAIN need a live DB (--deep + container, e.g. via pg_stat_statements/HypoPG)."
+                                                          "PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN)."
                                                       ],
                                             "missingTools":  [
                                                                  "schemacrawler"
@@ -3639,7 +3591,6 @@
                                             "score":  2.3,
                                             "measuredCount":  7,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Deep messaging checks (publish-duplicate -\u003e single effect; kill consumer mid-process; Schema Registry compatibility) require a Kafka container and the app running."
                                                       ],
@@ -3714,9 +3665,8 @@
                                             "score":  3.6,
                                             "measuredCount":  9,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: SAST/DAST findings need false-positive triage and the BOLA test needs an oracle scenario (user A vs resource of B). Final verdict = human review."
+                                                          "PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep."
                                                       ],
                                             "missingTools":  [
 
@@ -3796,7 +3746,7 @@
                                                             },
                                                             {
                                                                 "name":  "sast",
-                                                                "observed":  "findings (triage needed)",
+                                                                "observed":  "findings",
                                                                 "target":  "no SAST findings (Semgrep)",
                                                                 "status":  "Partial",
                                                                 "weight":  1,
@@ -3813,7 +3763,6 @@
                                             "score":  1.9,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Real fault injection (Toxiproxy) and recovery measurement need --deep + a running container."
                                                       ],
@@ -3872,7 +3821,6 @@
                                             "score":  5,
                                             "measuredCount":  3,
                                             "indeterminateCount":  2,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -3931,7 +3879,6 @@
                                             "score":  2.9,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -3990,7 +3937,6 @@
                                             "score":  5,
                                             "measuredCount":  4,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
                                                           "SEMI: the latency/throughput score needs a target SLO (oracle) and a load test against the running API (k6, set up by the docker-compose harness)."
                                                       ],
@@ -4041,7 +3987,6 @@
                                             "score":  4.3,
                                             "measuredCount":  8,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -4124,9 +4069,8 @@
                                             "score":  4.7,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: section/link presence is automatic, but the QUALITY of the prose needs human review."
+                                                          "PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically."
                                                       ],
                                             "missingTools":  [
 
@@ -4190,12 +4134,11 @@
                      "run":  "run1",
                      "evaluatedAtUtc":  "2026-07-06 18:30:50Z",
                      "deep":  true,
-                     "weightedScore":  4.27,
+                     "weightedScore":  1.5,
                      "coverage":  1,
                      "builds":  true,
-                     "boots":  true,
-                     "patchPenalty":  0.4,
-                     "patchReason":  "Dockerfile COPY referenced CreditCardApi.sln but the project ships CreditCardApi.slnx; minimal build-blocker fix (build config only, no source/logic change). Model\u0027s own defect, so the penalty applies.",
+                     "boots":  false,
+                     "scoreCapReason":  "capped at 1.5/5 - graded as-submitted: the Docker image fails to build (Dockerfile COPYs CreditCardApi.sln but the project ships CreditCardApi.slnx), so the system never boots; a deep score requires a live boot. The per-category detail below is from a diagnostic build with that one-line blocker worked around, and is informational only.",
                      "environment":  [
                                          "dotnet",
                                          "spectral",
@@ -4220,7 +4163,6 @@
                                             "score":  4.8,
                                             "measuredCount":  29,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
 
                                                       ],
@@ -4479,9 +4421,8 @@
                                             "score":  5,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: layering needs layer rules (oracle) and the overengineering verdict needs human review. NDepend/SonarQube can deepen this."
+                                                          "PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this."
                                                       ],
                                             "missingTools":  [
 
@@ -4538,7 +4479,6 @@
                                             "score":  3,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -4597,7 +4537,6 @@
                                             "score":  4.7,
                                             "measuredCount":  12,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
                                                           "No static OpenAPI file found (spec is likely generated at runtime); run --deep to generate and lint it."
                                                       ],
@@ -4712,9 +4651,8 @@
                                             "score":  5,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: 3NF / justified denormalization need functional-dependency analysis (human review). N+1, seq scans and EXPLAIN need a live DB (--deep + container, e.g. via pg_stat_statements/HypoPG)."
+                                                          "PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN)."
                                                       ],
                                             "missingTools":  [
                                                                  "schemacrawler"
@@ -4771,7 +4709,6 @@
                                             "score":  5,
                                             "measuredCount":  8,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Deep messaging checks (publish-duplicate -\u003e single effect; kill consumer mid-process; Schema Registry compatibility) require a Kafka container and the app running."
                                                       ],
@@ -4854,9 +4791,8 @@
                                             "score":  4.1,
                                             "measuredCount":  10,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: SAST/DAST findings need false-positive triage and the BOLA test needs an oracle scenario (user A vs resource of B). Final verdict = human review."
+                                                          "PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep."
                                                       ],
                                             "missingTools":  [
 
@@ -4961,7 +4897,6 @@
                                             "score":  5,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Real fault injection (Toxiproxy) and recovery measurement need --deep + a running container."
                                                       ],
@@ -5028,7 +4963,6 @@
                                             "score":  5,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -5087,7 +5021,6 @@
                                             "score":  5,
                                             "measuredCount":  7,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -5162,7 +5095,6 @@
                                             "score":  5,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
 
                                                       ],
@@ -5229,7 +5161,6 @@
                                             "score":  5,
                                             "measuredCount":  8,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -5312,9 +5243,8 @@
                                             "score":  4.1,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: section/link presence is automatic, but the QUALITY of the prose needs human review."
+                                                          "PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically."
                                                       ],
                                             "missingTools":  [
 
@@ -5382,8 +5312,7 @@
                      "coverage":  1,
                      "builds":  true,
                      "boots":  true,
-                     "patchPenalty":  null,
-                     "patchReason":  null,
+                     "scoreCapReason":  null,
                      "environment":  [
                                          "dotnet",
                                          "spectral",
@@ -5408,7 +5337,6 @@
                                             "score":  4.8,
                                             "measuredCount":  29,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
 
                                                       ],
@@ -5667,9 +5595,8 @@
                                             "score":  5,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: layering needs layer rules (oracle) and the overengineering verdict needs human review. NDepend/SonarQube can deepen this."
+                                                          "PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this."
                                                       ],
                                             "missingTools":  [
 
@@ -5705,7 +5632,7 @@
                                                                 "target":  "few speculative abstractions",
                                                                 "status":  "Indeterminate",
                                                                 "weight":  0.5,
-                                                                "note":  "5/5 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); flagged for human review, not scored"
+                                                                "note":  "5/5 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); informational, not scored"
                                                             },
                                                             {
                                                                 "name":  "no-god-class",
@@ -5726,7 +5653,6 @@
                                             "score":  4,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -5785,7 +5711,6 @@
                                             "score":  5,
                                             "measuredCount":  12,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
                                                           "No static OpenAPI file found (spec is likely generated at runtime); run --deep to generate and lint it."
                                                       ],
@@ -5900,9 +5825,8 @@
                                             "score":  5,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: 3NF / justified denormalization need functional-dependency analysis (human review). N+1, seq scans and EXPLAIN need a live DB (--deep + container, e.g. via pg_stat_statements/HypoPG)."
+                                                          "PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN)."
                                                       ],
                                             "missingTools":  [
                                                                  "schemacrawler"
@@ -5959,7 +5883,6 @@
                                             "score":  5,
                                             "measuredCount":  8,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Deep messaging checks (publish-duplicate -\u003e single effect; kill consumer mid-process; Schema Registry compatibility) require a Kafka container and the app running."
                                                       ],
@@ -6042,9 +5965,8 @@
                                             "score":  4.7,
                                             "measuredCount":  10,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: SAST/DAST findings need false-positive triage and the BOLA test needs an oracle scenario (user A vs resource of B). Final verdict = human review."
+                                                          "PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep."
                                                       ],
                                             "missingTools":  [
 
@@ -6149,7 +6071,6 @@
                                             "score":  5,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
                                                           "Real fault injection (Toxiproxy) and recovery measurement need --deep + a running container."
                                                       ],
@@ -6216,7 +6137,6 @@
                                             "score":  5,
                                             "measuredCount":  4,
                                             "indeterminateCount":  1,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -6275,7 +6195,6 @@
                                             "score":  5,
                                             "measuredCount":  7,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -6350,7 +6269,6 @@
                                             "score":  4.6,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
 
                                                       ],
@@ -6417,7 +6335,6 @@
                                             "score":  5,
                                             "measuredCount":  8,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  false,
                                             "notes":  [
 
                                                       ],
@@ -6500,9 +6417,8 @@
                                             "score":  4.7,
                                             "measuredCount":  6,
                                             "indeterminateCount":  0,
-                                            "requiresHumanReview":  true,
                                             "notes":  [
-                                                          "PROXY: section/link presence is automatic, but the QUALITY of the prose needs human review."
+                                                          "PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically."
                                                       ],
                                             "missingTools":  [
 

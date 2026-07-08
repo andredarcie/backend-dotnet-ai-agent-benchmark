@@ -32,13 +32,14 @@ Output (in `evaluator-dotnet/results/` by default):
 | Needs network? | no | yes (CVE feeds, `nuget restore`) |
 | Extra checks | — | `dotnet test`, coverage (Coverlet), `dotnet format`, SCA (`dotnet list --vulnerable`), Spectral, sqlfluff, hadolint |
 
-## Automation levels (mirror the badges in the .md)
+## Measurement method (mirror the badges in the .md)
 
-- 🟢 **full-auto** — score produced 100% by machine.
-- 🟡 **semi (oracle 1x)** — automatic each run **after** a one-time oracle/threshold is defined (correctness suite, expected status codes, SLO). Without the oracle it measures proxies only.
-- 🟠 **proxy + review** — the machine measures objective proxies; the **final verdict needs human review** (SAST/DAST triage, 3NF, overengineering, prose).
+Every category is scored **100% by machine** — no human is ever in the loop. The badge only marks how
+*directly* a category is measured:
 
-The report marks every 🟡/🟠 category with `<REVIEW>` and lists, in the footer, which categories require review.
+- 🟢 **deterministic** — scored from static analysis; the same source always produces the same score.
+- 🟡 **oracle** — scored each run against a one-time oracle/threshold (correctness suite, expected status codes, SLO).
+- 🟠 **proxy** — scored from an objective proxy metric (coupling, rule-violation counts, presence checks). Less direct than a deterministic count, but still fully automated.
 
 ## Category → what is measured (summary)
 

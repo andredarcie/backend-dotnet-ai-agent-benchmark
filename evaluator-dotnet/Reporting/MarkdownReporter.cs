@@ -18,8 +18,6 @@ public static class MarkdownReporter
         sb.AppendLine($"- **Weighted final score:** {final}");
         if (report.ScoreCapReason != null)
             sb.AppendLine($"- **⚠️ Score capped:** {report.ScoreCapReason}");
-        if (report.PatchPenalty is > 0)
-            sb.AppendLine($"- **Patch penalty:** −{report.PatchPenalty:0.0} (minimal build/boot patch — {report.PatchReason})");
         sb.AppendLine($"- **Coverage:** {report.Coverage:P0} of categories");
         if (report.Builds.HasValue || report.Boots.HasValue)
             sb.AppendLine($"- **Executable:** build = {Yn(report.Builds)} · boot (/health) = {Yn(report.Boots)}");
@@ -31,12 +29,12 @@ public static class MarkdownReporter
 
         sb.AppendLine("## Summary");
         sb.AppendLine();
-        sb.AppendLine("| # | Category | Auto | Score | Weight | Review |");
-        sb.AppendLine("|---|----------|------|-------|--------|--------|");
+        sb.AppendLine("| # | Category | Measure | Score | Weight |");
+        sb.AppendLine("|---|----------|---------|-------|--------|");
         foreach (var c in report.Categories)
         {
             string score = c.Score.HasValue ? $"{c.Score:0.0}/5" : "n/a";
-            sb.AppendLine($"| {c.Number} | {c.Name} | {c.Automation.Badge()} | {score} | {c.Weight * 100:0.#}% | {(c.RequiresHumanReview ? "yes" : "—")} |");
+            sb.AppendLine($"| {c.Number} | {c.Name} | {c.Automation.Badge()} | {score} | {c.Weight * 100:0.#}% |");
         }
         sb.AppendLine();
 

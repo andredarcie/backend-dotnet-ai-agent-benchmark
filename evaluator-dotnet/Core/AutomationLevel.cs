@@ -1,16 +1,18 @@
 namespace BackendEvaluator.Core;
 
 /// <summary>
-/// Mirrors the 🟢/🟡/🟠 badges in EVALUATION-CRITERIA.md.
+/// How directly a category is measured. Every level is scored 100% by the machine — no human is ever
+/// in the loop; the badge only communicates how direct the measurement is. Mirrors the 🟢/🟡/🟠 badges
+/// in EVALUATION-CRITERIA.md.
 /// </summary>
 public enum AutomationLevel
 {
-    /// <summary>🟢 Score produced 100% by machine.</summary>
+    /// <summary>🟢 Deterministic — scored 100% by machine from static analysis; same source ⇒ same score.</summary>
     FullAuto,
 
-    /// <summary>🟡 Automatic each run AFTER a one-time oracle/threshold is defined.</summary>
+    /// <summary>🟡 Oracle-based — scored 100% by machine each run against a fixed oracle/threshold defined once (acceptance suite, expected status codes, SLO).</summary>
     SemiOracle,
 
-    /// <summary>🟠 Machine measures proxies; the final verdict needs a human.</summary>
+    /// <summary>🟠 Proxy — scored 100% by machine from an objective proxy metric (coupling, rule-violation counts, presence checks). Less direct than a deterministic count, but still fully automated.</summary>
     ProxyReview,
 }

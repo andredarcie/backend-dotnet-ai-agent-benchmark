@@ -5,7 +5,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restore first (cached layer): copy only the files restore needs.
-COPY Directory.Build.props Directory.Packages.props CreditCardApi.slnx ./
+COPY Directory.Build.props Directory.Packages.props CreditCardApi.sln ./
 COPY src/CreditCardApi.Domain/*.csproj src/CreditCardApi.Domain/
 COPY src/CreditCardApi.Application/*.csproj src/CreditCardApi.Application/
 COPY src/CreditCardApi.Infrastructure/*.csproj src/CreditCardApi.Infrastructure/

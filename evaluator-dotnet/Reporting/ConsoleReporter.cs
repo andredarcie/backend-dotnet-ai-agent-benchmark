@@ -30,9 +30,8 @@ public static class ConsoleReporter
         foreach (var c in report.Categories)
         {
             string score = c.Score.HasValue ? $"{c.Score:0.0}/5" : "n/a";
-            string review = c.RequiresHumanReview ? "  <REVIEW>" : "";
-            w($"#{c.Number,2} [{c.Automation.Label(),-16}] {c.Name}");
-            w($"      score: {score}   weight: {c.Weight * 100:0.#}%{review}");
+            w($"#{c.Number,2} [{c.Automation.Label(),-14}] {c.Name}");
+            w($"      score: {score}   weight: {c.Weight * 100:0.#}%");
             foreach (var m in c.Metrics)
             {
                 w($"      {Sym(m.Status)} {m.Name}: {m.Observed}  (target: {m.Target})");
@@ -48,13 +47,8 @@ public static class ConsoleReporter
         w($"  WEIGHTED FINAL SCORE: {final}   (coverage: {report.Coverage:P0} of categories)");
         if (report.ScoreCapReason != null)
             w($"  /!\\ SCORE CAPPED: {report.ScoreCapReason}");
-        if (report.PatchPenalty is > 0)
-            w($"  PATCH PENALTY: -{report.PatchPenalty:0.0} (run minimally patched to build/boot — {report.PatchReason})");
         if (!report.Deep)
             w("  NOTE: light mode (static only) — not comparable to deep/harness scores.");
-        var review2 = report.Categories.Where(c => c.RequiresHumanReview).Select(c => $"#{c.Number}").ToList();
-        if (review2.Count > 0)
-            w($"  Categories requiring human review of the verdict: {string.Join(", ", review2)}");
         var notScored = report.Categories.Where(c => !c.Score.HasValue).Select(c => $"#{c.Number}").ToList();
         if (notScored.Count > 0)
             w($"  Not scored (missing tool/Docker or --deep): {string.Join(", ", notScored)}");

@@ -2,7 +2,7 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 12 — Portability, Configuration &amp; Deploy (🟢 full-auto).
+/// <summary>Category 12 — Portability, Configuration &amp; Deploy (🟢 deterministic).
 /// Tools: hadolint (Dockerfile lint), dotnet-outdated (dependency freshness). File/Roslyn checks for
 /// compose, env-based config, dependency pinning, CI and non-root container.</summary>
 public sealed class PortabilityEvaluator : CategoryEvaluatorBase

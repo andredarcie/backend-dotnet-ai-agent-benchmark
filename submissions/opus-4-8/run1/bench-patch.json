@@ -1,4 +1,0 @@
-{
-  "points": 0.4,
-  "reason": "Dockerfile COPY referenced CreditCardApi.sln but the project ships CreditCardApi.slnx; minimal build-blocker fix (build config only, no source/logic change). Model's own defect, so the penalty applies."
-}

@@ -3,7 +3,7 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 7 — Security (🟠 proxy + review).
+/// <summary>Category 7 — Security (🟠 proxy).
 /// Tools: gitleaks (secrets), dotnet list --vulnerable / Trivy (SCA), Semgrep (SAST). Built-in PCI
 /// checks: PAN (Luhn) over string literals + appsettings, and forbidden CVV/track/PIN fields.</summary>
 public sealed class SecurityEvaluator : CategoryEvaluatorBase
@@ -84,11 +84,11 @@ public sealed class SecurityEvaluator : CategoryEvaluatorBase
             // nit the task never asks for.
             RunTool(ctx, r, "semgrep", $"--error --quiet --config auto --exclude .github \"{p.Root}\"", "sast", "no SAST findings (Semgrep)",
                 o => o.ExitCode == 0 ? Pass("sast", "clean", "no SAST findings (Semgrep)")
-                                     : Partial("sast", "findings (triage needed)", "no SAST findings (Semgrep)"), timeoutMs: 300_000);
+                                     : Partial("sast", "findings", "no SAST findings (Semgrep)"), timeoutMs: 300_000);
         }
         else r.Notes.Add("Run with --deep for SCA (`dotnet list --vulnerable` / Trivy) and SAST (Semgrep). DAST (OWASP ZAP) needs the app running.");
 
-        r.Notes.Add("PROXY: SAST/DAST findings need false-positive triage and the BOLA test needs an oracle scenario (user A vs resource of B). Final verdict = human review.");
+        r.Notes.Add("PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep.");
         return Task.FromResult(r);
     }
 

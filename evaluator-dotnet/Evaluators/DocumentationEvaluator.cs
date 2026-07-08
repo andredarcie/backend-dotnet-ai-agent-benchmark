@@ -3,7 +3,7 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 13 — Documentation (🟠 proxy + review).
+/// <summary>Category 13 — Documentation (🟠 proxy).
 /// Tools: markdownlint (README lint), lychee (broken links), swagger-cli (OpenAPI validity).
 /// README section presence is parsed from the markdown; doc-comment density comes from Roslyn.</summary>
 public sealed class DocumentationEvaluator : CategoryEvaluatorBase
@@ -62,7 +62,7 @@ public sealed class DocumentationEvaluator : CategoryEvaluatorBase
                 o => o.Success ? Pass("links", "no broken links", "no broken links (lychee)", weight: 0.5)
                                : Partial("links", "broken link(s)", "no broken links (lychee)", weight: 0.5), weight: 0.5);
 
-        r.Notes.Add("PROXY: section/link presence is automatic, but the QUALITY of the prose needs human review.");
+        r.Notes.Add("PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically.");
         return Task.FromResult(r);
     }
 

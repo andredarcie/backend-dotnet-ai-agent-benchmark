@@ -2,7 +2,7 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 3 — Code Quality (🟢 full-auto).
+/// <summary>Category 3 — Code Quality (🟢 deterministic).
 /// Tools: dotnet format (--verify-no-changes) and dotnet build (analyzer warnings). Roslyn detects
 /// empty catches, TODO/FIXME comments and micro-optimization markers.</summary>
 public sealed class CodeQualityEvaluator : CategoryEvaluatorBase

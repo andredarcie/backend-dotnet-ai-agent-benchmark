@@ -31,9 +31,8 @@ function of how far the submission got, so the ranking is fully reproducible.
 
 `haiku-4-5` compiles locally but hits the **boot-fail cap (1.5)**: its `Dockerfile` `COPY`s the
 `.csproj` and runs `dotnet restore` **without** first copying `Directory.Build.props` (which defines the
-`TargetFramework`), so the Docker image fails to build (`NETSDK1013`) and the API never boots. The
-two-pass review is a **static** pass (no `docker compose up`), so it couldn't catch a Docker-build defect
-that a local build doesn't reproduce.
+`TargetFramework`), so the Docker image fails to build (`NETSDK1013`) and the API never boots — a
+Docker-build defect the model's own second-pass review didn't catch (a local build doesn't reproduce it).
 
 Measurement badges (**all 100% automated**, the colour only marks how *directly* a category is measured):
 🟢 deterministic · 🟡 oracle · 🟠 proxy. **Per-category scores, the per-metric analysis and the cap
@@ -52,9 +51,10 @@ dotnet run --project model-runner -- --list              # the model matrix
 ```
 
 - **Pass 1 — build:** feeds `PROMPT.md`; the model writes the whole project into `submissions/<model>/<run>/`.
-- **Pass 2 — review:** feeds `PROMPT.md` + `PROMPT-REVIEW.md`; the model re-reads its code against the
-  brief, confirms it compiles, and applies a final patch — a **fast, static review, no Docker**.
-- **No Docker needed to generate** (the review pass is static); Docker is only needed later, to *grade*.
+- **Pass 2 — review:** feeds `PROMPT.md` + `PROMPT-REVIEW.md`; the model critically reviews its own work
+  against the brief, **verifies it however it judges best** (read, build, test, run it…), and applies a
+  final patch. The prompt is deliberately open-ended — it tests whether the model knows to validate its
+  own work, without leaking *how*.
 - **Provenance:** writes `submissions/<model>/<run>.meta.json` (harness, effort, duration, passes,
   tokens, cost) automatically; the site renders it, and captures token/cost from `claude`'s JSON output.
 - **Auth:** for `claude`, run with `ANTHROPIC_API_KEY` **unset** so it uses your claude.ai login (a key

@@ -420,6 +420,28 @@
     return '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>';
   }
 
+  // Per-metric technical breakdown of what the evaluator actually checks (from content.criteriaChecks).
+  function checksTable(number) {
+    var rows = (C.criteriaChecks && C.criteriaChecks[number]) || [];
+    if (!rows.length) return "";
+    var items = rows.map(function (ck) {
+      var tag = ck.t
+        ? '<span class="check__tag check__tag--' + ck.t + '">' + esc(t("criteria.tag." + ck.t)) + "</span>"
+        : "";
+      return '<li class="check">' +
+        '<div class="check__head">' +
+          '<code class="check__name">' + esc(ck.n) + "</code>" + tag +
+          '<span class="check__w">×' + esc(ck.w) + "</span>" +
+        "</div>" +
+        '<p class="check__how">' + esc(ck.how[lang] || ck.how.en) + "</p>" +
+      "</li>";
+    }).join("");
+    return '<div class="crit__checks">' +
+      "<h4>" + esc(t("criteria.checks")) + "</h4>" +
+      '<p class="crit__checksnote">' + esc(t("criteria.checksNote")) + "</p>" +
+      '<ul class="checks">' + items + "</ul></div>";
+  }
+
   function renderCriteria() {
     var mount = document.getElementById("criteriaList");
     if (!mount) return;
@@ -468,6 +490,7 @@
               '<p class="crit__iso">' + esc(t("criteria.iso")) + " · <b>" + esc(c.iso) + "</b></p>" +
               diagram + live +
             "</div>" +
+            checksTable(c.number) +
           "</div></div></div>" +
         "</li>";
     });

@@ -93,6 +93,10 @@ window.CONTENT = {
       "criteria.noScore": "sem run ainda",
       "criteria.sortWeight": "Por peso",
       "criteria.sortOrder": "Por número",
+      "criteria.checks": "Como o avaliador checa (técnico)",
+      "criteria.checksNote": "Cada linha é uma métrica real do evaluator-dotnet — o nome no relatório, o mecanismo exato e o peso.",
+      "criteria.tag.live": "ao vivo",
+      "criteria.tag.deep": "deep",
 
       "auto.FullAuto": "determinístico",
       "auto.SemiOracle": "oráculo",
@@ -266,6 +270,10 @@ window.CONTENT = {
       "criteria.noScore": "no run yet",
       "criteria.sortWeight": "By weight",
       "criteria.sortOrder": "By number",
+      "criteria.checks": "How the evaluator checks it (technical)",
+      "criteria.checksNote": "Each row is a real evaluator-dotnet metric — its name in the report, the exact mechanism and its weight.",
+      "criteria.tag.live": "live",
+      "criteria.tag.deep": "deep",
 
       "auto.FullAuto": "deterministic",
       "auto.SemiOracle": "oracle",
@@ -629,5 +637,341 @@ window.CONTENT = {
         en: "Section presence, OpenAPI completeness and doc-comment coverage are all scored automatically."
       }
     }
-  ]
+  ],
+
+  /* ---- per-metric technical breakdown of what the evaluator actually checks ---- *
+   * Keyed by criterion number. Each row is a REAL evaluator-dotnet metric:
+   *   n = metric name (as it appears in the report)   w = weight
+   *   t = "live" (contract oracle / HTTP probe, needs a running system, --base-url)
+   *       "deep" (only runs in --deep: dotnet test/build, SAST/SCA, lint)
+   *       omitted = static (Roslyn AST / packages / files — runs in every mode)
+   *   how = the exact mechanism, {pt,en}                                            */
+  criteriaChecks: {
+    1: [
+      { n: "test-project", w: 1, how: {
+        pt: "Existe um csproj com 'Test' no nome, ou um pacote xunit/nunit/MSTest.",
+        en: "A csproj with 'Test' in the name, or an xunit/nunit/MSTest package, exists." } },
+      { n: "acceptance-blackbox", w: 1, how: {
+        pt: "O AST detecta WebApplicationFactory, ou o projeto referencia o pacote Testcontainers.",
+        en: "The AST detects WebApplicationFactory, or the project references the Testcontainers package." } },
+      { n: "mutation-config", w: 0.5, how: {
+        pt: "stryker-config.json/yaml ou pacote Stryker → bônus (Pass 0.5); ausente = Indeterminado (opcional, não penaliza).",
+        en: "stryker-config.json/yaml or a Stryker package → bonus (Pass 0.5); absent = Indeterminate (optional, no penalty)." } },
+      { n: "create-card-201", w: 1, t: "live", how: {
+        pt: "POST /credit-cards com payload VISA válido tem de responder 201 Created (requisição HTTP real).",
+        en: "POST /credit-cards with a valid VISA payload must answer 201 Created (real HTTP request)." } },
+      { n: "create-card-id", w: 1, t: "live", how: {
+        pt: "A resposta da criação traz o id novo no corpo JSON (aceita envelope data/value).",
+        en: "The create response returns the new id in the JSON body (data/value envelope tolerated)." } },
+      { n: "json-camelcase", w: 0.5, t: "live", how: {
+        pt: "Toda chave do JSON de resposta é camelCase (nenhuma começa maiúscula nem contém _).",
+        en: "Every response JSON key is camelCase (none starts uppercase or contains _)." } },
+      { n: "card-required-400", w: 1, t: "live", how: {
+        pt: "POST com cardholderName/cardNumber vazios tem de responder 400.",
+        en: "POST with empty cardholderName/cardNumber must answer 400." } },
+      { n: "get-card-404", w: 1, t: "live", how: {
+        pt: "GET /credit-cards/{id inexistente = 999000111} tem de responder 404.",
+        en: "GET /credit-cards/{missing id = 999000111} must answer 404." } },
+      { n: "create-tx-201 · create-tx-id", w: 1, t: "live", how: {
+        pt: "POST /transactions responde 201 e devolve o id novo no corpo.",
+        en: "POST /transactions answers 201 and returns the new id in the body." } },
+      { n: "create-tx-echo", w: 0.5, t: "live", how: {
+        pt: "A resposta ecoa os campos persistidos: amount = 199.90 e merchant = 'Amazon'.",
+        en: "The response echoes the persisted fields: amount = 199.90 and merchant = 'Amazon'." } },
+      { n: "tx-amount-positive-400", w: 1.5, t: "live", how: {
+        pt: "amount menor ou igual a 0 tem de responder 400 (regra de negócio, peso reforçado).",
+        en: "amount less than or equal to 0 must answer 400 (business rule, weighted up)." } },
+      { n: "tx-merchant-required-400", w: 1.5, t: "live", how: {
+        pt: "merchant vazio tem de responder 400.",
+        en: "empty merchant must answer 400." } },
+      { n: "tx-fk-exists-400", w: 1.5, t: "live", how: {
+        pt: "creditCardId inexistente tem de responder 400 — integridade de FK cobrada pela API.",
+        en: "a non-existent creditCardId must answer 400 — FK integrity enforced at the API." } },
+      { n: "list/get/put/delete · status", w: 1, t: "live", how: {
+        pt: "CRUD completo dirigido: GET coleção e por id → 200; PUT existente → 200/204; DELETE existente → 204; qualquer id inexistente em GET/PUT/DELETE → 404 (várias métricas, peso 0.5–1 cada).",
+        en: "Full CRUD driven: GET collection and by id → 200; PUT existing → 200/204; DELETE existing → 204; any missing id on GET/PUT/DELETE → 404 (several metrics, weight 0.5–1 each)." } },
+      { n: "schemathesis", w: 1, t: "deep", how: {
+        pt: "Descobre o OpenAPI servido e roda `schemathesis run <spec> --checks all -n 20`; violações → Fail; schema não-carregado/suite vazia → Indeterminado.",
+        en: "Discovers the served OpenAPI and runs `schemathesis run <spec> --checks all -n 20`; violations → Fail; unloadable schema/empty suite → Indeterminate." } },
+      { n: "test-pass-rate", w: 2, t: "deep", how: {
+        pt: "Roda `dotnet test` uma vez (compartilhado com Testes); regex extrai Passed/Failed; nota = passed / total.",
+        en: "Runs `dotnet test` once (shared with Tests); a regex extracts Passed/Failed; score = passed / total." } }
+    ],
+    2: [
+      { n: "layering", w: 1, how: {
+        pt: "Existem as três camadas por pasta: (Domain|Entities|Models) E (Infrastructure|Repositories|Data) E (Controllers|Api|Endpoints).",
+        en: "The three layers exist as folders: (Domain|Entities|Models) AND (Infrastructure|Repositories|Data) AND (Controllers|Api|Endpoints)." } },
+      { n: "application-layer", w: 1, how: {
+        pt: "Existe pasta UseCases, Application, Services ou Handlers.",
+        en: "A UseCases, Application, Services or Handlers folder exists." } },
+      { n: "dependency-direction", w: 1, how: {
+        pt: "Roslyn lê os `using` dos arquivos sob Domain/Entities e conta os que referenciam EntityFrameworkCore|Npgsql|Confluent.Kafka; 0 vazamentos → Pass.",
+        en: "Roslyn reads the `using`s of files under Domain/Entities and counts those referencing EntityFrameworkCore|Npgsql|Confluent.Kafka; 0 leaks → Pass." } },
+      { n: "overengineering-proxy", w: 0.5, how: {
+        pt: "Razão (interfaces com ≤1 implementação / total de interfaces), com implementadores contados no AST; ≤0.5 → Pass; >0.5 → Indeterminado (portas DIP são normais, informativo).",
+        en: "Ratio (interfaces with ≤1 implementation / total interfaces), implementers counted in the AST; ≤0.5 → Pass; >0.5 → Indeterminate (DIP ports are normal, informational)." } },
+      { n: "no-god-class", w: 0.5, how: {
+        pt: "O maior tipo (linhas medidas pelo AST) tem ≤600 linhas → Pass; senão Partial.",
+        en: "The largest type (lines measured by the AST) is ≤600 lines → Pass; otherwise Partial." } },
+      { n: "resharper", w: 0.5, t: "deep", how: {
+        pt: "Se `jb` estiver instalado: `jb inspectcode <root>` e conta os `<Issue>` no XML de saída; 0 → Pass.",
+        en: "If `jb` is installed: `jb inspectcode <root>`, counting `<Issue>` entries in the output XML; 0 → Pass." } }
+    ],
+    3: [
+      { n: "no-empty-catch", w: 1, how: {
+        pt: "AST: conta blocos `catch` com 0 statements (exceção engolida); contagem 0 → Pass.",
+        en: "AST: counts `catch` blocks with 0 statements (swallowed exception); count 0 → Pass." } },
+      { n: "no-todos", w: 1, how: {
+        pt: "Regex \\b(TODO|FIXME|HACK)\\b sobre a trivia de comentário do AST; 0 → Pass, ≤3 → Partial.",
+        en: "Regex \\b(TODO|FIXME|HACK)\\b over the AST comment trivia; 0 → Pass, ≤3 → Partial." } },
+      { n: "analyzers-enabled", w: 1, how: {
+        pt: "TreatWarningsAsErrors=true, ou EnableNETAnalyzers=true, ou existe .editorconfig.",
+        en: "TreatWarningsAsErrors=true, or EnableNETAnalyzers=true, or an .editorconfig exists." } },
+      { n: "format", w: 1, t: "deep", how: {
+        pt: "`dotnet format --verify-no-changes`; sem mudanças pendentes → Pass.",
+        en: "`dotnet format --verify-no-changes`; no pending changes → Pass." } },
+      { n: "build-warnings", w: 1, t: "deep", how: {
+        pt: "Contagem de warnings do build Release único do harness; 0 → Pass, ≤10 → Partial.",
+        en: "Warning count from the harness's single Release build; 0 → Pass, ≤10 → Partial." } }
+    ],
+    4: [
+      { n: "http-verbs", w: 1, how: {
+        pt: "Atributos [HttpGet/Post/Put/Patch/Delete] ou invocações MapGet/MapPost/… (Richardson L2).",
+        en: "[HttpGet/Post/Put/Patch/Delete] attributes or MapGet/MapPost/… invocations (Richardson L2)." } },
+      { n: "status-codes", w: 1, how: {
+        pt: "Uso de StatusCodes ou dos helpers Created/Ok/NoContent/BadRequest/NotFound/Conflict/….",
+        en: "Use of StatusCodes or the Created/Ok/NoContent/BadRequest/NotFound/Conflict/… helpers." } },
+      { n: "problem-details", w: 1, how: {
+        pt: "new ProblemDetails, ou AddProblemDetails/Problem(), ou IExceptionHandler (RFC 9457).",
+        en: "new ProblemDetails, or AddProblemDetails/Problem(), or IExceptionHandler (RFC 9457)." } },
+      { n: "openapi", w: 1, how: {
+        pt: "Pacote Swashbuckle/NSwag/Microsoft.AspNetCore.OpenApi, ou AddOpenApi/AddSwaggerGen/MapOpenApi/UseSwagger.",
+        en: "Swashbuckle/NSwag/Microsoft.AspNetCore.OpenApi package, or AddOpenApi/AddSwaggerGen/MapOpenApi/UseSwagger." } },
+      { n: "versioning", w: 0.5, how: {
+        pt: "using Asp.Versioning ou o identificador ApiVersion.",
+        en: "using Asp.Versioning or the ApiVersion identifier." } },
+      { n: "dtos", w: 0.5, how: {
+        pt: "Pasta Dtos/DTOs, ou tipos cujo nome contém Request/Response/Dto.",
+        en: "A Dtos/DTOs folder, or types whose names contain Request/Response/Dto." } },
+      { n: "openapi-populated", w: 1, t: "live", how: {
+        pt: "Baixa o OpenAPI servido e conta as operações; ops > 0 → Pass; 0 (paths vazio) → Fail (contrato vazio).",
+        en: "Fetches the served OpenAPI and counts operations; ops > 0 → Pass; 0 (empty paths) → Fail (empty contract)." } },
+      { n: "create-card-location · create-tx-location", w: 0.5, t: "live", how: {
+        pt: "As respostas 201 (cartão e transação) trazem o header Location.",
+        en: "The 201 responses (card and transaction) carry a Location header." } },
+      { n: "problem-details-live", w: 0.5, t: "live", how: {
+        pt: "O corpo de erro tem Content-Type application/problem+json (RFC 9457).",
+        en: "The error body has Content-Type application/problem+json (RFC 9457)." } },
+      { n: "pagination", w: 0.5, t: "live", how: {
+        pt: "Tenta pageSize=1/limit=1/perPage=1/… e exige exatamente 1 item ou metadados de paginação (a coleção é semeada com 2 cartões).",
+        en: "Tries pageSize=1/limit=1/perPage=1/… and requires exactly 1 item or paging metadata (the collection is seeded with 2 cards)." } },
+      { n: "spectral", w: 1, t: "deep", how: {
+        pt: "Se houver arquivo openapi/swagger: `spectral lint <spec> -f json` e conta as ocorrências de severity 0 (erros).",
+        en: "If an openapi/swagger file exists: `spectral lint <spec> -f json`, counting severity-0 occurrences (errors)." } },
+      { n: "swagger-validate", w: 0.5, t: "deep", how: {
+        pt: "`swagger-cli validate <spec>`; válido → Pass.",
+        en: "`swagger-cli validate <spec>`; valid → Pass." } }
+    ],
+    5: [
+      { n: "migrations", w: 1, how: {
+        pt: "Pasta Migrations / MigrationBuilder / arquivo .sql presente E ausência de EnsureCreated; com EnsureCreated → Partial.",
+        en: "Migrations folder / MigrationBuilder / a .sql file present AND no EnsureCreated; with EnsureCreated → Partial." } },
+      { n: "referential-integrity", w: 1, how: {
+        pt: "Roslyn deduz a relação: nav property para outra entidade DbSet, FK <Outra>Id (int/long/Guid), [ForeignKey], ou HasForeignKey/HasOne/WithMany.",
+        en: "Roslyn infers the relationship: a nav property to another DbSet entity, an <Other>Id FK (int/long/Guid), [ForeignKey], or HasForeignKey/HasOne/WithMany." } },
+      { n: "indexes", w: 0.5, how: {
+        pt: "Invocações HasIndex ou CreateIndex.",
+        en: "HasIndex or CreateIndex invocations." } },
+      { n: "concurrency", w: 0.5, how: {
+        pt: "[Timestamp]/[ConcurrencyCheck], ou IsRowVersion/RowVersion, ou IsConcurrencyToken().",
+        en: "[Timestamp]/[ConcurrencyCheck], or IsRowVersion/RowVersion, or IsConcurrencyToken()." } },
+      { n: "read-perf", w: 0.5, how: {
+        pt: "AsNoTracking / AsNoTrackingWithIdentityResolution nas leituras.",
+        en: "AsNoTracking / AsNoTrackingWithIdentityResolution on reads." } },
+      { n: "sqlfluff", w: 0.5, t: "deep", how: {
+        pt: "Se houver .sql: `sqlfluff lint --dialect postgres <dir>`; limpo → Pass, senão Partial.",
+        en: "If a .sql exists: `sqlfluff lint --dialect postgres <dir>`; clean → Pass, otherwise Partial." } }
+    ],
+    6: [
+      { n: "broker-client", w: 1, how: {
+        pt: "Pacote Confluent.Kafka/MassTransit, ou genéricos IProducer/IConsumer/ProducerBuilder/ConsumerBuilder.",
+        en: "Confluent.Kafka/MassTransit package, or IProducer/IConsumer/ProducerBuilder/ConsumerBuilder generics." } },
+      { n: "durable-producer", w: 1, how: {
+        pt: "Acesso a membro Acks.All, ou o identificador EnableIdempotence.",
+        en: "Member access Acks.All, or the EnableIdempotence identifier." } },
+      { n: "idempotent-consumer", w: 1, how: {
+        pt: "Detecção por nomes no AST: tipo/DbSet 'Outbox', ou tipo com Inbox/ProcessedMessage/Idempot/Deduplicat no nome, ou identificador AlreadyProcessed/Idempotenc. É presença estática — não um teste de reprocessamento em runtime.",
+        en: "Name detection in the AST: an 'Outbox' type/DbSet, or a type named Inbox/ProcessedMessage/Idempot/Deduplicat, or an AlreadyProcessed/Idempotenc identifier. Static presence — not a runtime reprocessing test." } },
+      { n: "outbox", w: 1, how: {
+        pt: "Um tipo ou DbSet<> cujo nome contém 'Outbox'.",
+        en: "A type or DbSet<> whose name contains 'Outbox'." } },
+      { n: "dlq", w: 0.5, how: {
+        pt: "Tipo ou identificador contendo DeadLetter/Dlq.",
+        en: "A type or identifier containing DeadLetter/Dlq." } },
+      { n: "offset-after-process", w: 0.5, how: {
+        pt: "EnableAutoCommit presente E uma invocação Commit/CommitAsync (auto-commit desligado, commit manual).",
+        en: "EnableAutoCommit present AND a Commit/CommitAsync invocation (auto-commit off, manual commit)." } },
+      { n: "messaging-tests", w: 0.5, how: {
+        pt: "Pacote Testcontainers.Kafka, ou Testcontainers com um cliente de broker presente.",
+        en: "Testcontainers.Kafka package, or Testcontainers with a broker client present." } }
+    ],
+    7: [
+      { n: "pci-pan", w: 1, how: {
+        pt: "Regex de 13–19 dígitos sobre literais string de produção + valores de appsettings.json, filtrado por Luhn; qualquer sequência válida → Fail (testes excluídos).",
+        en: "A 13–19 digit regex over production string literals + appsettings.json values, filtered by Luhn; any valid sequence → Fail (tests excluded)." } },
+      { n: "pci-sad", w: 1, how: {
+        pt: "Identificador contendo cvv/cvc/cardverification/track2/pinblock → Fail (dado sensível de autenticação).",
+        en: "An identifier containing cvv/cvc/cardverification/track2/pinblock → Fail (sensitive auth data)." } },
+      { n: "authz", w: 0, how: {
+        pt: "[Authorize]/AddAuthentication/AddAuthorization — reportado com peso 0 (fora de escopo: não há modelo de usuário; ausência não penaliza).",
+        en: "[Authorize]/AddAuthentication/AddAuthorization — reported at weight 0 (out of scope: no user model; absence is not penalised)." } },
+      { n: "validation", w: 0.5, how: {
+        pt: "FluentValidation, ou [Required]/[Range]/[StringLength], ou ModelState.",
+        en: "FluentValidation, or [Required]/[Range]/[StringLength], or ModelState." } },
+      { n: "rate-limit", w: 0.5, how: {
+        pt: "AddRateLimiter / RequireRateLimiting (OWASP API #4).",
+        en: "AddRateLimiter / RequireRateLimiting (OWASP API #4)." } },
+      { n: "tls", w: 0.5, how: {
+        pt: "UseHsts → Pass; só UseHttpsRedirection → Partial; nada → Fail (a tarefa proíbe forçar redirect na porta HTTP do container).",
+        en: "UseHsts → Pass; UseHttpsRedirection only → Partial; neither → Fail (the task forbids forcing a redirect on the container's HTTP port)." } },
+      { n: "secrets", w: 1, how: {
+        pt: "`gitleaks detect --source <root> --no-git --no-banner`; exit 0 → Pass.",
+        en: "`gitleaks detect --source <root> --no-git --no-banner`; exit 0 → Pass." } },
+      { n: "sca", w: 1, t: "deep", how: {
+        pt: "`dotnet list package --vulnerable --include-transitive`; procura 'vulnerable' ou > High/Critical no output.",
+        en: "`dotnet list package --vulnerable --include-transitive`; looks for 'vulnerable' or > High/Critical in the output." } },
+      { n: "sca-trivy", w: 0.5, t: "deep", how: {
+        pt: "`trivy fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 <root>`; FATAL (DB/rede) → Indeterminado.",
+        en: "`trivy fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 <root>`; FATAL (DB/network) → Indeterminate." } },
+      { n: "sast", w: 1, t: "deep", how: {
+        pt: "`semgrep --error --config auto --exclude .github <root>`; exit 0 → Pass, senão Partial.",
+        en: "`semgrep --error --config auto --exclude .github <root>`; exit 0 → Pass, otherwise Partial." } }
+    ],
+    8: [
+      { n: "resilience-policies", w: 1, how: {
+        pt: "Pacote Polly/Microsoft.Extensions.Http.Resilience, ou AddResilienceHandler/WaitAndRetry/AddPolicyHandler/AddStandardResilienceHandler.",
+        en: "Polly/Microsoft.Extensions.Http.Resilience package, or AddResilienceHandler/WaitAndRetry/AddPolicyHandler/AddStandardResilienceHandler." } },
+      { n: "health-checks", w: 1, how: {
+        pt: "AddHealthChecks / MapHealthChecks / UseHealthChecks.",
+        en: "AddHealthChecks / MapHealthChecks / UseHealthChecks." } },
+      { n: "global-error-handling", w: 1, how: {
+        pt: "IExceptionHandler, ou UseExceptionHandler/UseProblemDetails/AddProblemDetails.",
+        en: "IExceptionHandler, or UseExceptionHandler/UseProblemDetails/AddProblemDetails." } },
+      { n: "graceful-shutdown", w: 0.5, how: {
+        pt: "IHostApplicationLifetime/BackgroundService, ApplicationStopping, ou StopAsync.",
+        en: "IHostApplicationLifetime/BackgroundService, ApplicationStopping, or StopAsync." } },
+      { n: "timeouts", w: 0.5, how: {
+        pt: "AddRequestTimeouts, ou CommandTimeout/CancellationToken.",
+        en: "AddRequestTimeouts, or CommandTimeout/CancellationToken." } },
+      { n: "no-stacktrace-leak", w: 1, t: "live", how: {
+        pt: "Envia um JSON malformado; falha se o status for ≥500 ou se o corpo contiver marcadores de exceção (StackTrace, '   at ', .cs:line, EntityFrameworkCore, Npgsql., DbUpdateException).",
+        en: "Sends a malformed JSON; fails if the status is ≥500 or the body contains exception markers (StackTrace, '   at ', .cs:line, EntityFrameworkCore, Npgsql., DbUpdateException)." } }
+    ],
+    9: [
+      { n: "test-framework", w: 0.5, how: {
+        pt: "csproj com 'Test' no nome, ou pacote xunit/nunit/MSTest (peso baixo — evita auto-avaliação).",
+        en: "csproj with 'Test' in the name, or an xunit/nunit/MSTest package (low weight — reduces self-grading)." } },
+      { n: "pyramid", w: 1, how: {
+        pt: "Pastas UnitTests/IntegrationTests, ou Testcontainers, ou WebApplicationFactory (unit + integração).",
+        en: "UnitTests/IntegrationTests folders, or Testcontainers, or WebApplicationFactory (unit + integration)." } },
+      { n: "coverage-tool", w: 0.5, how: {
+        pt: "Pacote coverlet.",
+        en: "coverlet package." } },
+      { n: "mutation-tool", w: 0.5, how: {
+        pt: "Config/pacote Stryker → Pass (bônus); ausente = Indeterminado (opcional).",
+        en: "Stryker config/package → Pass (bonus); absent = Indeterminate (optional)." } },
+      { n: "coverage", w: 2, t: "deep", how: {
+        pt: "Coleta XPlat Code Coverage no `dotnet test`, faz merge de todos os coverage.cobertura.xml (união das linhas cobertas); LineRate ≥80% → Pass, ≥50% → Partial.",
+        en: "Collects XPlat Code Coverage on `dotnet test`, merges every coverage.cobertura.xml (union of covered lines); LineRate ≥80% → Pass, ≥50% → Partial." } }
+    ],
+    10: [
+      { n: "otel", w: 1, how: {
+        pt: "Pacote OpenTelemetry, ou using OpenTelemetry.",
+        en: "OpenTelemetry package, or using OpenTelemetry." } },
+      { n: "structured-logs", w: 1, how: {
+        pt: "Pacote Serilog, ou AddJsonConsole/UseSerilog/AddSerilog.",
+        en: "Serilog package, or AddJsonConsole/UseSerilog/AddSerilog." } },
+      { n: "metrics-endpoint", w: 0.5, how: {
+        pt: "AddPrometheusExporter/MapPrometheusScrapingEndpoint, ou o tipo Meter.",
+        en: "AddPrometheusExporter/MapPrometheusScrapingEndpoint, or the Meter type." } },
+      { n: "correlation", w: 0.5, how: {
+        pt: "Identificador CorrelationId/TraceId/traceparent, ou acesso a Activity.Current.",
+        en: "A CorrelationId/TraceId/traceparent identifier, or Activity.Current access." } },
+      { n: "health-endpoint", w: 0.5, how: {
+        pt: "MapHealthChecks / AddHealthChecks.",
+        en: "MapHealthChecks / AddHealthChecks." } },
+      { n: "live-health", w: 1, t: "live", how: {
+        pt: "GET {base}/health tem de responder 2xx/3xx no sistema vivo.",
+        en: "GET {base}/health must answer 2xx/3xx on the live system." } },
+      { n: "live-metrics", w: 0.5, t: "live", how: {
+        pt: "GET {base}/metrics tem de responder 2xx/3xx no sistema vivo.",
+        en: "GET {base}/metrics must answer 2xx/3xx on the live system." } }
+    ],
+    11: [
+      { n: "async-io", w: 1, how: {
+        pt: "AST: contagem de métodos marcados async > 0.",
+        en: "AST: count of methods marked async > 0." } },
+      { n: "no-sync-over-async", w: 1, how: {
+        pt: "AST: presença de invocações .Wait() ou .GetResult() → Partial (bloqueio sync-over-async).",
+        en: "AST: presence of .Wait() or .GetResult() invocations → Partial (sync-over-async blocking)." } },
+      { n: "stateless", w: 1, how: {
+        pt: "AddSession, ou > 3 campos static mutáveis (não const/readonly) → Partial (estado em memória).",
+        en: "AddSession, or > 3 mutable static fields (not const/readonly) → Partial (in-memory state)." } },
+      { n: "pagination", w: 0.5, how: {
+        pt: "Identificador pageSize/pageNumber, ou invocações Skip/Take.",
+        en: "A pageSize/pageNumber identifier, or Skip/Take invocations." } },
+      { n: "concurrency", w: 1, t: "live", how: {
+        pt: "Dispara 60 GETs com 20 concorrentes num endpoint real; 0 respostas 5xx e 0 falhas de transporte → Pass.",
+        en: "Fires 60 GETs at 20 concurrent against a real endpoint; 0 5xx responses and 0 transport failures → Pass." } },
+      { n: "load", w: 2, t: "deep", how: {
+        pt: "Se BENCH_K6_SCRIPT estiver definido: `k6 run -e BASE_URL=… <script>`; thresholds de SLO atingidos → Pass.",
+        en: "If BENCH_K6_SCRIPT is set: `k6 run -e BASE_URL=… <script>`; SLO thresholds met → Pass." } }
+    ],
+    12: [
+      { n: "dockerfile", w: 1, how: {
+        pt: "Existe um arquivo Dockerfile.",
+        en: "A Dockerfile exists." } },
+      { n: "compose", w: 1, how: {
+        pt: "docker-compose*.yml, ou compose.yaml/compose.yml.",
+        en: "docker-compose*.yml, or compose.yaml/compose.yml." } },
+      { n: "env-config", w: 1, how: {
+        pt: "GetEnvironmentVariable, ou IConfiguration, ou builder.Configuration (12-Factor III/IV).",
+        en: "GetEnvironmentVariable, or IConfiguration, or builder.Configuration (12-Factor III/IV)." } },
+      { n: "pinning", w: 0.5, how: {
+        pt: "packages.lock.json, ou global.json, ou Directory.Packages.props com ManagePackageVersionsCentrally=true (lido via XML).",
+        en: "packages.lock.json, or global.json, or Directory.Packages.props with ManagePackageVersionsCentrally=true (read via XML)." } },
+      { n: "ci", w: 0.5, how: {
+        pt: ".github/workflows/, ou .gitlab-ci.yml/azure-pipelines.yml.",
+        en: ".github/workflows/, or .gitlab-ci.yml/azure-pipelines.yml." } },
+      { n: "non-root", w: 0.5, how: {
+        pt: "Regex ^\\s*USER\\s+ (multiline) encontra uma diretiva USER no Dockerfile.",
+        en: "Regex ^\\s*USER\\s+ (multiline) finds a USER directive in the Dockerfile." } },
+      { n: "hadolint", w: 0.5, t: "deep", how: {
+        pt: "`hadolint <Dockerfile>`; limpo → Pass, senão Partial.",
+        en: "`hadolint <Dockerfile>`; clean → Pass, otherwise Partial." } },
+      { n: "outdated", w: 0.5, t: "deep", how: {
+        pt: "`dotnet-outdated <root>`.",
+        en: "`dotnet-outdated <root>`." } }
+    ],
+    13: [
+      { n: "readme", w: 1, how: {
+        pt: "Existe README.md.",
+        en: "A README.md exists." } },
+      { n: "readme-sections", w: 1, how: {
+        pt: "Três regex sobre o README (purpose/overview; setup/install/prereq; run/usage/docker compose); nota = seções encontradas / 3.",
+        en: "Three regexes over the README (purpose/overview; setup/install/prereq; run/usage/docker compose); score = sections found / 3." } },
+      { n: "api-docs", w: 0.5, how: {
+        pt: "Pacote Swashbuckle/NSwag/OpenApi, ou AddOpenApi/AddSwaggerGen.",
+        en: "Swashbuckle/NSwag/OpenApi package, or AddOpenApi/AddSwaggerGen." } },
+      { n: "doc-comments", w: 0.5, how: {
+        pt: "GenerateDocumentationFile=true, ou > 5 comentários de documentação no AST.",
+        en: "GenerateDocumentationFile=true, or > 5 documentation comments in the AST." } },
+      { n: "markdownlint", w: 0.5, t: "deep", how: {
+        pt: "`markdownlint -c <ruleset do benchmark> <README>` (MD013/MD034 desligados); crash de Node → Indeterminado.",
+        en: "`markdownlint -c <benchmark ruleset> <README>` (MD013/MD034 off); Node crash → Indeterminate." } },
+      { n: "links", w: 0.5, t: "deep", how: {
+        pt: "`lychee --exclude-loopback --exclude localhost <README>`; sem links quebrados → Pass.",
+        en: "`lychee --exclude-loopback --exclude localhost <README>`; no broken links → Pass." } }
+    ]
+  }
 };

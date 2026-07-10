@@ -5,10 +5,10 @@ public class Transaction
     public int Id { get; set; }
     public int CreditCardId { get; set; }
     public decimal Amount { get; set; }
-    public string Merchant { get; set; } = null!;
+    public string Merchant { get; set; } = string.Empty;
     public string? Category { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public byte[] RowVersion { get; set; } = null!;
+    public DateTime CreatedAt { get; set; }
+    public uint Xmin { get; set; }
 
-    public CreditCard CreditCard { get; set; } = null!;
+    public CreditCard? CreditCard { get; set; }
 }

@@ -3,18 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 namespace CreditCardApi.Api.Presentation.Controllers;
 
 [ApiController]
-[Route("")]
+[Route("[controller]")]
 public class HealthController : ControllerBase
 {
-    [HttpGet("health")]
+    [HttpGet]
     [Produces("application/json")]
-    public ActionResult<HealthResponse> GetHealth()
+    public ActionResult<object> Get()
     {
-        return Ok(new HealthResponse { Status = "healthy" });
+        return Ok(new { status = "healthy" });
     }
-}
-
-public class HealthResponse
-{
-    public string Status { get; set; } = null!;
 }

@@ -1,376 +1,186 @@
-namespace CreditCardApi.Tests.Integration;
-
-using CreditCardApi.Api;
-using CreditCardApi.Api.Application.Dto;
+using CreditCardApi.Api.Domain.Entities;
 using CreditCardApi.Api.Infrastructure.Data;
-using CreditCardApi.Api.Infrastructure.Messaging;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Net;
-using System.Text;
-using System.Text.Json;
 using Testcontainers.PostgreSql;
 using Xunit;
-using FluentAssertions;
-using Moq;
+
+namespace CreditCardApi.Tests.Integration;
 
 public class TransactionsIntegrationTests : IAsyncLifetime
 {
-    private PostgreSqlContainer? _container;
-    private WebApplicationFactory<Program>? _factory;
-    private HttpClient? _client;
+    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
+        .WithDatabase("creditcard")
+        .WithUsername("postgres")
+        .WithPassword("postgres")
+        .Build();
+
+    private CreditCardDbContext _dbContext = null!;
 
     public async Task InitializeAsync()
     {
-        _container = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
-            .WithDatabase("creditcard_db")
-            .WithUsername("testuser")
-            .WithPassword("testpassword")
-            .Build();
-
         await _container.StartAsync();
-
         var connectionString = _container.GetConnectionString();
 
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
-            {
-                builder.ConfigureServices(services =>
-                {
-                    var descriptor = services.FirstOrDefault(d =>
-                        d.ServiceType == typeof(DbContextOptions<CreditCardDbContext>));
+        var services = new ServiceCollection();
+        services.AddDbContext<CreditCardDbContext>(options =>
+            options.UseNpgsql(connectionString));
 
-                    if (descriptor != null)
-                    {
-                        services.Remove(descriptor);
-                    }
-
-                    services.AddDbContext<CreditCardDbContext>(options =>
-                    {
-                        options.UseNpgsql(connectionString);
-                        options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
-                    });
-
-                    var producerDescriptor = services.FirstOrDefault(d =>
-                        d.ServiceType == typeof(ITransactionProducer));
-
-                    if (producerDescriptor != null)
-                    {
-                        services.Remove(producerDescriptor);
-                    }
-
-                    // Remove and replace Kafka-related services with mocks for testing
-                    var kafkaConfigDescriptor = services.FirstOrDefault(d =>
-                        d.ServiceType == typeof(Microsoft.Extensions.Options.IOptions<CreditCardApi.Api.Infrastructure.Messaging.KafkaProducerConfig>));
-                    if (kafkaConfigDescriptor != null)
-                    {
-                        services.Remove(kafkaConfigDescriptor);
-                    }
-
-                    var mockProducer = new Mock<ITransactionProducer>();
-                    mockProducer
-                        .Setup(x => x.PublishTransactionCreatedAsync(It.IsAny<TransactionResponse>(), It.IsAny<CancellationToken>()))
-                        .Returns(Task.CompletedTask);
-                    services.AddSingleton(mockProducer.Object);
-                });
-            });
-
-        _client = _factory.CreateClient();
-
-        using (var scope = _factory.Services.CreateScope())
-        {
-            var dbContext = scope.ServiceProvider.GetRequiredService<CreditCardDbContext>();
-            await dbContext.Database.MigrateAsync();
-        }
+        var serviceProvider = services.BuildServiceProvider();
+        _dbContext = serviceProvider.GetRequiredService<CreditCardDbContext>();
+        await _dbContext.Database.MigrateAsync();
     }
 
     public async Task DisposeAsync()
     {
-        if (_client != null)
-        {
-            _client.Dispose();
-        }
-
-        if (_factory != null)
-        {
-            _factory.Dispose();
-        }
-
-        if (_container != null)
-        {
-            await _container.StopAsync();
-            await _container.DisposeAsync();
-        }
+        _dbContext?.Dispose();
+        await _container.StopAsync();
     }
 
-    private async Task<CreditCardResponse> CreateTestCreditCard()
+    private async Task<CreditCard> CreateTestCard()
     {
-        var request = new CreateCreditCardRequest
+        var card = new CreditCard
         {
-            CardholderName = "Test User",
+            CardholderName = "Test Cardholder",
             CardNumber = "4532015112830366",
             Brand = "VISA",
-            CreditLimit = 5000m,
+            CreditLimit = 5000,
+            CreatedAt = DateTime.UtcNow
         };
 
-        var content = new StringContent(
-            JsonSerializer.Serialize(request),
-            Encoding.UTF8,
-            "application/json");
-
-        var response = await _client!.PostAsync("/api/credit-cards", content);
-        var responseData = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<CreditCardResponse>(
-            responseData,
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })!;
+        _dbContext.CreditCards.Add(card);
+        await _dbContext.SaveChangesAsync();
+        return card;
     }
 
     [Fact]
-    public async Task CreateTransaction_WithValidData_Returns201()
+    public async Task CanCreateAndRetrieveTransaction()
     {
-        var card = await CreateTestCreditCard();
+        var card = await CreateTestCard();
 
-        var request = new CreateTransactionRequest
+        var transaction = new Transaction
         {
             CreditCardId = card.Id,
-            Amount = 199.99m,
+            Amount = 99.99m,
             Merchant = "Amazon",
             Category = "Shopping",
+            CreatedAt = DateTime.UtcNow
         };
 
-        var content = new StringContent(
-            JsonSerializer.Serialize(request),
-            Encoding.UTF8,
-            "application/json");
+        _dbContext.Transactions.Add(transaction);
+        await _dbContext.SaveChangesAsync();
 
-        var response = await _client!.PostAsync("/api/transactions", content);
+        var retrieved = await _dbContext.Transactions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == transaction.Id);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Created);
-        response.Headers.Location.Should().NotBeNull();
-
-        var responseContent = await response.Content.ReadAsStringAsync();
-        var createdTransaction = JsonSerializer.Deserialize<TransactionResponse>(
-            responseContent,
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-        createdTransaction.Should().NotBeNull();
-        createdTransaction!.CreditCardId.Should().Be(card.Id);
-        createdTransaction.Amount.Should().Be(199.99m);
-        createdTransaction.Merchant.Should().Be("Amazon");
-        createdTransaction.Category.Should().Be("Shopping");
+        Assert.NotNull(retrieved);
+        Assert.Equal(99.99m, retrieved.Amount);
+        Assert.Equal("Amazon", retrieved.Merchant);
+        Assert.Equal(card.Id, retrieved.CreditCardId);
     }
 
     [Fact]
-    public async Task CreateTransaction_WithZeroAmount_Returns400()
+    public async Task TransactionForeignKeyConstraintWorks()
     {
-        var card = await CreateTestCreditCard();
-
-        var request = new CreateTransactionRequest
-        {
-            CreditCardId = card.Id,
-            Amount = 0m,
-            Merchant = "Test",
-        };
-
-        var content = new StringContent(
-            JsonSerializer.Serialize(request),
-            Encoding.UTF8,
-            "application/json");
-
-        var response = await _client!.PostAsync("/api/transactions", content);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task CreateTransaction_WithNegativeAmount_Returns400()
-    {
-        var card = await CreateTestCreditCard();
-
-        var request = new CreateTransactionRequest
-        {
-            CreditCardId = card.Id,
-            Amount = -50m,
-            Merchant = "Test",
-        };
-
-        var content = new StringContent(
-            JsonSerializer.Serialize(request),
-            Encoding.UTF8,
-            "application/json");
-
-        var response = await _client!.PostAsync("/api/transactions", content);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task CreateTransaction_WithInvalidCardId_Returns400()
-    {
-        var request = new CreateTransactionRequest
+        var transaction = new Transaction
         {
             CreditCardId = 99999,
-            Amount = 100m,
-            Merchant = "Test",
+            Amount = 50.00m,
+            Merchant = "Store",
+            CreatedAt = DateTime.UtcNow
         };
 
-        var content = new StringContent(
-            JsonSerializer.Serialize(request),
-            Encoding.UTF8,
-            "application/json");
+        _dbContext.Transactions.Add(transaction);
 
-        var response = await _client!.PostAsync("/api/transactions", content);
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await Assert.ThrowsAnyAsync<Exception>(async () => await _dbContext.SaveChangesAsync());
     }
 
     [Fact]
-    public async Task CreateTransaction_WithEmptyMerchant_Returns400()
+    public async Task CanDeleteTransaction()
     {
-        var card = await CreateTestCreditCard();
+        var card = await CreateTestCard();
 
-        var request = new CreateTransactionRequest
+        var transaction = new Transaction
         {
             CreditCardId = card.Id,
-            Amount = 100m,
-            Merchant = "",
+            Amount = 50.00m,
+            Merchant = "Store",
+            CreatedAt = DateTime.UtcNow
         };
 
-        var content = new StringContent(
-            JsonSerializer.Serialize(request),
-            Encoding.UTF8,
-            "application/json");
+        _dbContext.Transactions.Add(transaction);
+        await _dbContext.SaveChangesAsync();
+        var id = transaction.Id;
 
-        var response = await _client!.PostAsync("/api/transactions", content);
+        _dbContext.Transactions.Remove(transaction);
+        await _dbContext.SaveChangesAsync();
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var retrieved = await _dbContext.Transactions
+            .FirstOrDefaultAsync(t => t.Id == id);
+
+        Assert.Null(retrieved);
     }
 
     [Fact]
-    public async Task GetTransaction_WithValidId_Returns200()
+    public async Task CanUpdateTransaction()
     {
-        var card = await CreateTestCreditCard();
+        var card = await CreateTestCard();
 
-        var createRequest = new CreateTransactionRequest
+        var transaction = new Transaction
         {
             CreditCardId = card.Id,
-            Amount = 250m,
-            Merchant = "Uber",
-            Category = "Travel",
+            Amount = 100.00m,
+            Merchant = "Store",
+            CreatedAt = DateTime.UtcNow
         };
 
-        var createContent = new StringContent(
-            JsonSerializer.Serialize(createRequest),
-            Encoding.UTF8,
-            "application/json");
+        _dbContext.Transactions.Add(transaction);
+        await _dbContext.SaveChangesAsync();
 
-        var createResponse = await _client!.PostAsync("/api/transactions", createContent);
-        var createdData = await createResponse.Content.ReadAsStringAsync();
-        var created = JsonSerializer.Deserialize<TransactionResponse>(
-            createdData,
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })!;
+        transaction.Amount = 150.00m;
+        transaction.Merchant = "Updated Store";
+        await _dbContext.SaveChangesAsync();
 
-        var getResponse = await _client.GetAsync($"/api/transactions/{created.Id}");
+        var retrieved = await _dbContext.Transactions
+            .FirstOrDefaultAsync(t => t.Id == transaction.Id);
 
-        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var responseContent = await getResponse.Content.ReadAsStringAsync();
-        var transaction = JsonSerializer.Deserialize<TransactionResponse>(
-            responseContent,
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-        transaction.Should().NotBeNull();
-        transaction!.Id.Should().Be(created.Id);
-        transaction.Merchant.Should().Be("Uber");
+        Assert.NotNull(retrieved);
+        Assert.Equal(150.00m, retrieved.Amount);
+        Assert.Equal("Updated Store", retrieved.Merchant);
     }
 
     [Fact]
-    public async Task GetTransaction_WithInvalidId_Returns404()
+    public async Task CascadeDeleteWorks()
     {
-        var response = await _client!.GetAsync("/api/transactions/99999");
+        var card = await CreateTestCard();
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task DeleteTransaction_WithValidId_Returns204()
-    {
-        var card = await CreateTestCreditCard();
-
-        var createRequest = new CreateTransactionRequest
+        var transaction1 = new Transaction
         {
             CreditCardId = card.Id,
-            Amount = 75.50m,
-            Merchant = "Netflix",
+            Amount = 100.00m,
+            Merchant = "Store1",
+            CreatedAt = DateTime.UtcNow
         };
 
-        var createContent = new StringContent(
-            JsonSerializer.Serialize(createRequest),
-            Encoding.UTF8,
-            "application/json");
-
-        var createResponse = await _client!.PostAsync("/api/transactions", createContent);
-        var createdData = await createResponse.Content.ReadAsStringAsync();
-        var created = JsonSerializer.Deserialize<TransactionResponse>(
-            createdData,
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase })!;
-
-        var deleteResponse = await _client.DeleteAsync($"/api/transactions/{created.Id}");
-
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
-
-        var getResponse = await _client.GetAsync($"/api/transactions/{created.Id}");
-        getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task GetCreditCardTransactions_Returns200()
-    {
-        var card = await CreateTestCreditCard();
-
-        var createRequest1 = new CreateTransactionRequest
+        var transaction2 = new Transaction
         {
             CreditCardId = card.Id,
-            Amount = 100m,
-            Merchant = "Store A",
+            Amount = 50.00m,
+            Merchant = "Store2",
+            CreatedAt = DateTime.UtcNow
         };
 
-        var createRequest2 = new CreateTransactionRequest
-        {
-            CreditCardId = card.Id,
-            Amount = 50m,
-            Merchant = "Store B",
-        };
+        _dbContext.Transactions.AddRange(transaction1, transaction2);
+        await _dbContext.SaveChangesAsync();
 
-        var content1 = new StringContent(
-            JsonSerializer.Serialize(createRequest1),
-            Encoding.UTF8,
-            "application/json");
+        _dbContext.CreditCards.Remove(card);
+        await _dbContext.SaveChangesAsync();
 
-        var content2 = new StringContent(
-            JsonSerializer.Serialize(createRequest2),
-            Encoding.UTF8,
-            "application/json");
+        var transactions = await _dbContext.Transactions
+            .Where(t => t.CreditCardId == card.Id)
+            .ToListAsync();
 
-        await _client!.PostAsync("/api/transactions", content1);
-        await _client.PostAsync("/api/transactions", content2);
-
-        var response = await _client.GetAsync($"/api/credit-cards/{card.Id}/transactions");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var responseContent = await response.Content.ReadAsStringAsync();
-
-        using var doc = JsonDocument.Parse(responseContent);
-        doc.RootElement.GetArrayLength().Should().BeGreaterThanOrEqualTo(2);
-    }
-
-    [Fact]
-    public async Task GetCreditCardTransactions_WithInvalidCardId_Returns404()
-    {
-        var response = await _client!.GetAsync("/api/credit-cards/99999/transactions");
-
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        Assert.Empty(transactions);
     }
 }

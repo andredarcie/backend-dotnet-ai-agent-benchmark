@@ -1,280 +1,180 @@
 using CreditCardApi.Api.Application.Dto;
 using CreditCardApi.Api.Domain.Entities;
 using CreditCardApi.Api.Infrastructure.Data;
+using CreditCardApi.Api.Infrastructure.Security;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
 
 namespace CreditCardApi.Api.Presentation.Controllers;
 
 [ApiController]
-[Route("api/credit-cards")]
-[Produces("application/json", "application/problem+json")]
-public class CreditCardsController(CreditCardDbContext context) : ControllerBase
+[Route("api/v1/[controller]")]
+public class CreditCardsController(CreditCardDbContext dbContext) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<PaginatedResponse<CreditCardResponse>>> GetCreditCards(
-        [FromQuery(Name = "page")] int page = 1,
-        [FromQuery(Name = "pageSize")] int pageSize = 10,
+    [Produces("application/json")]
+    public async Task<ActionResult<IEnumerable<CreditCardDto>>> GetCreditCards(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
-        if (page < 1 || pageSize < 1 || pageSize > 100)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Invalid pagination parameters",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = "page and pageSize must be >= 1, and pageSize <= 100",
-            });
-        }
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 10;
+        if (pageSize > 100) pageSize = 100;
 
-        var totalCount = await context.CreditCards.CountAsync(cancellationToken);
-        var cards = await context.CreditCards
-            .OrderByDescending(c => c.CreatedAt)
+        var cards = await dbContext.CreditCards
+            .AsNoTracking()
+            .OrderBy(c => c.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .AsNoTracking()
-            .Select(c => new CreditCardResponse
-            {
-                Id = c.Id,
-                CardholderName = c.CardholderName,
-                CardNumber = c.CardNumber,
-                Brand = c.Brand,
-                CreditLimit = c.CreditLimit,
-                CreatedAt = c.CreatedAt,
-            })
             .ToListAsync(cancellationToken);
 
-        return Ok(new PaginatedResponse<CreditCardResponse>
-        {
-            Data = cards,
-            Total = totalCount,
-            Page = page,
-            PageSize = pageSize,
-            TotalPages = (totalCount + pageSize - 1) / pageSize,
-        });
+        return Ok(cards.Select(CreditCardDto.FromEntity));
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<CreditCardResponse>> GetCreditCard(int id, CancellationToken cancellationToken)
+    [Produces("application/json", "application/problem+json")]
+    public async Task<ActionResult<CreditCardDto>> GetCreditCard(int id, CancellationToken cancellationToken = default)
     {
-        var card = await context.CreditCards
+        var card = await dbContext.CreditCards
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
-        if (card is null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Credit card not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Credit card with ID {id} does not exist",
-            });
-        }
+        if (card == null)
+            return NotFound(CreateProblemDetails(404, "Not Found", $"Credit card with ID {id} not found"));
 
-        return Ok(new CreditCardResponse
-        {
-            Id = card.Id,
-            CardholderName = card.CardholderName,
-            CardNumber = card.CardNumber,
-            Brand = card.Brand,
-            CreditLimit = card.CreditLimit,
-            CreatedAt = card.CreatedAt,
-        });
+        return Ok(CreditCardDto.FromEntity(card));
     }
 
     [HttpPost]
-    public async Task<ActionResult<CreditCardResponse>> CreateCreditCard(
+    [Produces("application/json", "application/problem+json")]
+    public async Task<ActionResult<CreditCardDto>> CreateCreditCard(
         [FromBody] CreateCreditCardRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        var validationErrors = ValidateCreateCreditCardRequest(request);
-        if (validationErrors.Count > 0)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation failed",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = string.Join("; ", validationErrors),
-            });
-        }
+        if (string.IsNullOrWhiteSpace(request.CardholderName))
+            return BadRequest(CreateProblemDetails(400, "Bad Request", "cardholderName is required and cannot be empty"));
+
+        if (string.IsNullOrWhiteSpace(request.CardNumber))
+            return BadRequest(CreateProblemDetails(400, "Bad Request", "cardNumber is required and cannot be empty"));
+
+        if (!CardNumberProtection.IsValidCardNumber(request.CardNumber))
+            return BadRequest(CreateProblemDetails(400, "Bad Request", "cardNumber is invalid"));
+
+        if (request.CreditLimit < 0)
+            return BadRequest(CreateProblemDetails(400, "Bad Request", "creditLimit must be >= 0"));
 
         var card = new CreditCard
         {
-            CardholderName = request.CardholderName.Trim(),
-            CardNumber = request.CardNumber.Trim(),
-            Brand = request.Brand?.Trim(),
+            CardholderName = request.CardholderName,
+            CardNumber = request.CardNumber,
+            Brand = request.Brand,
             CreditLimit = request.CreditLimit,
-            CreatedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow
         };
 
-        context.CreditCards.Add(card);
-        await context.SaveChangesAsync(cancellationToken);
+        dbContext.CreditCards.Add(card);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
-        var response = new CreditCardResponse
-        {
-            Id = card.Id,
-            CardholderName = card.CardholderName,
-            CardNumber = card.CardNumber,
-            Brand = card.Brand,
-            CreditLimit = card.CreditLimit,
-            CreatedAt = card.CreatedAt,
-        };
-
-        return CreatedAtAction(nameof(GetCreditCard), new { id = card.Id }, response);
+        return CreatedAtAction(nameof(GetCreditCard), new { id = card.Id }, CreditCardDto.FromEntity(card));
     }
 
     [HttpPut("{id}")]
+    [Produces("application/json", "application/problem+json")]
     public async Task<IActionResult> UpdateCreditCard(
         int id,
         [FromBody] UpdateCreditCardRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        var card = await context.CreditCards.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
-        if (card is null)
+        var card = await dbContext.CreditCards.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+        if (card == null)
+            return NotFound(CreateProblemDetails(404, "Not Found", $"Credit card with ID {id} not found"));
+
+        if (!string.IsNullOrWhiteSpace(request.CardholderName))
+            card.CardholderName = request.CardholderName;
+
+        if (!string.IsNullOrWhiteSpace(request.CardNumber))
         {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Credit card not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Credit card with ID {id} does not exist",
-            });
+            if (!CardNumberProtection.IsValidCardNumber(request.CardNumber))
+                return BadRequest(CreateProblemDetails(400, "Bad Request", "cardNumber is invalid"));
+            card.CardNumber = request.CardNumber;
         }
 
-        if (!string.IsNullOrEmpty(request.CardholderName))
-        {
-            var trimmed = request.CardholderName.Trim();
-            if (string.IsNullOrEmpty(trimmed))
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Validation failed",
-                    Status = StatusCodes.Status400BadRequest,
-                    Detail = "cardholderName cannot be empty",
-                });
-            }
-            card.CardholderName = trimmed;
-        }
-
-        if (!string.IsNullOrEmpty(request.CardNumber))
-        {
-            var trimmed = request.CardNumber.Trim();
-            if (string.IsNullOrEmpty(trimmed))
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Validation failed",
-                    Status = StatusCodes.Status400BadRequest,
-                    Detail = "cardNumber cannot be empty",
-                });
-            }
-            card.CardNumber = trimmed;
-        }
-
-        if (request.Brand is not null)
-        {
-            card.Brand = request.Brand.Trim();
-        }
+        if (request.Brand != null)
+            card.Brand = request.Brand;
 
         if (request.CreditLimit.HasValue)
         {
-            if (request.CreditLimit.Value < 0)
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Validation failed",
-                    Status = StatusCodes.Status400BadRequest,
-                    Detail = "creditLimit must be >= 0",
-                });
-            }
+            if (request.CreditLimit < 0)
+                return BadRequest(CreateProblemDetails(400, "Bad Request", "creditLimit must be >= 0"));
             card.CreditLimit = request.CreditLimit.Value;
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteCreditCard(int id, CancellationToken cancellationToken)
+    [Produces("application/problem+json")]
+    public async Task<IActionResult> DeleteCreditCard(int id, CancellationToken cancellationToken = default)
     {
-        var card = await context.CreditCards.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
-        if (card is null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Credit card not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Credit card with ID {id} does not exist",
-            });
-        }
+        var card = await dbContext.CreditCards.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 
-        context.CreditCards.Remove(card);
-        await context.SaveChangesAsync(cancellationToken);
+        if (card == null)
+            return NotFound(CreateProblemDetails(404, "Not Found", $"Credit card with ID {id} not found"));
+
+        dbContext.CreditCards.Remove(card);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
         return NoContent();
     }
 
     [HttpGet("{id}/transactions")]
-    public async Task<ActionResult<List<TransactionResponse>>> GetCreditCardTransactions(
+    [Produces("application/json", "application/problem+json")]
+    public async Task<ActionResult<IEnumerable<TransactionDto>>> GetCreditCardTransactions(
         int id,
-        CancellationToken cancellationToken)
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
     {
-        var cardExists = await context.CreditCards.AnyAsync(c => c.Id == id, cancellationToken);
+        var cardExists = await dbContext.CreditCards.AnyAsync(c => c.Id == id, cancellationToken);
         if (!cardExists)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Credit card not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Credit card with ID {id} does not exist",
-            });
-        }
+            return NotFound(CreateProblemDetails(404, "Not Found", $"Credit card with ID {id} not found"));
 
-        var transactions = await context.Transactions
-            .Where(t => t.CreditCardId == id)
-            .OrderByDescending(t => t.CreatedAt)
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 10;
+        if (pageSize > 100) pageSize = 100;
+
+        var transactions = await dbContext.Transactions
             .AsNoTracking()
-            .Select(t => new TransactionResponse
+            .Where(t => t.CreditCardId == id)
+            .OrderBy(t => t.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(t => new TransactionDto
             {
                 Id = t.Id,
                 CreditCardId = t.CreditCardId,
                 Amount = t.Amount,
                 Merchant = t.Merchant,
                 Category = t.Category,
-                CreatedAt = t.CreatedAt,
+                CreatedAt = t.CreatedAt
             })
             .ToListAsync(cancellationToken);
 
         return Ok(transactions);
     }
 
-    private static List<string> ValidateCreateCreditCardRequest(CreateCreditCardRequest request)
+    private static ProblemDetails CreateProblemDetails(int status, string title, string detail)
     {
-        var errors = new List<string>();
-
-        if (string.IsNullOrWhiteSpace(request.CardholderName))
+        return new ProblemDetails
         {
-            errors.Add("cardholderName is required and cannot be empty");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.CardNumber))
-        {
-            errors.Add("cardNumber is required and cannot be empty");
-        }
-
-        if (request.CreditLimit < 0)
-        {
-            errors.Add("creditLimit must be >= 0");
-        }
-
-        return errors;
+            Status = status,
+            Title = title,
+            Detail = detail,
+            Type = $"https://httpwg.org/specs/rfc9110.html#status.{status}",
+            Instance = ""
+        };
     }
-}
-
-public class PaginatedResponse<T>
-{
-    public List<T> Data { get; set; } = [];
-    public int Total { get; set; }
-    public int Page { get; set; }
-    public int PageSize { get; set; }
-    public int TotalPages { get; set; }
 }

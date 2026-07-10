@@ -1,104 +1,144 @@
 using CreditCardApi.Api.Infrastructure.Data;
 using CreditCardApi.Api.Infrastructure.Messaging;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Serilog.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
-builder.Services.AddOpenApi();
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string not found in configuration or environment variable 'ConnectionStrings__DefaultConnection'");
 
-builder.Services.AddDbContext<CreditCardDbContext>((options) =>
+builder.Services.AddDbContext<CreditCardDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     options.UseNpgsql(connectionString, npgsqlOptions =>
     {
-        npgsqlOptions.EnableRetryOnFailure(3, TimeSpan.FromSeconds(1), null);
+        npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 3);
     });
 });
 
-builder.Services.Configure<KafkaProducerConfig>(options =>
-{
-    options.BootstrapServers = builder.Configuration["Kafka:BootstrapServers"] ?? "kafka:9092";
-});
+builder.Services.AddSingleton<ITransactionProducer, TransactionProducer>();
 
-builder.Services.AddSingleton<ITransactionProducer>(sp =>
-{
-    var config = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<KafkaProducerConfig>>().Value;
-    var logger = sp.GetRequiredService<ILogger<TransactionProducer>>();
-    return new TransactionProducer(config, logger);
-});
+builder.Services.AddHealthChecks()
+    .AddNpgSql(connectionString, name: "database");
 
-builder.Host.UseSerilog((context, services, configuration) =>
+builder.Host.UseSerilog((context, configuration) =>
 {
     configuration
         .MinimumLevel.Information()
+        .WriteTo.Console(
+            outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss zzz}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
         .Enrich.FromLogContext()
-        .Enrich.WithMachineName()
-        .WriteTo.Console(outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz}] [{Level:u3}] {Message:lj}{NewLine}{Exception}");
+        .Enrich.WithProperty("ApplicationName", "CreditCardApi");
 });
-
-builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (!app.Environment.IsProduction())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
-app.UseExceptionHandler(exceptionHandlerApp =>
+app.Use(async (context, next) =>
 {
-    exceptionHandlerApp.Run(async context =>
-    {
-        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        var exceptionHandlerPathFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
-        var exception = exceptionHandlerPathFeature?.Error;
+    var correlationId = context.Request.Headers.TryGetValue("X-Correlation-ID", out var headerCorrelationId)
+        ? headerCorrelationId.ToString()
+        : context.TraceIdentifier;
 
-        if (exception != null)
-        {
-            logger.LogError(exception, "An unhandled exception occurred");
-        }
-        else
-        {
-            logger.LogError("An unhandled exception occurred");
-        }
+    using (LogContext.PushProperty("CorrelationId", correlationId))
+    {
+        context.Response.Headers["X-Correlation-ID"] = correlationId;
+        await next();
+    }
+});
+
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exceptionHandlerPathFeature = context.Features.Get<IExceptionHandlerPathFeature>();
+        var exception = exceptionHandlerPathFeature?.Error;
 
         context.Response.ContentType = "application/problem+json";
         context.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
-        var problemDetails = new ProblemDetails
+        var problem = new ProblemDetails
         {
-            Title = "Internal Server Error",
             Status = StatusCodes.Status500InternalServerError,
-            Detail = "An unexpected error occurred while processing your request",
+            Title = "Internal Server Error",
+            Detail = "An unexpected error occurred",
+            Type = "https://httpwg.org/specs/rfc9110.html#status.500",
+            Instance = context.Request.Path
         };
 
-        await context.Response.WriteAsJsonAsync(problemDetails);
+        await context.Response.WriteAsJsonAsync(problem);
+
+        using (LogContext.PushProperty("Exception", exception?.ToString()))
+        {
+            app.Logger.LogError(exception, "An unhandled exception occurred");
+        }
     });
 });
 
-app.UseRouting();
-
 app.MapControllers();
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            timestamp = DateTime.UtcNow,
+            checks = report.Entries.ToDictionary(x => x.Key, x => new { status = x.Value.Status.ToString() })
+        };
+        await context.Response.WriteAsJsonAsync(response);
+    }
+});
+
+app.MapGet("/metrics", () =>
+{
+    return Results.Ok(new
+    {
+        timestamp = DateTime.UtcNow,
+        version = "1.0",
+        environment = app.Environment.EnvironmentName
+    });
+}).Produces(200).WithName("GetMetrics");
 
 using (var scope = app.Services.CreateScope())
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<CreditCardDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
+        var dbContext = scope.ServiceProvider.GetRequiredService<CreditCardDbContext>();
         await dbContext.Database.MigrateAsync();
-        logger.LogInformation("Database migration completed successfully");
+        app.Logger.LogInformation("Database migration completed successfully");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred while migrating the database");
+        app.Logger.LogError(ex, "Database migration failed. Application cannot start.");
         throw;
     }
 }
 
-await app.RunAsync();
+var producer = app.Services.GetService<ITransactionProducer>();
+app.Lifetime.ApplicationStopping.Register(async () =>
+{
+    if (producer is IAsyncDisposable asyncDisposable)
+    {
+        await asyncDisposable.DisposeAsync();
+        app.Logger.LogInformation("Kafka producer disposed gracefully");
+    }
+});
+
+app.Run();

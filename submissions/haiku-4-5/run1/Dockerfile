@@ -1,22 +1,25 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS builder
 WORKDIR /src
 
-COPY ["src/CreditCardApi.Api/CreditCardApi.Api.csproj", "CreditCardApi.Api/"]
-RUN dotnet restore "CreditCardApi.Api/CreditCardApi.Api.csproj"
+COPY src/CreditCardApi.Api/CreditCardApi.Api.csproj src/CreditCardApi.Api/
+RUN dotnet restore src/CreditCardApi.Api/CreditCardApi.Api.csproj
 
-COPY . .
-WORKDIR "/src/CreditCardApi.Api"
-RUN dotnet build "CreditCardApi.Api.csproj" -c Release -o /app/build
+COPY src/ src/
+RUN dotnet publish src/CreditCardApi.Api/CreditCardApi.Api.csproj -c Release -o /app/publish --no-restore
 
-FROM build AS publish
-RUN dotnet publish "CreditCardApi.Api.csproj" -c Release -o /app/publish
-
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
 WORKDIR /app
-COPY --from=publish /app/publish .
 
-RUN useradd -m -u 1001 dotnetuser && chown -R dotnetuser:dotnetuser /app
-USER dotnetuser
+RUN adduser --disabled-password --gecos '' appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+COPY --from=builder /app/publish .
 
 EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+
 ENTRYPOINT ["dotnet", "CreditCardApi.Api.dll"]

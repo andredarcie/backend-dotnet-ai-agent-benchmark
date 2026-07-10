@@ -1,10 +1,15 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
+#nullable disable
+
 namespace CreditCardApi.Api.Infrastructure.Migrations
 {
+    /// <inheritdoc />
     public partial class InitialCreate : Migration
     {
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -14,11 +19,11 @@ namespace CreditCardApi.Api.Infrastructure.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     CardholderName = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    CardNumber = table.Column<string>(type: "character varying(19)", maxLength: 19, nullable: false),
+                    CardNumber = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     Brand = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     CreditLimit = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamptz", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -35,8 +40,8 @@ namespace CreditCardApi.Api.Infrastructure.Migrations
                     Amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     Merchant = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     Category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamptz", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -50,10 +55,9 @@ namespace CreditCardApi.Api.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_CreditCards_CardNumber",
+                name: "IX_CreditCards_CreatedAt",
                 table: "CreditCards",
-                column: "CardNumber",
-                unique: true);
+                column: "CreatedAt");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transactions_CreatedAt",
@@ -66,6 +70,7 @@ namespace CreditCardApi.Api.Infrastructure.Migrations
                 column: "CreditCardId");
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(

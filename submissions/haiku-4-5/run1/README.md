@@ -1,281 +1,165 @@
 # Credit Card REST API
 
-A production-grade REST Web API for managing credit cards and transactions, built with .NET 10, PostgreSQL, and Apache Kafka.
+A production-grade REST API for managing credit cards and transactions, built with .NET 10, ASP.NET Core, PostgreSQL, and Apache Kafka.
 
-## Purpose
+## Features
 
-This API provides a complete backend for credit card management, including:
-- CRUD operations for credit cards
-- CRUD operations for transactions
-- Real-time event publishing to Kafka on transaction creation
-- Comprehensive error handling with RFC 9457 Problem Details responses
-- Health checks and structured logging
-- OpenAPI/Swagger documentation
+- **Domain Model**: Credit cards (1:N) transactions
+- **Persistence**: PostgreSQL with EF Core migrations and concurrency control
+- **Messaging**: Apache Kafka for durable, idempotent transaction events
+- **API**: RESTful endpoints with RFC 9457 Problem Details error handling, API versioning
+- **Security**: Card number protection (truncation), Luhn validation, secrets from env vars only
+- **Observability**: Structured logging with Serilog, request correlation IDs, health checks
+- **Architecture**: Layered (Presentation, Application, Domain, Infrastructure)
+- **Resilience**: DB retry policies, graceful Kafka producer shutdown, health checks
+- **Testing**: Integration tests with Testcontainers, 100% async/non-blocking I/O
 
 ## Prerequisites
 
-- Docker and Docker Compose installed
-- No additional installation required; everything runs in containers
+- Docker and Docker Compose
+- .NET 10 SDK (for local development)
 
 ## Quick Start
-
-From the project root directory:
 
 ```bash
 docker compose up --build
 ```
 
-This command will:
-1. Build the .NET 10 API image
-2. Start PostgreSQL 16
-3. Start Apache Kafka with Zookeeper
-4. Run database migrations automatically
-5. Start the API service
-
-Wait for all services to be healthy (typically 15-30 seconds), then the API will be ready.
-
-## API Access
-
-- **API Base URL**: `http://localhost:8080`
-- **OpenAPI Schema**: `http://localhost:8080/openapi/v1.json`
-- **Health Check**: `http://localhost:8080/health`
-
-## Stack
-
-- **.NET 10** with ASP.NET Core Web API
-- **Entity Framework Core 9.0** with PostgreSQL (Npgsql)
-- **Apache Kafka** for event streaming
-- **Serilog** for structured logging
-- **xUnit** for testing with Testcontainers for integration tests
-- **Polly** for resilience and retry policies
-- **OpenAPI/Swagger** for API documentation
-
-## Endpoints
-
-### Health
-
-- `GET /health` - Returns `{ "status": "healthy" }`
-
-### Credit Cards
-
-| Method | Route                                    | Description                              |
-|--------|------------------------------------------|------------------------------------------|
-| GET    | `/api/credit-cards`                      | List credit cards (paginated)            |
-| GET    | `/api/credit-cards/{id}`                 | Get a credit card by ID                  |
-| POST   | `/api/credit-cards`                      | Create a new credit card                 |
-| PUT    | `/api/credit-cards/{id}`                 | Update a credit card                     |
-| DELETE | `/api/credit-cards/{id}`                 | Delete a credit card                     |
-| GET    | `/api/credit-cards/{id}/transactions`    | List transactions for a credit card      |
-
-### Transactions
-
-| Method | Route                      | Description                              |
-|--------|----------------------------|------------------------------------------|
-| GET    | `/api/transactions`        | List transactions (paginated)            |
-| GET    | `/api/transactions/{id}`   | Get a transaction by ID                  |
-| POST   | `/api/transactions`        | Create a new transaction                 |
-| PUT    | `/api/transactions/{id}`   | Update a transaction                     |
-| DELETE | `/api/transactions/{id}`   | Delete a transaction                     |
-
-## Request/Response Examples
-
-### Create Credit Card
-
-**Request:**
-```json
-POST /api/credit-cards
-Content-Type: application/json
-
-{
-  "cardholderName": "John Doe",
-  "cardNumber": "4532015112830366",
-  "brand": "VISA",
-  "creditLimit": 5000.00
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 1,
-  "cardholderName": "John Doe",
-  "cardNumber": "4532015112830366",
-  "brand": "VISA",
-  "creditLimit": 5000.00,
-  "createdAt": "2026-01-01T12:00:00Z"
-}
-```
-
-### Create Transaction
-
-**Request:**
-```json
-POST /api/transactions
-Content-Type: application/json
-
-{
-  "creditCardId": 1,
-  "amount": 199.99,
-  "merchant": "Amazon",
-  "category": "Shopping"
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 1,
-  "creditCardId": 1,
-  "amount": 199.99,
-  "merchant": "Amazon",
-  "category": "Shopping",
-  "createdAt": "2026-01-01T12:00:00Z"
-}
-```
-
-The transaction is automatically published to the Kafka `transactions` topic.
-
-### Error Response
-
-**Response (400 Bad Request):**
-```json
-{
-  "type": "https://tools.ietf.org/html/rfc9457",
-  "title": "Validation failed",
-  "status": 400,
-  "detail": "amount must be > 0"
-}
-```
-
-## Environment Variables
-
-Configuration via environment variables (all have sensible defaults for Docker Compose):
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ConnectionStrings__DefaultConnection` | See docker-compose.yml | PostgreSQL connection string |
-| `Kafka__BootstrapServers` | `kafka:9092` | Kafka broker address (inside container) |
-| `ASPNETCORE_ENVIRONMENT` | `Development` | ASP.NET Core environment |
+The API will be available at `http://localhost:8080`  
+Kafka will be available at `localhost:29092`
 
 ## Architecture
 
-The API follows a layered architecture:
+```
+src/CreditCardApi.Api/
+├── Presentation/Controllers/     # HTTP endpoints
+├── Application/Dto/              # Data transfer objects
+├── Domain/Entities/              # Business entities
+└── Infrastructure/               # Data access, messaging
+    ├── Data/                     # EF Core DbContext & migrations
+    └── Messaging/                # Kafka producer
 
-- **Presentation Layer** (`Controllers/`) - HTTP endpoints
-- **Application Layer** (`Application/Dto/`) - DTOs and business logic
-- **Domain Layer** (`Domain/Entities/`) - Domain entities (no infrastructure dependencies)
-- **Infrastructure Layer** (`Infrastructure/`) - Database, messaging, migrations
+tests/CreditCardApi.Tests/
+└── Integration/                  # Integration tests with Testcontainers
+```
 
-Key design principles:
-- Dependencies point inward (domain → application → presentation)
-- DTOs used for request/response (never expose EF entities)
-- No N+1 queries (proper use of includes and AsNoTracking)
-- Proper FK constraints and indexes
-- Row versioning for concurrency control
+## API Endpoints
 
-## Database Schema
+### Health & Diagnostics
+- `GET /health` → Health check with database connectivity status
+- `GET /metrics` → Application metrics and version info
 
-### CreditCard Table
-- `id` (int, PK, auto-increment)
-- `cardholderName` (varchar(255), required)
-- `cardNumber` (varchar(19), required, unique)
-- `brand` (varchar(50), optional)
-- `creditLimit` (numeric(18,2), required)
-- `createdAt` (timestamp with time zone, required)
-- `RowVersion` (bytea, for concurrency)
+### Credit Cards (API v1)
+- `GET /api/v1/credit-cards` (paginated, returns truncated card numbers)
+- `GET /api/v1/credit-cards/{id}`
+- `POST /api/v1/credit-cards` (validates card number with Luhn algorithm)
+- `PUT /api/v1/credit-cards/{id}`
+- `DELETE /api/v1/credit-cards/{id}`
+- `GET /api/v1/credit-cards/{id}/transactions`
 
-### Transaction Table
-- `id` (int, PK, auto-increment)
-- `creditCardId` (int, FK, required)
-- `amount` (numeric(18,2), required, > 0)
-- `merchant` (varchar(255), required)
-- `category` (varchar(100), optional)
-- `createdAt` (timestamp with time zone, required)
-- `RowVersion` (bytea, for concurrency)
+### Transactions (API v1)
+- `GET /api/v1/transactions` (paginated)
+- `GET /api/v1/transactions/{id}`
+- `POST /api/v1/transactions` (publishes to Kafka topic `transactions` with durability guarantees)
+- `PUT /api/v1/transactions/{id}`
+- `DELETE /api/v1/transactions/{id}`
 
-**Indexes:**
-- CreditCard.CardNumber (unique)
-- Transaction.CreditCardId (FK)
-- Transaction.CreatedAt
+All responses include `X-Correlation-ID` header for request tracing. Errors return RFC 9457 Problem Details.
 
-## Kafka Integration
+## Configuration
 
-On every successful transaction creation, an event is published to the `transactions` Kafka topic:
+All configuration is **environment-variable based** (no hardcoded secrets). Docker Compose sets these defaults:
 
-- **Topic**: `transactions`
-- **Key**: Transaction ID (ensures same transaction always maps to same partition)
-- **Value**: Transaction JSON in camelCase
-- **Broker**: `kafka:9092` (inside Docker) or `localhost:29092` (from host)
+```
+ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=creditcard;Username=postgres;Password=postgres
+Kafka__BootstrapServers=kafka:9092
+ASPNETCORE_ENVIRONMENT=Production
+```
 
-Topics are auto-created on startup.
+**Important**: In production, override `ConnectionStrings__DefaultConnection` and `Kafka__BootstrapServers` with your actual values. Do NOT commit real credentials to version control.
+
+## Database
+
+- PostgreSQL 16
+- Auto-migrate on startup via EF Core
+- Tables: `CreditCards`, `Transactions` with foreign key constraints
+- Concurrency control using `xmin` (PostgreSQL row version)
+
+## Kafka
+
+- Broker: `kafka:9092` (container), `localhost:29092` (host)
+- Topic: `transactions` (auto-created on first publish)
+- Message Format: Transaction JSON (camelCase)
+- Key: Transaction ID (ensures ordering and idempotency per transaction)
+- Producer Configuration:
+  - `Acks=All` — waits for all broker replicas before returning
+  - `MessageSendMaxRetries=3` — automatic retry on failure
+  - `SocketTimeoutMs=60s`, `RequestTimeoutMs=60s` — timeout protection
+  - Graceful flush on application shutdown
+
+**Note**: Published only after database transaction commits. If Kafka publish fails, the API returns an error and the transaction exists in the database only.
 
 ## Testing
 
-Run the test suite:
-
 ```bash
-dotnet test tests/CreditCardApi.Tests/CreditCardApi.Tests.csproj
+dotnet test
 ```
 
-The test suite includes:
-- Integration tests with Testcontainers for PostgreSQL
-- Black-box HTTP endpoint tests
-- Validation and error-handling tests
-- ~80% line coverage target
+Integration tests use Testcontainers to spin up PostgreSQL and Kafka for isolated, repeatable testing.
+
+## Build & Run
+
+### Docker
+```bash
+docker compose up --build
+```
+
+### Local development
+```bash
+dotnet build
+dotnet run --project src/CreditCardApi.Api
+```
+
+Requires a PostgreSQL and Kafka instance running locally.
+
+## Code Quality
+
+- Structured logging (Serilog)
+- Problem Details for error responses
+- DTOs for all API contracts
+- No sync-over-async anti-patterns
+- Pagination on collection endpoints
+- Proper HTTP status codes and verbs
+
+## Security
+
+- **Card Numbers**: Stored as-is in database (in production, encrypt PAN at rest), returned to clients as truncated (`****-****-****-XXXX`)
+- **Input Validation**: All card numbers validated with Luhn algorithm; all required fields checked
+- **No Hardcoded Secrets**: All configuration from environment variables; `.git ignore`d files never committed
+- **Structured Logging**: Request correlation IDs propagated end-to-end; exception details logged server-side only
+- **Correlation IDs**: Sent via `X-Correlation-ID` header for full request tracing
 
 ## Production Considerations
 
-### Security
-- No hardcoded secrets (all configuration via environment variables)
-- Structured logging (no sensitive data logged)
-- Input validation on all endpoints
-- RFC 9457 Problem Details for error responses
-- Non-root Docker user
-
-### Resilience
-- Database connection retries (Npgsql retry policy)
-- Kafka producer with acks=all and retries
-- Graceful shutdown handling
-- Health checks for dependencies
-
-### Observability
-- Structured JSON logging via Serilog
-- Request/response logging
-- Database query logging (in Development)
-- Health check endpoint
-
-### Performance
-- Async/await throughout (no sync-over-async)
-- Pagination on collection endpoints
-- AsNoTracking on read-only queries
-- Proper use of indexes
-
-## Deployment
-
-To run on a different host or with custom configuration:
-
-```bash
-docker compose -f docker-compose.yml up --build \
-  -e ConnectionStrings__DefaultConnection="Host=your-postgres-host;..." \
-  -e Kafka__BootstrapServers="your-kafka-host:9092"
-```
-
-Or update environment variables in `docker-compose.yml` directly.
-
-## Troubleshooting
-
-### Database migration fails
-- Check PostgreSQL is healthy: `docker compose logs postgres`
-- Ensure `ConnectionStrings__DefaultConnection` is correct
-
-### Cannot connect to Kafka
-- Check Kafka is healthy: `docker compose logs kafka`
-- From host, use `localhost:29092`; from container, use `kafka:9092`
-
-### Port already in use
-- Change ports in `docker-compose.yml`
-- Or stop existing containers: `docker compose down`
-
-## Documentation
-
-Full OpenAPI specification available at `/openapi/v1.json` endpoint after API starts.
+- **TLS/HTTPS**: Configure behind a reverse proxy (nginx, load balancer) with TLS termination
+- **Database**: 
+  - Use strong credentials (not the default `postgres:postgres`)
+  - Enable SSL connections to PostgreSQL
+  - Set up automated backups
+  - Tune connection pooling for your workload
+  - Use dedicated read replicas for read-heavy workloads
+- **Kafka**:
+  - Enable broker-level authentication and authorization
+  - Set up consumer groups for event processing
+  - Monitor broker health and topic replication
+  - Archive events for compliance/auditability
+- **Deployment**:
+  - Use container orchestration (Kubernetes, Docker Swarm, ECS)
+  - Set up centralized logging aggregation (ELK, CloudWatch, Datadog)
+  - Monitor application metrics (response latency, error rates, queue depth)
+  - Set up alerts for service degradation
+  - Enable distributed tracing (Jaeger, OpenTelemetry)
+- **Scaling**:
+  - Stateless API — scale horizontally by running multiple instances behind a load balancer
+  - Database connection pooling: tune `MaxPoolSize` based on expected concurrent requests
+  - Kafka partitions: scale consumer groups across multiple instances

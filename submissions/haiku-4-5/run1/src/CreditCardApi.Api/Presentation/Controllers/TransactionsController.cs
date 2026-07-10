@@ -8,229 +8,165 @@ using Microsoft.EntityFrameworkCore;
 namespace CreditCardApi.Api.Presentation.Controllers;
 
 [ApiController]
-[Route("api/transactions")]
-[Produces("application/json", "application/problem+json")]
-public class TransactionsController(CreditCardDbContext context, ITransactionProducer producer) : ControllerBase
+[Route("api/v1/[controller]")]
+public class TransactionsController(
+    CreditCardDbContext dbContext,
+    ITransactionProducer transactionProducer) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<PaginatedResponse<TransactionResponse>>> GetTransactions(
-        [FromQuery(Name = "page")] int page = 1,
-        [FromQuery(Name = "pageSize")] int pageSize = 10,
+    [Produces("application/json")]
+    public async Task<ActionResult<IEnumerable<TransactionDto>>> GetTransactions(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
-        if (page < 1 || pageSize < 1 || pageSize > 100)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Invalid pagination parameters",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = "page and pageSize must be >= 1, and pageSize <= 100",
-            });
-        }
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 10;
+        if (pageSize > 100) pageSize = 100;
 
-        var totalCount = await context.Transactions.CountAsync(cancellationToken);
-        var transactions = await context.Transactions
-            .OrderByDescending(t => t.CreatedAt)
+        var transactions = await dbContext.Transactions
+            .AsNoTracking()
+            .OrderBy(t => t.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .AsNoTracking()
-            .Select(t => new TransactionResponse
+            .Select(t => new TransactionDto
             {
                 Id = t.Id,
                 CreditCardId = t.CreditCardId,
                 Amount = t.Amount,
                 Merchant = t.Merchant,
                 Category = t.Category,
-                CreatedAt = t.CreatedAt,
+                CreatedAt = t.CreatedAt
             })
             .ToListAsync(cancellationToken);
 
-        return Ok(new PaginatedResponse<TransactionResponse>
-        {
-            Data = transactions,
-            Total = totalCount,
-            Page = page,
-            PageSize = pageSize,
-            TotalPages = (totalCount + pageSize - 1) / pageSize,
-        });
+        return Ok(transactions);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<TransactionResponse>> GetTransaction(int id, CancellationToken cancellationToken)
+    [Produces("application/json", "application/problem+json")]
+    public async Task<ActionResult<TransactionDto>> GetTransaction(int id, CancellationToken cancellationToken = default)
     {
-        var transaction = await context.Transactions
+        var transaction = await dbContext.Transactions
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-        if (transaction is null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Transaction not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Transaction with ID {id} does not exist",
-            });
-        }
+        if (transaction == null)
+            return NotFound(CreateProblemDetails(404, "Not Found", $"Transaction with ID {id} not found"));
 
-        return Ok(new TransactionResponse
+        return Ok(new TransactionDto
         {
             Id = transaction.Id,
             CreditCardId = transaction.CreditCardId,
             Amount = transaction.Amount,
             Merchant = transaction.Merchant,
             Category = transaction.Category,
-            CreatedAt = transaction.CreatedAt,
+            CreatedAt = transaction.CreatedAt
         });
     }
 
     [HttpPost]
-    public async Task<ActionResult<TransactionResponse>> CreateTransaction(
+    [Produces("application/json", "application/problem+json")]
+    public async Task<ActionResult<TransactionDto>> CreateTransaction(
         [FromBody] CreateTransactionRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        var validationErrors = ValidateCreateTransactionRequest(request);
-        if (validationErrors.Count > 0)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation failed",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = string.Join("; ", validationErrors),
-            });
-        }
+        if (string.IsNullOrWhiteSpace(request.Merchant))
+            return BadRequest(CreateProblemDetails(400, "Bad Request", "merchant is required and cannot be empty"));
 
-        var cardExists = await context.CreditCards
-            .AnyAsync(c => c.Id == request.CreditCardId, cancellationToken);
+        if (request.Amount <= 0)
+            return BadRequest(CreateProblemDetails(400, "Bad Request", "amount must be greater than 0"));
 
+        var cardExists = await dbContext.CreditCards.AnyAsync(c => c.Id == request.CreditCardId, cancellationToken);
         if (!cardExists)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Validation failed",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = $"Credit card with ID {request.CreditCardId} does not exist",
-            });
-        }
+            return BadRequest(CreateProblemDetails(400, "Bad Request", $"Credit card with ID {request.CreditCardId} does not exist"));
 
         var transaction = new Transaction
         {
             CreditCardId = request.CreditCardId,
             Amount = request.Amount,
-            Merchant = request.Merchant.Trim(),
-            Category = request.Category?.Trim(),
-            CreatedAt = DateTime.UtcNow,
+            Merchant = request.Merchant,
+            Category = request.Category,
+            CreatedAt = DateTime.UtcNow
         };
 
-        context.Transactions.Add(transaction);
-        await context.SaveChangesAsync(cancellationToken);
+        dbContext.Transactions.Add(transaction);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
-        var response = new TransactionResponse
+        var dto = new TransactionDto
         {
             Id = transaction.Id,
             CreditCardId = transaction.CreditCardId,
             Amount = transaction.Amount,
             Merchant = transaction.Merchant,
             Category = transaction.Category,
-            CreatedAt = transaction.CreatedAt,
+            CreatedAt = transaction.CreatedAt
         };
 
-        await producer.PublishTransactionCreatedAsync(response, cancellationToken);
+        await transactionProducer.PublishTransactionAsync(dto, cancellationToken);
 
-        return CreatedAtAction(nameof(GetTransaction), new { id = transaction.Id }, response);
+        return CreatedAtAction(nameof(GetTransaction), new { id = transaction.Id }, dto);
     }
 
     [HttpPut("{id}")]
+    [Produces("application/json", "application/problem+json")]
     public async Task<IActionResult> UpdateTransaction(
         int id,
         [FromBody] UpdateTransactionRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        var transaction = await context.Transactions
-            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        var transaction = await dbContext.Transactions.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-        if (transaction is null)
+        if (transaction == null)
+            return NotFound(CreateProblemDetails(404, "Not Found", $"Transaction with ID {id} not found"));
+
+        if (request.Amount.HasValue && request.Amount <= 0)
+            return BadRequest(CreateProblemDetails(400, "Bad Request", "amount must be greater than 0"));
+
+        if (request.CreditCardId.HasValue)
         {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Transaction not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Transaction with ID {id} does not exist",
-            });
+            var cardExists = await dbContext.CreditCards.AnyAsync(c => c.Id == request.CreditCardId, cancellationToken);
+            if (!cardExists)
+                return BadRequest(CreateProblemDetails(400, "Bad Request", $"Credit card with ID {request.CreditCardId} does not exist"));
+            transaction.CreditCardId = request.CreditCardId.Value;
         }
 
         if (request.Amount.HasValue)
-        {
-            if (request.Amount.Value <= 0)
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Validation failed",
-                    Status = StatusCodes.Status400BadRequest,
-                    Detail = "amount must be > 0",
-                });
-            }
             transaction.Amount = request.Amount.Value;
-        }
 
-        if (!string.IsNullOrEmpty(request.Merchant))
-        {
-            var trimmed = request.Merchant.Trim();
-            if (string.IsNullOrEmpty(trimmed))
-            {
-                return BadRequest(new ProblemDetails
-                {
-                    Title = "Validation failed",
-                    Status = StatusCodes.Status400BadRequest,
-                    Detail = "merchant cannot be empty",
-                });
-            }
-            transaction.Merchant = trimmed;
-        }
+        if (!string.IsNullOrWhiteSpace(request.Merchant))
+            transaction.Merchant = request.Merchant;
 
-        if (request.Category is not null)
-        {
-            transaction.Category = request.Category.Trim();
-        }
+        if (request.Category != null)
+            transaction.Category = request.Category;
 
-        await context.SaveChangesAsync(cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteTransaction(int id, CancellationToken cancellationToken)
+    [Produces("application/problem+json")]
+    public async Task<IActionResult> DeleteTransaction(int id, CancellationToken cancellationToken = default)
     {
-        var transaction = await context.Transactions
-            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        var transaction = await dbContext.Transactions.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
-        if (transaction is null)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "Transaction not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = $"Transaction with ID {id} does not exist",
-            });
-        }
+        if (transaction == null)
+            return NotFound(CreateProblemDetails(404, "Not Found", $"Transaction with ID {id} not found"));
 
-        context.Transactions.Remove(transaction);
-        await context.SaveChangesAsync(cancellationToken);
+        dbContext.Transactions.Remove(transaction);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
         return NoContent();
     }
 
-    private static List<string> ValidateCreateTransactionRequest(CreateTransactionRequest request)
+    private static ProblemDetails CreateProblemDetails(int status, string title, string detail)
     {
-        var errors = new List<string>();
-
-        if (request.Amount <= 0)
+        return new ProblemDetails
         {
-            errors.Add("amount must be > 0");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Merchant))
-        {
-            errors.Add("merchant is required and cannot be empty");
-        }
-
-        return errors;
+            Status = status,
+            Title = title,
+            Detail = detail,
+            Type = $"https://httpwg.org/specs/rfc9110.html#status.{status}"
+        };
     }
 }

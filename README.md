@@ -21,7 +21,7 @@ and produces a **weighted 0–5 score**.
 
 | # | Model | Score (median /5) | Effort | Time | Cost | Build | Boot |
 |--:|-------|:---:|:---:|:---:|:---:|:---:|:---:|
-| 1 | `haiku-4-5` | **1.50 / 5** | — | 26m 37s | $1.96 | ✅ | ❌ |
+| 1 | `haiku-4-5` | **1.50 / 5** | — | 20m 32s | $1.70 | ✅ | ❌ |
 
 Scores are produced **100% by the `evaluator-dotnet` tool** — no human, no LLM. A run is graded exactly
 as the model produced it (**including its own second-pass review**); a build/boot blocker is not patched
@@ -29,10 +29,12 @@ by us but **capped by the executability gate**: source doesn't compile **≤ 0.5
 (no `docker-compose.yml`) **≤ 1.0**, compiles but never boots healthy **≤ 1.5**. The cap is a pure
 function of how far the submission got, so the ranking is fully reproducible.
 
-`haiku-4-5` compiles locally but hits the **boot-fail cap (1.5)**: its `Dockerfile` `COPY`s the
-`.csproj` and runs `dotnet restore` **without** first copying `Directory.Build.props` (which defines the
-`TargetFramework`), so the Docker image fails to build (`NETSDK1013`) and the API never boots — a
-Docker-build defect the model's own second-pass review didn't catch (a local build doesn't reproduce it).
+`haiku-4-5` compiles **and its Docker image builds**, but the API **crashes on startup** — a
+`TypeLoadException` from an incompatible **Swashbuckle** version (`AddSwaggerGen` calls a method that
+version doesn't implement) — so `/health` never comes up and it hits the **boot-fail cap (1.5)**. It's a
+**runtime-only** defect: `dotnet build` is green, so the model's own second-pass self-review (which never
+actually ran the app) missed it — the executability gate catches it at grading time. Even with the
+open-ended review prompt, the model did a static/build check rather than booting its own service.
 
 Measurement badges (**all 100% automated**, the colour only marks how *directly* a category is measured):
 🟢 deterministic · 🟡 oracle · 🟠 proxy. **Per-category scores, the per-metric analysis and the cap

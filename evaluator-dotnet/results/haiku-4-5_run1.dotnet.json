@@ -1,6 +1,6 @@
 {
   "Target": "haiku-4-5/run1",
-  "EvaluatedAtUtc": "2026-07-10 13:58:00Z",
+  "EvaluatedAtUtc": "2026-07-10 14:55:15Z",
   "Deep": true,
   "Environment": [
     "dotnet",
@@ -47,9 +47,9 @@
         },
         {
           "Name": "test-pass-rate",
-          "Observed": "4/17 passed",
+          "Observed": "9/9 passed",
           "Target": "100% of tests pass",
-          "Status": "Fail",
+          "Status": "Pass",
           "Weight": 2
         }
       ],
@@ -58,7 +58,7 @@
       ],
       "MissingTools": [],
       "Badge": "\uD83D\uDFE1",
-      "Score": 2.5,
+      "Score": 5,
       "MeasuredCount": 3,
       "IndeterminateCount": 2
     },
@@ -99,7 +99,7 @@
         },
         {
           "Name": "no-god-class",
-          "Observed": "largest type: 358 lines",
+          "Observed": "largest type: 177 lines",
           "Target": "no \u0027god classes\u0027 (\u003C=600 lines)",
           "Status": "Pass",
           "Weight": 0.5
@@ -143,23 +143,23 @@
         },
         {
           "Name": "format",
-          "Observed": "no changes",
+          "Observed": "formatting diverges",
           "Target": "code is formatted (dotnet format)",
-          "Status": "Pass",
+          "Status": "Fail",
           "Weight": 1
         },
         {
           "Name": "build-warnings",
-          "Observed": "0 warning(s)",
+          "Observed": "12 warning(s)",
           "Target": "0 build warnings",
-          "Status": "Pass",
+          "Status": "Fail",
           "Weight": 1
         }
       ],
       "Notes": [],
       "MissingTools": [],
       "Badge": "\uD83D\uDFE2",
-      "Score": 5,
+      "Score": 3,
       "MeasuredCount": 5,
       "IndeterminateCount": 0
     },
@@ -532,7 +532,7 @@
         },
         {
           "Name": "coverage",
-          "Observed": "19 % (1 report(s) merged)",
+          "Observed": "18 % (1 report(s) merged)",
           "Target": "line coverage \u003E=80%",
           "Status": "Fail",
           "Weight": 2
@@ -553,9 +553,9 @@
       "Metrics": [
         {
           "Name": "otel",
-          "Observed": "no",
+          "Observed": "yes",
           "Target": "OpenTelemetry (traces/metrics/logs)",
-          "Status": "Fail",
+          "Status": "Pass",
           "Weight": 1
         },
         {
@@ -574,9 +574,9 @@
         },
         {
           "Name": "correlation",
-          "Observed": "no",
+          "Observed": "yes",
           "Target": "request correlation (trace/correlation id)",
-          "Status": "Fail",
+          "Status": "Pass",
           "Weight": 0.5
         },
         {
@@ -604,7 +604,7 @@
       "Notes": [],
       "MissingTools": [],
       "Badge": "\uD83D\uDFE2",
-      "Score": 1.5,
+      "Score": 3,
       "MeasuredCount": 7,
       "IndeterminateCount": 0
     },
@@ -616,7 +616,7 @@
       "Metrics": [
         {
           "Name": "async-io",
-          "Observed": "34 async methods",
+          "Observed": "27 async methods",
           "Target": "asynchronous/non-blocking I/O",
           "Status": "Pass",
           "Weight": 1

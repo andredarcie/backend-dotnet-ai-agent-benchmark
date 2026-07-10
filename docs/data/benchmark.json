@@ -1,5 +1,5 @@
 {
-    "generatedAtUtc":  "2026-07-10 14:01:08Z",
+    "generatedAtUtc":  "2026-07-10 14:57:52Z",
     "provisionalThreshold":  5,
     "modelCount":  1,
     "runCount":  1,
@@ -25,7 +25,7 @@
                      "target":  "haiku-4-5/run1",
                      "model":  "haiku-4-5",
                      "run":  "run1",
-                     "evaluatedAtUtc":  "2026-07-10 13:58:00Z",
+                     "evaluatedAtUtc":  "2026-07-10 14:55:15Z",
                      "deep":  true,
                      "weightedScore":  1.5,
                      "coverage":  1,
@@ -42,13 +42,13 @@
                                   "harness":  "Claude Code",
                                   "harnessVersion":  "2.1.206 (Claude Code)",
                                   "effort":  "",
-                                  "durationSec":  1597,
+                                  "durationSec":  1232,
                                   "passes":  2,
                                   "attempts":  1,
-                                  "tokensIn":  12160941,
-                                  "tokensOut":  71433,
-                                  "costUsd":  1.9550385000000001,
-                                  "promptVersion":  "PROMPT.md + PROMPT-REVIEW.md@d4f6e89",
+                                  "tokensIn":  9787424,
+                                  "tokensOut":  75323,
+                                  "costUsd":  1.6983279000000007,
+                                  "promptVersion":  "PROMPT.md + PROMPT-REVIEW.md@dd88336",
                                   "producedAtUtc":  "2026-07-10",
                                   "notes":  ""
                               },
@@ -59,7 +59,7 @@
                                             "weight":  0.12,
                                             "automation":  "SemiOracle",
                                             "badge":  "🟡",
-                                            "score":  2.5,
+                                            "score":  5,
                                             "measuredCount":  3,
                                             "indeterminateCount":  2,
                                             "notes":  [
@@ -103,9 +103,9 @@
                                                             },
                                                             {
                                                                 "name":  "test-pass-rate",
-                                                                "observed":  "4/17 passed",
+                                                                "observed":  "9/9 passed",
                                                                 "target":  "100% of tests pass",
-                                                                "status":  "Fail",
+                                                                "status":  "Pass",
                                                                 "weight":  2,
                                                                 "note":  null
                                                             }
@@ -161,7 +161,7 @@
                                                             },
                                                             {
                                                                 "name":  "no-god-class",
-                                                                "observed":  "largest type: 358 lines",
+                                                                "observed":  "largest type: 177 lines",
                                                                 "target":  "no \u0027god classes\u0027 (\u003c=600 lines)",
                                                                 "status":  "Pass",
                                                                 "weight":  0.5,
@@ -175,7 +175,7 @@
                                             "weight":  0.08,
                                             "automation":  "FullAuto",
                                             "badge":  "🟢",
-                                            "score":  5,
+                                            "score":  3,
                                             "measuredCount":  5,
                                             "indeterminateCount":  0,
                                             "notes":  [
@@ -211,17 +211,17 @@
                                                             },
                                                             {
                                                                 "name":  "format",
-                                                                "observed":  "no changes",
+                                                                "observed":  "formatting diverges",
                                                                 "target":  "code is formatted (dotnet format)",
-                                                                "status":  "Pass",
+                                                                "status":  "Fail",
                                                                 "weight":  1,
                                                                 "note":  null
                                                             },
                                                             {
                                                                 "name":  "build-warnings",
-                                                                "observed":  "0 warning(s)",
+                                                                "observed":  "12 warning(s)",
                                                                 "target":  "0 build warnings",
-                                                                "status":  "Pass",
+                                                                "status":  "Fail",
                                                                 "weight":  1,
                                                                 "note":  null
                                                             }
@@ -642,7 +642,7 @@
                                                             },
                                                             {
                                                                 "name":  "coverage",
-                                                                "observed":  "19 % (1 report(s) merged)",
+                                                                "observed":  "18 % (1 report(s) merged)",
                                                                 "target":  "line coverage \u003e=80%",
                                                                 "status":  "Fail",
                                                                 "weight":  2,
@@ -656,7 +656,7 @@
                                             "weight":  0.04,
                                             "automation":  "FullAuto",
                                             "badge":  "🟢",
-                                            "score":  1.5,
+                                            "score":  3,
                                             "measuredCount":  7,
                                             "indeterminateCount":  0,
                                             "notes":  [
@@ -668,9 +668,9 @@
                                             "metrics":  [
                                                             {
                                                                 "name":  "otel",
-                                                                "observed":  "no",
+                                                                "observed":  "yes",
                                                                 "target":  "OpenTelemetry (traces/metrics/logs)",
-                                                                "status":  "Fail",
+                                                                "status":  "Pass",
                                                                 "weight":  1,
                                                                 "note":  null
                                                             },
@@ -692,9 +692,9 @@
                                                             },
                                                             {
                                                                 "name":  "correlation",
-                                                                "observed":  "no",
+                                                                "observed":  "yes",
                                                                 "target":  "request correlation (trace/correlation id)",
-                                                                "status":  "Fail",
+                                                                "status":  "Pass",
                                                                 "weight":  0.5,
                                                                 "note":  null
                                                             },
@@ -742,7 +742,7 @@
                                             "metrics":  [
                                                             {
                                                                 "name":  "async-io",
-                                                                "observed":  "34 async methods",
+                                                                "observed":  "27 async methods",
                                                                 "target":  "asynchronous/non-blocking I/O",
                                                                 "status":  "Pass",
                                                                 "weight":  1,

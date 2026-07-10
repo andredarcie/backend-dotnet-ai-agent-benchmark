@@ -51,12 +51,13 @@ always yields the same cap.
 
 The leaderboard was **reset** to the two-pass standard; earlier single-pass runs were removed.
 
-- **haiku-4-5 → 1.5** — a two-pass run ($1.96, 26m). The source compiles locally, but the **Docker image
-  fails to build**: the `Dockerfile` `COPY`s the `.csproj` and runs `dotnet restore` **without** first
-  copying `Directory.Build.props` (which defines the `TargetFramework`), so restore fails with
-  `NETSDK1013` and the API never boots. Graded as submitted, it hits the **boot-fail cap (1.5)**. Its own
-  second-pass review didn't catch this — a Docker-build defect a local build doesn't reproduce — so the
-  executability gate caught it at grading time instead.
+- **haiku-4-5 → 1.5** — a two-pass run ($1.70, 20m). The source compiles and the Docker image builds, but
+  the API **crashes on startup**: a `TypeLoadException` from an incompatible **Swashbuckle** version
+  (`AddSwaggerGen`), so `/health` never returns 2xx. Graded as submitted, it hits the **boot-fail cap
+  (1.5)**. This is a **runtime-only** defect — `dotnet build` is green — so a self-review that doesn't
+  actually run the service can't catch it; the executability gate does, at grading time. Notably, even
+  with the **open-ended** review prompt ("verify it however you judge best"), the model reviewed and built
+  but did **not** boot its own app — a real signal about a smaller model's self-validation.
 
 ## Takeaway
 

@@ -1,66 +1,61 @@
-namespace CreditCardApi.Api.Infrastructure.Messaging;
-
+using System.Text.Json;
 using CreditCardApi.Api.Application.Dto;
 using Confluent.Kafka;
-using Microsoft.Extensions.Logging;
-using System.Text.Json;
+
+namespace CreditCardApi.Api.Infrastructure.Messaging;
 
 public interface ITransactionProducer
 {
-    Task PublishTransactionCreatedAsync(TransactionResponse transaction, CancellationToken cancellationToken);
+    Task PublishTransactionAsync(TransactionDto transaction, CancellationToken cancellationToken = default);
 }
 
-public class TransactionProducer : ITransactionProducer
+public class TransactionProducer : ITransactionProducer, IAsyncDisposable
 {
     private readonly IProducer<string, string> _producer;
     private readonly ILogger<TransactionProducer> _logger;
 
-    public TransactionProducer(KafkaProducerConfig config, ILogger<TransactionProducer> logger)
+    public TransactionProducer(IConfiguration configuration, ILogger<TransactionProducer> logger)
     {
         _logger = logger;
-        var producerConfig = new ProducerConfig
+        var bootstrapServers = configuration["Kafka:BootstrapServers"] ?? "kafka:9092";
+
+        var config = new ProducerConfig
         {
-            BootstrapServers = config.BootstrapServers,
+            BootstrapServers = bootstrapServers,
             Acks = Acks.All,
-            MessageTimeoutMs = 10000,
+            MessageSendMaxRetries = 3,
+            SocketTimeoutMs = 60000,
+            RequestTimeoutMs = 60000,
+            RetryBackoffMs = 100,
+            ClientId = "creditcard-api",
+            EnableDeliveryReports = true
         };
 
-        _producer = new ProducerBuilder<string, string>(producerConfig)
-            .SetErrorHandler((producer, error) =>
-            {
-                if (!error.IsFatal)
-                {
-                    _logger.LogWarning("Non-fatal Kafka error: {ErrorCode} - {ErrorReason}", error.Code, error.Reason);
-                }
-                else
-                {
-                    _logger.LogError("Fatal Kafka error: {ErrorCode} - {ErrorReason}", error.Code, error.Reason);
-                }
-            })
-            .Build();
+        _producer = new ProducerBuilder<string, string>(config).Build();
     }
 
-    public async Task PublishTransactionCreatedAsync(TransactionResponse transaction, CancellationToken cancellationToken)
+    public async Task PublishTransactionAsync(TransactionDto transaction, CancellationToken cancellationToken = default)
     {
         try
         {
-            var json = JsonSerializer.Serialize(transaction, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            });
+            var json = JsonSerializer.Serialize(transaction, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            var key = transaction.Id.ToString();
 
             var message = new Message<string, string>
             {
-                Key = transaction.Id.ToString(),
-                Value = json,
+                Key = key,
+                Value = json
             };
 
-            var result = await _producer.ProduceAsync("transactions", message, cancellationToken);
-            _logger.LogInformation("Published transaction {TransactionId} to Kafka topic 'transactions' at offset {Offset}", transaction.Id, result.Offset);
+            await _producer.ProduceAsync("transactions", message, cancellationToken);
+
+            _logger.LogInformation(
+                "Published transaction {TransactionId} to Kafka topic 'transactions'",
+                transaction.Id);
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("Publishing transaction {TransactionId} was cancelled", transaction.Id);
+            _logger.LogWarning("Kafka publish cancelled for transaction {TransactionId}", transaction.Id);
             throw;
         }
         catch (Exception ex)
@@ -69,9 +64,14 @@ public class TransactionProducer : ITransactionProducer
             throw;
         }
     }
-}
 
-public class KafkaProducerConfig
-{
-    public string BootstrapServers { get; set; } = "kafka:9092";
+    public async ValueTask DisposeAsync()
+    {
+        if (_producer != null)
+        {
+            _producer.Flush(TimeSpan.FromSeconds(10));
+            _producer.Dispose();
+        }
+        await ValueTask.CompletedTask;
+    }
 }

@@ -1,6 +1,6 @@
 # Evaluation Report — haiku-4-5/run1
 
-- **Date (UTC):** 2026-07-10 13:58:00Z
+- **Date (UTC):** 2026-07-10 14:55:15Z
 - **Mode:** deep
 - **Weighted final score:** 1.50/5
 - **⚠️ Score capped:** capped at 1.5/5 — the system was never verified running (/health never returned 2xx); a deep score requires a live boot
@@ -12,23 +12,23 @@
 
 | # | Category | Measure | Score | Weight |
 |---|----------|---------|-------|--------|
-| 1 | Functional Suitability / Correctness | 🟡 | 2.5/5 | 12% |
+| 1 | Functional Suitability / Correctness | 🟡 | 5.0/5 | 12% |
 | 2 | Architecture & Design | 🟠 | 5.0/5 | 10% |
-| 3 | Code Quality | 🟢 | 5.0/5 | 8% |
+| 3 | Code Quality | 🟢 | 3.0/5 | 8% |
 | 4 | REST API Design | 🟡 | 4.5/5 | 11% |
 | 5 | Persistence & Database | 🟠 | 5.0/5 | 10% |
 | 6 | Messaging | 🟢 | 2.3/5 | 11% |
 | 7 | Security | 🟠 | 2.2/5 | 12% |
 | 8 | Resilience & Error Handling | 🟢 | 5.0/5 | 8% |
 | 9 | Tests (enabler) | 🟢 | 2.5/5 | 8% |
-| 10 | Observability (enabler) | 🟢 | 1.5/5 | 4% |
+| 10 | Observability (enabler) | 🟢 | 3.0/5 | 4% |
 | 11 | Performance & Scalability | 🟡 | 3.9/5 | 3% |
 | 12 | Portability, Configuration & Deploy | 🟢 | 4.4/5 | 2% |
 | 13 | Documentation | 🟠 | 4.2/5 | 1% |
 
 ## 1. Functional Suitability / Correctness 🟡
 
-**Score:** 2.5/5 · **Weight:** 12% · **Automation:** oracle
+**Score:** 5.0/5 · **Weight:** 12% · **Automation:** oracle
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
@@ -36,7 +36,7 @@
 | ✅ | acceptance-blackbox | yes | black-box acceptance tests (WebApplicationFactory / Testcontainers) |
 | ❔ | mutation-config | indeterminate<br/>_optional per the task — absence is not penalized_ | Stryker.NET mutation testing (optional) |
 | ❔ | schemathesis | indeterminate<br/>_no OpenAPI document served (tried /openapi/v1.json, /swagger/v1/swagger.json, …) — not scored_ | API conforms to its OpenAPI contract (Schemathesis) |
-| ❌ | test-pass-rate | 4/17 passed | 100% of tests pass |
+| ✅ | test-pass-rate | 9/9 passed | 100% of tests pass |
 
 > ℹ️ SEMI: pass --base-url (the harness does) to run the live contract oracle that measures real per-endpoint correctness.
 
@@ -50,21 +50,21 @@
 | ✅ | application-layer | yes | application/use-case layer present |
 | ✅ | dependency-direction | 0 leaks | domain does not reference infrastructure (Roslyn usings) |
 | ❔ | overengineering-proxy | indeterminate<br/>_1/1 single-implementation interfaces — normal DIP ports (repository/UoW/publisher); informational, not scored_ | few speculative abstractions |
-| ✅ | no-god-class | largest type: 358 lines | no 'god classes' (<=600 lines) |
+| ✅ | no-god-class | largest type: 177 lines | no 'god classes' (<=600 lines) |
 
 > ℹ️ PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this.
 
 ## 3. Code Quality 🟢
 
-**Score:** 5.0/5 · **Weight:** 8% · **Automation:** deterministic
+**Score:** 3.0/5 · **Weight:** 8% · **Automation:** deterministic
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
 | ✅ | no-empty-catch | 0 | no empty catch (no swallowed exceptions) |
 | ✅ | no-todos | 0 | no pending TODO/FIXME/HACK |
 | ✅ | analyzers-enabled | yes | analyzers/.editorconfig enabled |
-| ✅ | format | no changes | code is formatted (dotnet format) |
-| ✅ | build-warnings | 0 warning(s) | 0 build warnings |
+| ❌ | format | formatting diverges | code is formatted (dotnet format) |
+| ❌ | build-warnings | 12 warning(s) | 0 build warnings |
 
 
 ## 4. REST API Design 🟡
@@ -160,19 +160,19 @@
 | ✅ | pyramid | unit=False, integration=True | pyramid: unit + integration |
 | ✅ | coverage-tool | yes | coverage tool (Coverlet) |
 | ❔ | mutation-tool | indeterminate<br/>_optional per the task — absence is not penalized_ | mutation testing (Stryker.NET, optional) |
-| ❌ | coverage | 19 % (1 report(s) merged) | line coverage >=80% |
+| ❌ | coverage | 18 % (1 report(s) merged) | line coverage >=80% |
 
 
 ## 10. Observability (enabler) 🟢
 
-**Score:** 1.5/5 · **Weight:** 4% · **Automation:** deterministic
+**Score:** 3.0/5 · **Weight:** 4% · **Automation:** deterministic
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
-| ❌ | otel | no | OpenTelemetry (traces/metrics/logs) |
+| ✅ | otel | yes | OpenTelemetry (traces/metrics/logs) |
 | ✅ | structured-logs | yes | structured logging (JSON / Serilog) |
 | ❌ | metrics-endpoint | no | metrics exposed (Prometheus / Meter) |
-| ❌ | correlation | no | request correlation (trace/correlation id) |
+| ✅ | correlation | yes | request correlation (trace/correlation id) |
 | ✅ | health-endpoint | yes | health/diagnostics endpoint |
 | ❌ | live-health | unreachable | /health responds 2xx live |
 | ❌ | live-metrics | unreachable | /metrics responds live |
@@ -184,7 +184,7 @@
 
 | Status | Metric | Observed | Target |
 |--------|--------|----------|--------|
-| ✅ | async-io | 34 async methods | asynchronous/non-blocking I/O |
+| ✅ | async-io | 27 async methods | asynchronous/non-blocking I/O |
 | ✅ | no-sync-over-async | none | no sync-over-async blocking (.Wait/.GetResult) |
 | ✅ | stateless | no obvious in-memory state | stateless API (horizontal scaling) |
 | ✅ | pagination | yes | pagination on collections (scaling proxy) |

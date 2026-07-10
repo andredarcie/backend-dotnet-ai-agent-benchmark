@@ -1,9 +1,0 @@
-﻿**/bin/
-**/obj/
-**/TestResults/
-.vs/
-.vscode/
-.env
-*.user
-*.suo
-coverage/

@@ -1,0 +1,14 @@
+{
+  "harness": "Claude Code",
+  "harnessVersion": "2.1.206 (Claude Code)",
+  "effort": "",
+  "durationSec": 1597,
+  "passes": 2,
+  "attempts": 1,
+  "tokensIn": 12160941,
+  "tokensOut": 71433,
+  "costUsd": 1.9550385000000001,
+  "promptVersion": "PROMPT.md \u002B PROMPT-REVIEW.md@d4f6e89",
+  "producedAtUtc": "2026-07-10",
+  "notes": ""
+}

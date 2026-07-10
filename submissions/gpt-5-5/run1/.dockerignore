@@ -1,9 +1,0 @@
-﻿**/bin/
-**/obj/
-**/.vs/
-**/.vscode/
-.git/
-.github/
-TestResults/
-coverage/
-README.md

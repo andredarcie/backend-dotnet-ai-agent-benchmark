@@ -11,8 +11,8 @@ the rest. Each run is **two passes** in the same folder:
 
 1. **build** — feed `PROMPT.md`; the model writes the whole project.
 2. **review** — feed `PROMPT.md` + [`PROMPT-REVIEW.md`](../PROMPT-REVIEW.md); the model
-   reviews its own work, runs it, validates against the brief, and applies a final patch
-   (the "second chance" every model gets).
+   re-reads its own work against the brief, confirms it compiles, and applies a final patch
+   (the "second chance" every model gets — a fast static review, **no Docker**).
 
 ```pwsh
 dotnet run --project model-runner -- sonnet-5          # next run, 2-pass, writes the sidecar

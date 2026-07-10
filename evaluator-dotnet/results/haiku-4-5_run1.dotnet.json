@@ -1,20 +1,12 @@
 {
   "Target": "haiku-4-5/run1",
-  "EvaluatedAtUtc": "2026-07-06 22:26:12Z",
+  "EvaluatedAtUtc": "2026-07-10 13:58:00Z",
   "Deep": true,
   "Environment": [
     "dotnet",
-    "spectral",
-    "semgrep",
-    "trivy",
-    "gitleaks",
-    "sqlfluff",
-    "hadolint",
-    "markdownlint",
-    "lychee",
+    "docker",
     "k6",
-    "dotnet-outdated",
-    "swagger-cli"
+    "reportgenerator"
   ],
   "Categories": [
     {
@@ -46,12 +38,19 @@
           "Note": "optional per the task \u2014 absence is not penalized"
         },
         {
-          "Name": "test-pass-rate",
+          "Name": "schemathesis",
           "Observed": "indeterminate",
-          "Target": "100% of tests pass",
+          "Target": "API conforms to its OpenAPI contract (Schemathesis)",
           "Status": "Indeterminate",
-          "Weight": 2,
-          "Note": "could not parse \u0060dotnet test\u0060 output"
+          "Weight": 1,
+          "Note": "no OpenAPI document served (tried /openapi/v1.json, /swagger/v1/swagger.json, \u2026) \u2014 not scored"
+        },
+        {
+          "Name": "test-pass-rate",
+          "Observed": "4/17 passed",
+          "Target": "100% of tests pass",
+          "Status": "Fail",
+          "Weight": 2
         }
       ],
       "Notes": [
@@ -59,8 +58,8 @@
       ],
       "MissingTools": [],
       "Badge": "\uD83D\uDFE1",
-      "Score": 5,
-      "MeasuredCount": 2,
+      "Score": 2.5,
+      "MeasuredCount": 3,
       "IndeterminateCount": 2
     },
     {
@@ -96,11 +95,11 @@
           "Target": "few speculative abstractions",
           "Status": "Indeterminate",
           "Weight": 0.5,
-          "Note": "3/3 single-implementation interfaces \u2014 normal DIP ports (repository/UoW/publisher); informational, not scored"
+          "Note": "1/1 single-implementation interfaces \u2014 normal DIP ports (repository/UoW/publisher); informational, not scored"
         },
         {
           "Name": "no-god-class",
-          "Observed": "largest type: 267 lines",
+          "Observed": "largest type: 358 lines",
           "Target": "no \u0027god classes\u0027 (\u003C=600 lines)",
           "Status": "Pass",
           "Weight": 0.5
@@ -144,26 +143,25 @@
         },
         {
           "Name": "format",
-          "Observed": "formatting diverges",
+          "Observed": "no changes",
           "Target": "code is formatted (dotnet format)",
-          "Status": "Fail",
+          "Status": "Pass",
           "Weight": 1
         },
         {
           "Name": "build-warnings",
-          "Observed": "indeterminate",
+          "Observed": "0 warning(s)",
           "Target": "0 build warnings",
-          "Status": "Indeterminate",
-          "Weight": 1,
-          "Note": "build summary unavailable"
+          "Status": "Pass",
+          "Weight": 1
         }
       ],
       "Notes": [],
       "MissingTools": [],
       "Badge": "\uD83D\uDFE2",
-      "Score": 3.8,
-      "MeasuredCount": 4,
-      "IndeterminateCount": 1
+      "Score": 5,
+      "MeasuredCount": 5,
+      "IndeterminateCount": 0
     },
     {
       "Number": 4,
@@ -212,6 +210,14 @@
           "Target": "separates DTOs from domain entities",
           "Status": "Pass",
           "Weight": 0.5
+        },
+        {
+          "Name": "openapi-populated",
+          "Observed": "indeterminate",
+          "Target": "served OpenAPI documents its operations",
+          "Status": "Indeterminate",
+          "Weight": 1,
+          "Note": "no OpenAPI document served \u2014 not scored"
         }
       ],
       "Notes": [
@@ -222,7 +228,7 @@
       "Badge": "\uD83D\uDFE1",
       "Score": 4.5,
       "MeasuredCount": 6,
-      "IndeterminateCount": 0
+      "IndeterminateCount": 1
     },
     {
       "Number": 5,
@@ -232,9 +238,9 @@
       "Metrics": [
         {
           "Name": "migrations",
-          "Observed": "uses EnsureCreated",
+          "Observed": "versioned migrations",
           "Target": "schema evolves via migrations (not EnsureCreated)",
-          "Status": "Partial",
+          "Status": "Pass",
           "Weight": 1
         },
         {
@@ -267,13 +273,13 @@
         }
       ],
       "Notes": [
-        "PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN)."
+        "PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N\u002B1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN)."
       ],
       "MissingTools": [
         "schemacrawler"
       ],
       "Badge": "\uD83D\uDFE0",
-      "Score": 4.3,
+      "Score": 5,
       "MeasuredCount": 5,
       "IndeterminateCount": 0
     },
@@ -393,41 +399,48 @@
         },
         {
           "Name": "secrets",
-          "Observed": "0 leaks",
+          "Observed": "indeterminate",
           "Target": "no hardcoded secrets (gitleaks)",
-          "Status": "Pass",
-          "Weight": 1
+          "Status": "Indeterminate",
+          "Weight": 1,
+          "Note": "tool \u0027gitleaks\u0027 not installed \u2014 install: https://github.com/gitleaks/gitleaks"
         },
         {
           "Name": "sca",
-          "Observed": "none reported",
+          "Observed": "vulnerable packages",
           "Target": "0 High/Critical dependencies",
-          "Status": "Pass",
+          "Status": "Fail",
           "Weight": 1
         },
         {
           "Name": "sca-trivy",
-          "Observed": "none High/Critical",
+          "Observed": "indeterminate",
           "Target": "0 High/Critical vulnerabilities (Trivy)",
-          "Status": "Pass",
-          "Weight": 0.5
+          "Status": "Indeterminate",
+          "Weight": 0.5,
+          "Note": "tool \u0027trivy\u0027 not installed \u2014 install: https://aquasecurity.github.io/trivy/"
         },
         {
           "Name": "sast",
-          "Observed": "findings",
+          "Observed": "indeterminate",
           "Target": "no SAST findings (Semgrep)",
-          "Status": "Partial",
-          "Weight": 1
+          "Status": "Indeterminate",
+          "Weight": 1,
+          "Note": "tool \u0027semgrep\u0027 not installed \u2014 install: pip install semgrep"
         }
       ],
       "Notes": [
         "PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep."
       ],
-      "MissingTools": [],
+      "MissingTools": [
+        "gitleaks",
+        "trivy",
+        "semgrep"
+      ],
       "Badge": "\uD83D\uDFE0",
-      "Score": 3.6,
-      "MeasuredCount": 9,
-      "IndeterminateCount": 1
+      "Score": 2.2,
+      "MeasuredCount": 6,
+      "IndeterminateCount": 4
     },
     {
       "Number": 8,
@@ -444,23 +457,23 @@
         },
         {
           "Name": "health-checks",
-          "Observed": "no",
+          "Observed": "yes",
           "Target": "health checks (liveness/readiness)",
-          "Status": "Fail",
+          "Status": "Pass",
           "Weight": 1
         },
         {
           "Name": "global-error-handling",
-          "Observed": "no",
+          "Observed": "yes",
           "Target": "global exception handling (no stack-trace leak)",
-          "Status": "Fail",
+          "Status": "Pass",
           "Weight": 1
         },
         {
           "Name": "graceful-shutdown",
-          "Observed": "no",
+          "Observed": "yes",
           "Target": "graceful shutdown / hosted services",
-          "Status": "Fail",
+          "Status": "Pass",
           "Weight": 0.5
         },
         {
@@ -478,7 +491,7 @@
         "toxiproxy-cli"
       ],
       "Badge": "\uD83D\uDFE2",
-      "Score": 1.9,
+      "Score": 5,
       "MeasuredCount": 5,
       "IndeterminateCount": 0
     },
@@ -519,19 +532,18 @@
         },
         {
           "Name": "coverage",
-          "Observed": "indeterminate",
+          "Observed": "19 % (1 report(s) merged)",
           "Target": "line coverage \u003E=80%",
-          "Status": "Indeterminate",
-          "Weight": 2,
-          "Note": "no coverage.cobertura.xml produced"
+          "Status": "Fail",
+          "Weight": 2
         }
       ],
       "Notes": [],
       "MissingTools": [],
       "Badge": "\uD83D\uDFE2",
-      "Score": 5,
-      "MeasuredCount": 3,
-      "IndeterminateCount": 2
+      "Score": 2.5,
+      "MeasuredCount": 4,
+      "IndeterminateCount": 1
     },
     {
       "Number": 10,
@@ -541,9 +553,9 @@
       "Metrics": [
         {
           "Name": "otel",
-          "Observed": "yes",
+          "Observed": "no",
           "Target": "OpenTelemetry (traces/metrics/logs)",
-          "Status": "Pass",
+          "Status": "Fail",
           "Weight": 1
         },
         {
@@ -569,8 +581,22 @@
         },
         {
           "Name": "health-endpoint",
-          "Observed": "no",
+          "Observed": "yes",
           "Target": "health/diagnostics endpoint",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "live-health",
+          "Observed": "unreachable",
+          "Target": "/health responds 2xx live",
+          "Status": "Fail",
+          "Weight": 1
+        },
+        {
+          "Name": "live-metrics",
+          "Observed": "unreachable",
+          "Target": "/metrics responds live",
           "Status": "Fail",
           "Weight": 0.5
         }
@@ -578,8 +604,8 @@
       "Notes": [],
       "MissingTools": [],
       "Badge": "\uD83D\uDFE2",
-      "Score": 2.9,
-      "MeasuredCount": 5,
+      "Score": 1.5,
+      "MeasuredCount": 7,
       "IndeterminateCount": 0
     },
     {
@@ -590,7 +616,7 @@
       "Metrics": [
         {
           "Name": "async-io",
-          "Observed": "39 async methods",
+          "Observed": "34 async methods",
           "Target": "asynchronous/non-blocking I/O",
           "Status": "Pass",
           "Weight": 1
@@ -615,6 +641,13 @@
           "Target": "pagination on collections (scaling proxy)",
           "Status": "Pass",
           "Weight": 0.5
+        },
+        {
+          "Name": "concurrency",
+          "Observed": "0 5xx, 60 failed (of 60)",
+          "Target": "survives concurrent load (no 5xx / hangs)",
+          "Status": "Fail",
+          "Weight": 1
         }
       ],
       "Notes": [
@@ -622,8 +655,8 @@
       ],
       "MissingTools": [],
       "Badge": "\uD83D\uDFE1",
-      "Score": 5,
-      "MeasuredCount": 4,
+      "Score": 3.9,
+      "MeasuredCount": 5,
       "IndeterminateCount": 0
     },
     {
@@ -676,25 +709,30 @@
         },
         {
           "Name": "hadolint",
-          "Observed": "clean",
+          "Observed": "indeterminate",
           "Target": "Dockerfile with no violations (hadolint)",
-          "Status": "Pass",
-          "Weight": 0.5
+          "Status": "Indeterminate",
+          "Weight": 0.5,
+          "Note": "tool \u0027hadolint\u0027 not installed \u2014 install: https://github.com/hadolint/hadolint"
         },
         {
           "Name": "outdated",
-          "Observed": "outdated packages found",
+          "Observed": "indeterminate",
           "Target": "dependencies reasonably up to date",
-          "Status": "Partial",
-          "Weight": 0.5
+          "Status": "Indeterminate",
+          "Weight": 0.5,
+          "Note": "tool \u0027dotnet-outdated\u0027 not installed \u2014 install: dotnet tool install -g dotnet-outdated-tool"
         }
       ],
       "Notes": [],
-      "MissingTools": [],
+      "MissingTools": [
+        "hadolint",
+        "dotnet-outdated"
+      ],
       "Badge": "\uD83D\uDFE2",
-      "Score": 4.3,
-      "MeasuredCount": 8,
-      "IndeterminateCount": 0
+      "Score": 4.4,
+      "MeasuredCount": 6,
+      "IndeterminateCount": 2
     },
     {
       "Number": 13,
@@ -725,38 +763,44 @@
         },
         {
           "Name": "doc-comments",
-          "Observed": "yes",
+          "Observed": "no",
           "Target": "doc comments / XML docs",
-          "Status": "Pass",
+          "Status": "Fail",
           "Weight": 0.5
         },
         {
           "Name": "markdownlint",
-          "Observed": "violations",
+          "Observed": "indeterminate",
           "Target": "README passes markdownlint",
-          "Status": "Partial",
-          "Weight": 0.5
+          "Status": "Indeterminate",
+          "Weight": 0.5,
+          "Note": "tool \u0027markdownlint\u0027 not installed \u2014 install: npm i -g markdownlint-cli"
         },
         {
           "Name": "links",
-          "Observed": "no broken links",
+          "Observed": "indeterminate",
           "Target": "no broken links (lychee)",
-          "Status": "Pass",
-          "Weight": 0.5
+          "Status": "Indeterminate",
+          "Weight": 0.5,
+          "Note": "tool \u0027lychee\u0027 not installed \u2014 install: https://github.com/lycheeverse/lychee"
         }
       ],
       "Notes": [
         "PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically."
       ],
-      "MissingTools": [],
+      "MissingTools": [
+        "markdownlint",
+        "lychee"
+      ],
       "Badge": "\uD83D\uDFE0",
-      "Score": 4.7,
-      "MeasuredCount": 6,
-      "IndeterminateCount": 0
+      "Score": 4.2,
+      "MeasuredCount": 4,
+      "IndeterminateCount": 2
     }
   ],
-  "WeightedScore": 0.5,
+  "WeightedScore": 1.5,
   "Coverage": 1,
-  "Builds": false,
-  "ScoreCapReason": "capped at 0.5/5 \u2014 source does not compile (dotnet build failed)"
+  "Builds": true,
+  "Boots": false,
+  "ScoreCapReason": "capped at 1.5/5 \u2014 the system was never verified running (/health never returned 2xx); a deep score requires a live boot"
 }

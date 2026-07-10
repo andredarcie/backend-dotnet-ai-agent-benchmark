@@ -106,34 +106,58 @@ internal static class Program
         // ---- run the passes, timed, accumulating usage ----------------------
         long? tokensIn = null, tokensOut = null;
         double? costUsd = null;
+        string logDir = Path.Combine(Path.GetTempPath(), "model-runner");
+        Directory.CreateDirectory(logDir);
         var sw = Stopwatch.StartNew();
 
         Console.WriteLine($"\n--- pass 1/{passes}: build (PROMPT.md) ---");
         var u1 = RunAgent(spec, effort, runDir, repo, prompt);
         Accumulate(ref tokensIn, ref tokensOut, ref costUsd, u1);
-        if (u1.Exit != 0) Console.Error.WriteLine($"warning: {spec.Cli} pass 1 exited with code {u1.Exit}");
+        string? log1 = SaveLog(logDir, model, runName, 1, u1.RawOutput);
 
+        // Pass 1 must actually produce a project. If the CLI reported an error (e.g. an auth /
+        // "Credit balance is too low" failure) or wrote nothing, abort BEFORE wasting the review
+        // pass on an empty folder — and don't leave a misleading empty run + provenance behind.
+        int filesAfter1 = FilesIn(runDir);
+        if (u1.IsError || filesAfter1 == 0)
+        {
+            sw.Stop();
+            Console.Error.WriteLine($"\nERROR: pass 1 failed — {u1.ErrorText ?? $"{spec.Cli} exit {u1.Exit}"}.");
+            if (filesAfter1 == 0) Console.Error.WriteLine("       no files were produced; aborting before the review pass.");
+            if (log1 != null) Console.Error.WriteLine($"       raw output: {log1}");
+            if (filesAfter1 == 0) { try { Directory.Delete(runDir, true); } catch { } }
+            return 1;
+        }
+
+        int passesDone = 1;
+        string notes = "";
         if (!noReview)
         {
             Console.WriteLine($"\n--- pass 2/{passes}: review + validate + patch (PROMPT-REVIEW.md) ---");
             var u2 = RunAgent(spec, effort, runDir, repo, pass2Input);
             Accumulate(ref tokensIn, ref tokensOut, ref costUsd, u2);
-            if (u2.Exit != 0) Console.Error.WriteLine($"warning: {spec.Cli} pass 2 exited with code {u2.Exit}");
+            SaveLog(logDir, model, runName, 2, u2.RawOutput);
+            if (u2.IsError)
+            {
+                // The pass-1 build is still valid; keep it, but record that the review didn't finish.
+                notes = "pass 2 (review) did not complete: " + (u2.ErrorText ?? $"{spec.Cli} exit {u2.Exit}");
+                Console.Error.WriteLine($"\nwarning: {notes} — keeping the pass-1 build.");
+            }
+            else passesDone = 2;
         }
 
         sw.Stop();
         int durationSec = (int)Math.Round(sw.Elapsed.TotalSeconds);
-        int fileCount = Directory.Exists(runDir)
-            ? Directory.EnumerateFiles(runDir, "*", SearchOption.AllDirectories).Count() : 0;
-        if (fileCount == 0) Console.Error.WriteLine($"warning: no files were written into {runDir}");
+        int fileCount = FilesIn(runDir);
 
         // ---- write the provenance sidecar -----------------------------------
-        WriteMeta(metaOut, spec.Harness, harnessVersion, effort, durationSec, passes,
-                  tokensIn, tokensOut, costUsd, promptVersion);
+        WriteMeta(metaOut, spec.Harness, harnessVersion, effort, durationSec, passesDone,
+                  tokensIn, tokensOut, costUsd, promptVersion, notes);
 
         Console.WriteLine();
-        Console.WriteLine($"OK — {model}/{runName}: {fileCount} file(s), {passes} pass(es), " +
-                          $"{TimeSpan.FromSeconds(durationSec):hh\\:mm\\:ss}.");
+        Console.WriteLine($"OK — {model}/{runName}: {fileCount} file(s), {passesDone}/{passes} pass(es) done, " +
+                          $"{TimeSpan.FromSeconds(durationSec):hh\\:mm\\:ss}" +
+                          (costUsd is double totCost ? $", ${totCost:0.00}" : "") + ".");
         Console.WriteLine($"     meta : {metaOut}");
         if (tokensIn == null && costUsd == null)
             Console.WriteLine("     note : tokens/cost not captured for this CLI — fill them into the meta manually.");
@@ -146,29 +170,29 @@ internal static class Program
 
     // ── agent invocation ────────────────────────────────────────────────────
 
-    /// <summary>Runs one pass. Returns exit code + parsed usage (usage only for claude JSON output).</summary>
-    private static Usage RunAgent(ModelSpec spec, string effort, string runDir, string repo, string input)
+    /// <summary>Runs one pass. Returns exit code, error state, parsed usage and the raw CLI output.</summary>
+    private static PassResult RunAgent(ModelSpec spec, string effort, string runDir, string repo, string input)
     {
         bool hasEffort = effort.Length > 0;
         switch (spec.Cli)
         {
             case "claude":
             {
-                // print mode + JSON envelope so cost/usage can be read back; prompt via stdin.
+                // print mode + JSON envelope so cost/usage/errors can be read back; prompt via stdin.
                 var a = new List<string> { "-p", "--output-format", "json", "--model", spec.Model };
                 if (hasEffort) { a.Add("--effort"); a.Add(effort); }
                 a.Add("--dangerously-skip-permissions");
                 int exit = RunCaptured(spec.Cli, a, runDir, input, out string stdout);
-                var (ti, to, cost) = ReadClaudeUsage(stdout);
-                return new Usage(exit, ti, to, cost);
+                var (isErr, errText, ti, to, cost) = ReadClaude(stdout);
+                return new PassResult(exit, isErr || exit != 0, errText ?? (exit != 0 ? $"exit {exit}" : null), ti, to, cost, stdout);
             }
             case "codex":
             {
                 var a = new List<string> { "exec", "-m", spec.Model };
                 if (hasEffort) { a.Add("-c"); a.Add($"model_reasoning_effort=\"{effort}\""); }
                 a.AddRange(new[] { "-C", runDir, "--skip-git-repo-check", "--dangerously-bypass-approvals-and-sandbox", "-" });
-                int exit = RunCaptured(spec.Cli, a, repo, input, out _);
-                return new Usage(exit, null, null, null); // codex usage format is unstable; leave blank
+                int exit = RunCaptured(spec.Cli, a, repo, input, out string stdout);
+                return new PassResult(exit, exit != 0, exit != 0 ? $"exit {exit}" : null, null, null, null, stdout);
             }
             case "agy":
             {
@@ -178,17 +202,28 @@ internal static class Program
                 var a = new List<string> { "-p", input, "--model", spec.Model,
                                            "--dangerously-skip-permissions", "--print-timeout", "30m" };
                 int exit = RunInherited(spec.Cli, a, runDir);
-                return new Usage(exit, null, null, null);
+                return new PassResult(exit, exit != 0, exit != 0 ? $"exit {exit}" : null, null, null, null, "");
             }
             default: throw new UsageException($"unknown cli '{spec.Cli}'");
         }
     }
 
-    private static void Accumulate(ref long? ti, ref long? to, ref double? cost, Usage u)
+    private static void Accumulate(ref long? ti, ref long? to, ref double? cost, PassResult u)
     {
         if (u.TokensIn is long a) ti = (ti ?? 0) + a;
         if (u.TokensOut is long b) to = (to ?? 0) + b;
         if (u.CostUsd is double c) cost = (cost ?? 0) + c;
+    }
+
+    private static int FilesIn(string dir) => Directory.Exists(dir)
+        ? Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories).Count() : 0;
+
+    /// <summary>Persists a pass's raw CLI output for diagnosis / manual token entry; null if nothing captured.</summary>
+    private static string? SaveLog(string dir, string model, string run, int pass, string raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return null;
+        try { string p = Path.Combine(dir, $"{model}-{run}-pass{pass}.log"); File.WriteAllText(p, raw); return p; }
+        catch { return null; }
     }
 
     // ── process helpers (cross-platform) ────────────────────────────────────
@@ -269,29 +304,41 @@ internal static class Program
 
     // ── usage / provenance ──────────────────────────────────────────────────
 
-    /// <summary>Reads token/cost usage from Claude Code's `--output-format json` envelope (defensive).</summary>
-    private static (long? tokensIn, long? tokensOut, double? cost) ReadClaudeUsage(string stdout)
+    /// <summary>Parses Claude Code's `--output-format json` envelope: error state + token/cost usage (defensive).</summary>
+    private static (bool isError, string? errorText, long? ti, long? to, double? cost) ReadClaude(string stdout)
     {
         try
         {
             int s = stdout.IndexOf('{'), e = stdout.LastIndexOf('}');
-            if (s < 0 || e <= s) return (null, null, null);
+            if (s < 0 || e <= s) return (false, null, null, null, null);
             using var doc = JsonDocument.Parse(stdout.Substring(s, e - s + 1));
             var root = doc.RootElement;
+            bool isError = root.TryGetProperty("is_error", out var ie) && ie.ValueKind == JsonValueKind.True;
+            string? errText = null;
+            if (isError && root.TryGetProperty("result", out var rr) && rr.ValueKind == JsonValueKind.String)
+                errText = rr.GetString();
             double? cost = GetDouble(root, "total_cost_usd") ?? GetDouble(root, "cost_usd");
             long? ti = null, to = null;
             if (root.TryGetProperty("usage", out var u) && u.ValueKind == JsonValueKind.Object)
             {
-                ti = GetLong(u, "input_tokens") ?? GetLong(u, "prompt_tokens");
+                // Claude reports cached input separately; sum them so tokensIn reflects the real
+                // input context, not just the tiny non-cached slice (input_tokens can be ~10 while
+                // cache_read is ~20k). total_cost_usd already accounts for all of it.
+                long? baseIn = GetLong(u, "input_tokens") ?? GetLong(u, "prompt_tokens");
+                long? cacheCreate = GetLong(u, "cache_creation_input_tokens");
+                long? cacheRead = GetLong(u, "cache_read_input_tokens");
+                if (baseIn != null || cacheCreate != null || cacheRead != null)
+                    ti = (baseIn ?? 0) + (cacheCreate ?? 0) + (cacheRead ?? 0);
                 to = GetLong(u, "output_tokens") ?? GetLong(u, "completion_tokens");
             }
-            return (ti, to, cost);
+            return (isError, errText, ti, to, cost);
         }
-        catch { return (null, null, null); }
+        catch { return (false, null, null, null, null); }
     }
 
     private static void WriteMeta(string path, string harness, string harnessVersion, string effort,
-        int durationSec, int passes, long? tokensIn, long? tokensOut, double? costUsd, string promptVersion)
+        int durationSec, int passes, long? tokensIn, long? tokensOut, double? costUsd, string promptVersion,
+        string notes)
     {
         using var fs = File.Create(path);
         using var w = new Utf8JsonWriter(fs, new JsonWriterOptions { Indented = true });
@@ -307,7 +354,7 @@ internal static class Program
         if (costUsd is double c) w.WriteNumber("costUsd", c); else w.WriteNull("costUsd");
         w.WriteString("promptVersion", promptVersion);
         w.WriteString("producedAtUtc", DateTime.UtcNow.ToString("yyyy-MM-dd"));
-        w.WriteString("notes", "");
+        w.WriteString("notes", notes);
         w.WriteEndObject();
     }
 
@@ -422,7 +469,8 @@ note:
 
     private sealed record ModelSpec(string Cli, string Model, string Effort, string Harness);
 
-    private readonly record struct Usage(int Exit, long? TokensIn, long? TokensOut, double? CostUsd);
+    private readonly record struct PassResult(
+        int Exit, bool IsError, string? ErrorText, long? TokensIn, long? TokensOut, double? CostUsd, string RawOutput);
 
     private sealed class UsageException(string message) : Exception(message);
 }

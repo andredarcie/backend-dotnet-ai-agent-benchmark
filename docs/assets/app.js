@@ -544,6 +544,9 @@
         "<span>" + esc(t("lb.col.model")) + "</span>" +
         '<span class="num">' + esc(t("lb.col.runs")) + "</span>" +
         "<span>" + esc(t("lb.col.median")) + "</span>" +
+        '<span class="num">' + esc(t("lb.col.effort")) + "</span>" +
+        '<span class="num">' + esc(t("lb.col.duration")) + "</span>" +
+        '<span class="num">' + esc(t("lb.col.cost")) + "</span>" +
         "<span>" + esc(t("lb.col.spread")) + "</span>" +
         '<span class="num flagcol">' + esc(t("lb.col.build")) + "</span>" +
         '<span class="num flagcol">' + esc(t("lb.col.boot")) + "</span>" +
@@ -555,12 +558,20 @@
       var spread = r.runs > 1
         ? fx(r.mean, 2) + " ±" + fx(r.stdDev, 2) + " (" + fx(r.min, 1) + "–" + fx(r.max, 1) + ")"
         : t("lb.singleRun");
+      // provenance shown per row, from the representative (highest-scoring) run's meta
+      var pm = (representativeRun(r.model) || {}).meta;
+      var effTxt = pm && has(pm.effort) ? pm.effort : "—";
+      var durTxt = pm && pm.durationSec != null ? fmtDuration(pm.durationSec) : "—";
+      var costTxt = pm && pm.costUsd != null ? "$" + Number(pm.costUsd).toFixed(2) : "—";
       body +=
         '<button class="lbrow" type="button" data-idx="' + idx + '" aria-expanded="false">' +
           '<span class="lb-rank ' + (r.rank === 1 ? "top" : "") + '">' + r.rank + "</span>" +
           '<span class="lb-model"><code>' + esc(r.model) + "</code>" + (r.provisional ? '<span class="prov" title="' + esc(t("lb.provisional")) + '">⚠</span>' : "") + "</span>" +
           '<span class="lb-runs">' + r.runs + "</span>" +
           '<span class="lb-median"><b>' + fx(r.median, 2) + "</b><span>/5</span></span>" +
+          '<span class="lb-effort">' + esc(effTxt) + "</span>" +
+          '<span class="lb-duration">' + esc(durTxt) + "</span>" +
+          '<span class="lb-cost">' + esc(costTxt) + "</span>" +
           '<span class="lb-spread">' + esc(spread) + "</span>" +
           '<span class="lb-flag ' + (r.allBuild ? "ok" : "no") + '">' + (r.allBuild ? "✓" : "✕") + "</span>" +
           '<span class="lb-flag ' + (r.allBoot ? "ok" : "no") + '">' + (r.allBoot ? "✓" : "✕") + "</span>" +

@@ -1,7 +1,0 @@
-bin/
-obj/
-TestResults/
-*.user
-.vs/
-.idea/
-.env

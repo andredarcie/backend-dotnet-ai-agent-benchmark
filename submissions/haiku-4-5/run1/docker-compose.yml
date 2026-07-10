@@ -1,80 +1,79 @@
+version: '3.9'
+
 services:
   postgres:
-    image: postgres:17-alpine
-    container_name: creditcard-postgres
+    image: postgres:16-alpine
     environment:
-      POSTGRES_DB: creditcarddb
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: creditcard
+      POSTGRES_PASSWORD: creditcard_pwd
+      POSTGRES_DB: creditcard_db
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U creditcard"]
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - creditcard-network
 
   kafka:
-    image: confluentinc/cp-kafka:7.7.0
-    container_name: creditcard-kafka
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://kafka:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 24
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
     ports:
-      - "29092:29092"
       - "9092:9092"
-    depends_on:
-      - zookeeper
+      - "29092:29092"
     healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server kafka:9092"]
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - creditcard-network
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.7.0
-    container_name: creditcard-zookeeper
+    image: confluentinc/cp-zookeeper:7.5.0
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
-    networks:
-      - creditcard-network
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: creditcard-api
-    environment:
-      ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=creditcarddb;Username=postgres;Password=postgres"
-      Kafka__BootstrapServers: "kafka:9092"
-    ports:
-      - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
-    networks:
-      - creditcard-network
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=creditcard_db;Username=creditcard;Password=creditcard_pwd;"
+      Kafka__BootstrapServers: "kafka:9092"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
-
-networks:
-  creditcard-network:
-    driver: bridge

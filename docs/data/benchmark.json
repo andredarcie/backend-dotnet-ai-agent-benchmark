@@ -1,5 +1,5 @@
 {
-    "generatedAtUtc":  "2026-07-08 23:17:19Z",
+    "generatedAtUtc":  "2026-07-10 11:18:18Z",
     "provisionalThreshold":  5,
     "modelCount":  6,
     "runCount":  6,
@@ -111,6 +111,21 @@
                                          "dotnet-outdated",
                                          "swagger-cli"
                                      ],
+                     "meta":  {
+                                  "_comment":  "Provenance for this run - how the submission was PRODUCED (not what the evaluator measures). Fill what you have; empty/omitted fields simply do not render on the site. New runs are written automatically by recorder-dotnet. Schema: submissions/README.md",
+                                  "harness":  "",
+                                  "harnessVersion":  "",
+                                  "effort":  "",
+                                  "durationSec":  null,
+                                  "passes":  1,
+                                  "attempts":  1,
+                                  "tokensIn":  null,
+                                  "tokensOut":  null,
+                                  "costUsd":  null,
+                                  "promptVersion":  "PROMPT.md",
+                                  "producedAtUtc":  "",
+                                  "notes":  ""
+                              },
                      "categories":  [
                                         {
                                             "number":  1,
@@ -1285,6 +1300,21 @@
                                          "dotnet-outdated",
                                          "swagger-cli"
                                      ],
+                     "meta":  {
+                                  "_comment":  "Provenance for this run - how the submission was PRODUCED (not what the evaluator measures). Fill what you have; empty/omitted fields simply do not render on the site. New runs are written automatically by recorder-dotnet. Schema: submissions/README.md",
+                                  "harness":  "",
+                                  "harnessVersion":  "",
+                                  "effort":  "",
+                                  "durationSec":  null,
+                                  "passes":  1,
+                                  "attempts":  1,
+                                  "tokensIn":  null,
+                                  "tokensOut":  null,
+                                  "costUsd":  null,
+                                  "promptVersion":  "PROMPT.md",
+                                  "producedAtUtc":  "",
+                                  "notes":  ""
+                              },
                      "categories":  [
                                         {
                                             "number":  1,
@@ -2116,6 +2146,21 @@
                                          "dotnet-outdated",
                                          "swagger-cli"
                                      ],
+                     "meta":  {
+                                  "_comment":  "Provenance for this run - how the submission was PRODUCED (not what the evaluator measures). Fill what you have; empty/omitted fields simply do not render on the site. New runs are written automatically by recorder-dotnet. Schema: submissions/README.md",
+                                  "harness":  "",
+                                  "harnessVersion":  "",
+                                  "effort":  "",
+                                  "durationSec":  null,
+                                  "passes":  1,
+                                  "attempts":  1,
+                                  "tokensIn":  null,
+                                  "tokensOut":  null,
+                                  "costUsd":  null,
+                                  "promptVersion":  "PROMPT.md",
+                                  "producedAtUtc":  "",
+                                  "notes":  ""
+                              },
                      "categories":  [
                                         {
                                             "number":  1,
@@ -3290,6 +3335,21 @@
                                          "dotnet-outdated",
                                          "swagger-cli"
                                      ],
+                     "meta":  {
+                                  "_comment":  "Provenance for this run - how the submission was PRODUCED (not what the evaluator measures). Fill what you have; empty/omitted fields simply do not render on the site. New runs are written automatically by recorder-dotnet. Schema: submissions/README.md",
+                                  "harness":  "",
+                                  "harnessVersion":  "",
+                                  "effort":  "",
+                                  "durationSec":  null,
+                                  "passes":  1,
+                                  "attempts":  1,
+                                  "tokensIn":  null,
+                                  "tokensOut":  null,
+                                  "costUsd":  null,
+                                  "promptVersion":  "PROMPT.md",
+                                  "producedAtUtc":  "",
+                                  "notes":  ""
+                              },
                      "categories":  [
                                         {
                                             "number":  1,
@@ -4153,6 +4213,21 @@
                                          "dotnet-outdated",
                                          "swagger-cli"
                                      ],
+                     "meta":  {
+                                  "_comment":  "Provenance for this run - how the submission was PRODUCED (not what the evaluator measures). Fill what you have; empty/omitted fields simply do not render on the site. New runs are written automatically by recorder-dotnet. Schema: submissions/README.md",
+                                  "harness":  "",
+                                  "harnessVersion":  "",
+                                  "effort":  "",
+                                  "durationSec":  null,
+                                  "passes":  1,
+                                  "attempts":  1,
+                                  "tokensIn":  null,
+                                  "tokensOut":  null,
+                                  "costUsd":  null,
+                                  "promptVersion":  "PROMPT.md",
+                                  "producedAtUtc":  "",
+                                  "notes":  ""
+                              },
                      "categories":  [
                                         {
                                             "number":  1,
@@ -5327,6 +5402,21 @@
                                          "dotnet-outdated",
                                          "swagger-cli"
                                      ],
+                     "meta":  {
+                                  "_comment":  "Provenance for this run - how the submission was PRODUCED (not what the evaluator measures). Fill what you have; empty/omitted fields simply do not render on the site. New runs are written automatically by recorder-dotnet. Schema: submissions/README.md",
+                                  "harness":  "",
+                                  "harnessVersion":  "",
+                                  "effort":  "",
+                                  "durationSec":  null,
+                                  "passes":  1,
+                                  "attempts":  1,
+                                  "tokensIn":  null,
+                                  "tokensOut":  null,
+                                  "costUsd":  null,
+                                  "promptVersion":  "PROMPT.md",
+                                  "producedAtUtc":  "",
+                                  "notes":  ""
+                              },
                      "categories":  [
                                         {
                                             "number":  1,

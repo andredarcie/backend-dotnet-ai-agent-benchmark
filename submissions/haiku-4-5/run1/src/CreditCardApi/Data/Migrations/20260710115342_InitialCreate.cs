@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -18,15 +19,31 @@ namespace CreditCardApi.Data.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     CardholderName = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    CardNumber = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    CardNumber = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     Brand = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     CreditLimit = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_CreditCards", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "OutboxEvents",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Topic = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Key = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    Payload = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ProcessedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OutboxEvents", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -36,11 +53,10 @@ namespace CreditCardApi.Data.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     CreditCardId = table.Column<int>(type: "integer", nullable: false),
-                    Merchant = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     Amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    Category = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    RowVersion = table.Column<byte[]>(type: "bytea", rowVersion: true, nullable: false)
+                    Merchant = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    Category = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -59,19 +75,27 @@ namespace CreditCardApi.Data.Migrations
                 column: "CreatedAt");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transactions_CreditCardId",
-                table: "Transactions",
-                column: "CreditCardId");
+                name: "IX_OutboxEvents_ProcessedAt",
+                table: "OutboxEvents",
+                column: "ProcessedAt");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Transactions_CreatedAt",
                 table: "Transactions",
                 column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Transactions_CreditCardId",
+                table: "Transactions",
+                column: "CreditCardId");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "OutboxEvents");
+
             migrationBuilder.DropTable(
                 name: "Transactions");
 

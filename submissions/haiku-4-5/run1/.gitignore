@@ -1,55 +1,42 @@
 # Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-[Ww][Ii][Nn]32/
-[Aa][Rr][Mm]/
-[Aa][Rr][Mm]64/
-bld/
-[Bb]in/
-[Oo]bj/
-[Ll]og/
-[Ll]ogs/
-
-# Visual Studio cache/options directory
-.vs/
-
-# Visual Studio Code
-.vscode/
-*.code-workspace
-
-# Rider
-.idea/
-*.sln.iml
-
-# User-specific files
-*.rsuser
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
 
 # NuGet
 *.nupkg
 *.snupkg
 .nuget/
 
-# Local environment files
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio cache/options
+.vs/
+.vscode/
+
+# Local environment
 .env
 .env.local
-local.settings.json
+*.log
 
-# Test Results
-TestResults/
-.coverage
-coverage.xml
-
-# Miscellaneous
-.DS_Store
+# IDE
+.idea/
 *.swp
 *.swo
 *~
-.vscode-settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application
+appsettings.local.json
+*.db
+*.db-shm
+*.db-wal

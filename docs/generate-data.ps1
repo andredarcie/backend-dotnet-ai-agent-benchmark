@@ -20,14 +20,16 @@
 #>
 param(
     [string]$ResultsDir,
-    [string]$OutDir
+    [string]$OutDir,
+    [string]$SubmissionsDir
 )
 
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 
-if (-not $ResultsDir) { $ResultsDir = Join-Path $root '..\evaluator-dotnet\results' }
-if (-not $OutDir)     { $OutDir     = Join-Path $root 'data' }
+if (-not $ResultsDir)     { $ResultsDir     = Join-Path $root '..\evaluator-dotnet\results' }
+if (-not $OutDir)         { $OutDir         = Join-Path $root 'data' }
+if (-not $SubmissionsDir) { $SubmissionsDir = Join-Path $root '..\submissions' }
 
 # Models with fewer than this many deep runs are flagged provisional
 # (mirrors Leaderboard.ProvisionalThreshold in the .NET evaluator).
@@ -69,6 +71,17 @@ foreach ($f in $files) {
     $model  = $parts[0]
     $run    = if ($parts.Count -gt 1) { $parts[1] } else { 'run1' }
 
+    # Optional provenance sidecar: submissions/<model>/<run>.meta.json — authored
+    # (how the submission was produced: harness/CLI, effort, duration, tokens, cost).
+    # It lives OUTSIDE the graded tree, so it never affects the Roslyn/secret/PAN scans.
+    # Missing or malformed → $null (the site simply renders no provenance for that run).
+    $meta     = $null
+    $metaPath = Join-Path $SubmissionsDir (Join-Path $model "$run.meta.json")
+    if (Test-Path $metaPath) {
+        try { $meta = Get-Content $metaPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+        catch { Write-Warning "skip (bad meta JSON): $model/$run.meta.json" }
+    }
+
     $categories = @()
     foreach ($c in $r.Categories) {
         $metrics = @()
@@ -109,6 +122,7 @@ foreach ($f in $files) {
         boots          = [bool]$r.Boots
         scoreCapReason = $r.ScoreCapReason
         environment    = @($r.Environment)
+        meta           = $meta
         categories     = $categories
     }
 }

@@ -1,33 +1,19 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace CreditCardApi.Controllers;
 
-/// <summary>
-/// Health check endpoint.
-/// </summary>
 [ApiController]
-[Route("[controller]")]
+[Route("health")]
 public class HealthController : ControllerBase
 {
     /// <summary>
-    /// Check the health of the API.
+    /// Health check endpoint
     /// </summary>
-    /// <returns>Health status.</returns>
     [HttpGet]
-    [ProduceResponseType(typeof(HealthResponse), StatusCodes.Status200OK)]
-    public IActionResult Get()
+    public IActionResult GetHealth()
     {
         return Ok(new HealthResponse { Status = "healthy" });
     }
 }
 
-/// <summary>
-/// Health response model.
-/// </summary>
-public class HealthResponse
-{
-    /// <summary>
-    /// The health status.
-    /// </summary>
-    public required string Status { get; set; }
-}
+public record HealthResponse(string Status = "healthy");

@@ -1,80 +1,91 @@
-using CreditCardApi.Application.DTOs;
+﻿using CreditCardApi.Application.DTOs;
 using CreditCardApi.Application.Repositories;
+using CreditCardApi.Application.Services;
 using CreditCardApi.Domain.Entities;
-using CreditCardApi.Infrastructure.Messaging;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
 
 namespace CreditCardApi.Controllers;
 
-/// <summary>
-/// Transactions API endpoints.
-/// </summary>
 [ApiController]
-[Route("api/[controller]")]
-public class TransactionsController(ITransactionRepository repository, ICreditCardRepository cardRepository, IKafkaProducer kafkaProducer) : ControllerBase
+[Route("api/transactions")]
+[Produces("application/json")]
+public class TransactionsController : ControllerBase
 {
+    private readonly ITransactionRepository _transactionRepository;
+    private readonly ITransactionService _transactionService;
+    private readonly ILogger<TransactionsController> _logger;
+
+    public TransactionsController(
+        ITransactionRepository transactionRepository,
+        ITransactionService transactionService,
+        ILogger<TransactionsController> logger)
+    {
+        _transactionRepository = transactionRepository;
+        _transactionService = transactionService;
+        _logger = logger;
+    }
+
     /// <summary>
-    /// Get all transactions (paginated).
+    /// Get all transactions with pagination
     /// </summary>
-    /// <param name="pageNumber">Page number (default 1).</param>
-    /// <param name="pageSize">Page size (default 10).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>List of transactions.</returns>
     [HttpGet]
-    [ProduceResponseType(typeof(IEnumerable<TransactionDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, CancellationToken cancellationToken = default)
     {
-        var transactions = await repository.GetAllAsync(pageNumber, pageSize, cancellationToken);
-        var dtos = transactions.Select(MapToDto);
+        if (pageNumber < 1 || pageSize < 1)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://api.example.com/errors/invalid-pagination",
+                Title = "Invalid pagination parameters",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "Page number and page size must be greater than 0"
+            });
+        }
+
+        var transactions = await _transactionRepository.GetAllAsync(pageNumber, pageSize, cancellationToken);
+        var dtos = transactions.Select(t => new TransactionDto(
+            t.Id, t.CreditCardId, t.Amount, t.Merchant, t.Category, t.CreatedAt));
+
         return Ok(dtos);
     }
 
     /// <summary>
-    /// Get a transaction by ID.
+    /// Get a specific transaction by ID
     /// </summary>
-    /// <param name="id">The transaction ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The transaction.</returns>
     [HttpGet("{id}")]
-    [ProduceResponseType(typeof(TransactionDto), StatusCodes.Status200OK)]
-    [ProduceResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken = default)
     {
-        var transaction = await repository.GetByIdAsync(id, cancellationToken);
+        var transaction = await _transactionRepository.GetByIdAsync(id, cancellationToken);
         if (transaction == null)
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://example.com/errors/not-found",
-                Title = "Not Found",
+                Type = "https://api.example.com/errors/not-found",
+                Title = "Transaction not found",
                 Status = StatusCodes.Status404NotFound,
-                Detail = $"Transaction with ID {id} not found."
+                Detail = $"Transaction with ID {id} not found"
             });
         }
 
-        return Ok(MapToDto(transaction));
+        var dto = new TransactionDto(
+            transaction.Id, transaction.CreditCardId, transaction.Amount, transaction.Merchant, transaction.Category, transaction.CreatedAt);
+        return Ok(dto);
     }
 
     /// <summary>
-    /// Create a new transaction.
+    /// Create a new transaction
     /// </summary>
-    /// <param name="request">The creation request.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The created transaction.</returns>
     [HttpPost]
-    [ProduceResponseType(typeof(TransactionDto), StatusCodes.Status201Created)]
-    [ProduceResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Create([FromBody] CreateTransactionRequest request, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Create(CreateTransactionRequest request, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.Merchant))
         {
             return BadRequest(new ProblemDetails
             {
-                Type = "https://example.com/errors/validation",
-                Title = "Validation Error",
+                Type = "https://api.example.com/errors/validation-error",
+                Title = "Validation failed",
                 Status = StatusCodes.Status400BadRequest,
-                Detail = "Merchant name is required and cannot be empty."
+                Detail = "Merchant is required"
             });
         }
 
@@ -82,168 +93,100 @@ public class TransactionsController(ITransactionRepository repository, ICreditCa
         {
             return BadRequest(new ProblemDetails
             {
-                Type = "https://example.com/errors/validation",
-                Title = "Validation Error",
+                Type = "https://api.example.com/errors/validation-error",
+                Title = "Validation failed",
                 Status = StatusCodes.Status400BadRequest,
-                Detail = "Amount must be greater than 0."
+                Detail = "Amount must be greater than 0"
             });
         }
-
-        var creditCard = await cardRepository.GetByIdAsync(request.CreditCardId, cancellationToken);
-        if (creditCard == null)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Type = "https://example.com/errors/validation",
-                Title = "Validation Error",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = $"Credit card with ID {request.CreditCardId} does not exist."
-            });
-        }
-
-        var transaction = new Transaction
-        {
-            CreditCardId = request.CreditCardId,
-            Amount = request.Amount,
-            Merchant = request.Merchant,
-            Category = request.Category,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var createdTransaction = await repository.CreateAsync(transaction, cancellationToken);
 
         try
         {
-            var transactionDto = MapToDto(createdTransaction);
-            var json = JsonSerializer.Serialize(transactionDto, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-            await kafkaProducer.PublishAsync("transactions", createdTransaction.Id.ToString(), json, cancellationToken);
+            var dto = await _transactionService.CreateTransactionAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
-            var logger = HttpContext.RequestServices.GetRequiredService<ILogger<TransactionsController>>();
-            logger.LogError(ex, "Failed to publish transaction created event to Kafka");
+            return BadRequest(new ProblemDetails
+            {
+                Type = "https://api.example.com/errors/validation-error",
+                Title = "Validation failed",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = ex.Message
+            });
         }
-
-        var dto = MapToDto(createdTransaction);
-        return CreatedAtAction(nameof(GetById), new { id = createdTransaction.Id }, dto);
     }
 
     /// <summary>
-    /// Update a transaction.
+    /// Update an existing transaction
     /// </summary>
-    /// <param name="id">The transaction ID.</param>
-    /// <param name="request">The update request.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The updated transaction.</returns>
     [HttpPut("{id}")]
-    [ProduceResponseType(typeof(TransactionDto), StatusCodes.Status200OK)]
-    [ProduceResponseType(StatusCodes.Status204NoContent)]
-    [ProduceResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProduceResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateTransactionRequest request, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Update(int id, UpdateTransactionRequest request, CancellationToken cancellationToken = default)
     {
-        var existingTransaction = await repository.GetByIdAsync(id, cancellationToken);
-        if (existingTransaction == null)
+        var transaction = await _transactionRepository.GetByIdAsync(id, cancellationToken);
+        if (transaction == null)
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://example.com/errors/not-found",
-                Title = "Not Found",
+                Type = "https://api.example.com/errors/not-found",
+                Title = "Transaction not found",
                 Status = StatusCodes.Status404NotFound,
-                Detail = $"Transaction with ID {id} not found."
+                Detail = $"Transaction with ID {id} not found"
             });
         }
 
-        if (request.Merchant != null && string.IsNullOrWhiteSpace(request.Merchant))
+        if (request.Amount.HasValue)
         {
-            return BadRequest(new ProblemDetails
-            {
-                Type = "https://example.com/errors/validation",
-                Title = "Validation Error",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = "Merchant name cannot be empty."
-            });
-        }
-
-        if (request.Amount.HasValue && request.Amount <= 0)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Type = "https://example.com/errors/validation",
-                Title = "Validation Error",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = "Amount must be greater than 0."
-            });
-        }
-
-        if (request.CreditCardId.HasValue)
-        {
-            var creditCard = await cardRepository.GetByIdAsync(request.CreditCardId.Value, cancellationToken);
-            if (creditCard == null)
+            if (request.Amount <= 0)
             {
                 return BadRequest(new ProblemDetails
                 {
-                    Type = "https://example.com/errors/validation",
-                    Title = "Validation Error",
+                    Type = "https://api.example.com/errors/validation-error",
+                    Title = "Validation failed",
                     Status = StatusCodes.Status400BadRequest,
-                    Detail = $"Credit card with ID {request.CreditCardId} does not exist."
+                    Detail = "Amount must be greater than 0"
                 });
             }
+
+            transaction.Amount = request.Amount.Value;
         }
 
-        var transactionToUpdate = new Transaction
+        if (!string.IsNullOrWhiteSpace(request.Merchant))
         {
-            CreditCardId = request.CreditCardId ?? existingTransaction.CreditCardId,
-            Amount = request.Amount ?? existingTransaction.Amount,
-            Merchant = request.Merchant ?? existingTransaction.Merchant,
-            Category = request.Category ?? existingTransaction.Category
-        };
-
-        var updatedTransaction = await repository.UpdateAsync(id, transactionToUpdate, cancellationToken);
-        if (updatedTransaction == null)
-        {
-            return NotFound();
+            transaction.Merchant = request.Merchant;
         }
 
-        return Ok(MapToDto(updatedTransaction));
+        if (request.Category != null)
+        {
+            transaction.Category = request.Category;
+        }
+
+        await _transactionRepository.UpdateAsync(transaction, cancellationToken);
+        var dto = new TransactionDto(
+            transaction.Id, transaction.CreditCardId, transaction.Amount, transaction.Merchant, transaction.Category, transaction.CreatedAt);
+
+        return Ok(dto);
     }
 
     /// <summary>
-    /// Delete a transaction.
+    /// Delete a transaction
     /// </summary>
-    /// <param name="id">The transaction ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>No content on success.</returns>
     [HttpDelete("{id}")]
-    [ProduceResponseType(StatusCodes.Status204NoContent)]
-    [ProduceResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken = default)
     {
-        var deleted = await repository.DeleteAsync(id, cancellationToken);
-        if (!deleted)
+        var transaction = await _transactionRepository.GetByIdAsync(id, cancellationToken);
+        if (transaction == null)
         {
             return NotFound(new ProblemDetails
             {
-                Type = "https://example.com/errors/not-found",
-                Title = "Not Found",
+                Type = "https://api.example.com/errors/not-found",
+                Title = "Transaction not found",
                 Status = StatusCodes.Status404NotFound,
-                Detail = $"Transaction with ID {id} not found."
+                Detail = $"Transaction with ID {id} not found"
             });
         }
 
+        await _transactionRepository.DeleteAsync(id, cancellationToken);
         return NoContent();
-    }
-
-    private static TransactionDto MapToDto(Transaction transaction)
-    {
-        return new TransactionDto
-        {
-            Id = transaction.Id,
-            CreditCardId = transaction.CreditCardId,
-            Amount = transaction.Amount,
-            Merchant = transaction.Merchant,
-            Category = transaction.Category,
-            CreatedAt = transaction.CreatedAt
-        };
     }
 }

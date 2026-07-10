@@ -225,6 +225,20 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ------------------------------ how ------------------------------ */
 .modes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); margin-bottom: 22px; }
+/* two-pass generation block */
+.how__passes { margin: 6px 0 30px; }
+.how__passestitle { font-size: clamp(16px, 2vw, 18px); font-weight: 600; color: var(--ink); margin-bottom: 16px; }
+.passes { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.pass-card { position: relative; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-lg); padding: 22px 22px 22px 62px; }
+.pass-card--review { border-color: color-mix(in srgb, var(--accent) 34%, var(--line)); background: var(--accent-soft); }
+.pass-card__n { position: absolute; left: 20px; top: 22px; width: 30px; height: 30px; border-radius: 50%;
+  display: grid; place-items: center; font-family: var(--font-mono); font-weight: 600; font-size: 15px;
+  color: var(--muted); background: var(--chip); border: 1px solid var(--line); }
+.pass-card--review .pass-card__n { color: #fff; background: var(--accent); border-color: transparent; }
+.pass-card h3 { font-size: 16px; margin-bottom: 8px; color: var(--ink); }
+.pass-card p { color: var(--ink-2); font-size: 14.5px; line-height: 1.55; }
+
 .mode-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
   padding: 26px; position: relative; box-shadow: var(--shadow-sm); }
 .mode-card__tag { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .1em;
@@ -465,6 +479,11 @@ button { font-family: inherit; cursor: pointer; }
   border: 1px solid color-mix(in srgb, var(--auto-semi) 30%, transparent); border-radius: var(--r-sm);
   padding: 12px 14px; line-height: 1.5; }
 .runmeta__patch b { display: block; margin-bottom: 4px; font-family: var(--font-mono); }
+.runmeta__prov { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.runmeta__provhead { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.runmeta__prov .runmeta__row:last-child { border-bottom: 1px dashed var(--line); }
+.runmeta__note { margin-top: 10px; font-size: 12.5px; line-height: 1.5; color: var(--ink-2);
+  font-style: italic; border-left: 2px solid var(--line-2); padding-left: 10px; }
 
 /* ------------------------------ footer ------------------------------ */
 .footer { border-top: 1px solid var(--line); padding: clamp(44px, 6vw, 72px) var(--pad-x) 40px; background: var(--surface-2); }
@@ -502,7 +521,7 @@ button { font-family: inherit; cursor: pointer; }
   .nav__links { display: none; }
 }
 @media (max-width: 720px) {
-  .modes, .how__pair { grid-template-columns: 1fr; }
+  .modes, .how__pair, .passes { grid-template-columns: 1fr; }
   .crit__row { grid-template-columns: 28px 1fr auto; gap: 12px; padding: 14px 16px; }
   .crit__meter { display: none; }
   .crit__wt-inline { display: inline-flex !important; }

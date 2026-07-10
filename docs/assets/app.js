@@ -25,6 +25,21 @@
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
   function fx(n, d) { return Number(n).toFixed(d == null ? 1 : d); }
+  function fmtDuration(sec) {
+    sec = Number(sec);
+    if (!isFinite(sec) || sec < 0) return null;
+    if (sec < 60) return sec + "s";
+    var m = Math.floor(sec / 60), s = Math.round(sec % 60);
+    if (m < 60) return s ? m + "m " + s + "s" : m + "m";
+    var h = Math.floor(m / 60); m = m % 60;
+    return m ? h + "h " + m + "m" : h + "h";
+  }
+  function fmtTokens(n) {
+    if (n == null || n === "") return "—";
+    n = Number(n);
+    return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "k" : String(n);
+  }
+  function has(v) { return v != null && v !== ""; }
 
   /* ---------- SVG helpers ---------- */
   function svg(vb, inner, cls) {
@@ -578,6 +593,34 @@
     return "hsl(" + hue + " 64% 46%)";
   }
 
+  // Authored provenance (how the submission was produced) from run.meta — renders
+  // only the fields actually present, so a partial or empty meta.json shows nothing.
+  function provenanceBlock(run) {
+    var m = run.meta;
+    if (!m) return "";
+    var rows = [];
+    function add(labelKey, val) { if (has(val)) rows.push([t(labelKey), val]); }
+    add("run.meta.harness", has(m.harness)
+      ? (m.harness + (has(m.harnessVersion) ? " · " + m.harnessVersion : "")) : null);
+    add("run.meta.effort", m.effort);
+    add("run.meta.duration", m.durationSec != null ? fmtDuration(m.durationSec) : null);
+    add("run.meta.passes", m.passes != null
+      ? (Number(m.passes) >= 2 ? m.passes + " (" + t("run.meta.passes.hint") + ")" : m.passes) : null);
+    // attempts = retries; only interesting when the run was retried (>1)
+    if (m.attempts != null && Number(m.attempts) > 1) add("run.meta.attempts", m.attempts);
+    if (has(m.tokensIn) || has(m.tokensOut))
+      add("run.meta.tokens", fmtTokens(m.tokensIn) + " / " + fmtTokens(m.tokensOut));
+    add("run.meta.cost", m.costUsd != null ? "$" + Number(m.costUsd).toFixed(2) : null);
+    add("run.meta.prompt", m.promptVersion);
+    add("run.meta.produced", m.producedAtUtc);
+    if (!rows.length && !has(m.notes)) return "";
+    var body = rows.map(function (x) {
+      return '<div class="runmeta__row"><span>' + esc(x[0]) + "</span><span>" + esc(x[1]) + "</span></div>";
+    }).join("");
+    var notes = has(m.notes) ? '<p class="runmeta__note">' + esc(m.notes) + "</p>" : "";
+    return '<div class="runmeta__prov"><h5 class="minihead runmeta__provhead">' + esc(t("run.meta.title")) + "</h5>" + body + notes + "</div>";
+  }
+
   function leaderboardDetail(r) {
     var run = representativeRun(r.model);
     if (!run) return '<p style="color:var(--muted);font-family:var(--font-mono);font-size:13px">' + esc(t("lb.empty")) + "</p>";
@@ -605,6 +648,7 @@
         '<div class="runmeta__row"><span>' + esc(t("lb.detail.coverage")) + "</span><span>" + Math.round((run.coverage || 0) * 100) + "%</span></div>" +
         '<div class="runmeta__row"><span>' + esc(t("lb.detail.run")) + "</span><span>" + esc((run.evaluatedAtUtc || "").split(" ")[0]) + "</span></div>" +
         pen +
+        provenanceBlock(run) +
       "</div>";
 
     return '<div class="lbdetail__cols"><div><h4 class="minihead">' + esc(t("lb.detail.title")) + '</h4><div class="catprofile">' + profile + "</div></div>" + meta + "</div>";
@@ -635,7 +679,7 @@
   function renderAll() { applyStaticI18n(); renderDynamic(); }
 
   function setupReveal() {
-    var targets = document.querySelectorAll(".hero__lead, .pagehead, .section__head, .modes, .callout, .how__pair, .how__pipeline, .task__grid, .scoring__flow, .scoring__grid, .method__diagram, .method__cards, .lb__meta, .lb, .criteria__toolbar, .rubric, .section__more");
+    var targets = document.querySelectorAll(".hero__lead, .pagehead, .section__head, .modes, .how__passes, .callout, .how__pair, .how__pipeline, .task__grid, .scoring__flow, .scoring__grid, .method__diagram, .method__cards, .lb__meta, .lb, .criteria__toolbar, .rubric, .section__more");
     var reveal = function (el) { el.classList.add("in"); };
     if (!("IntersectionObserver" in window)) {
       Array.prototype.forEach.call(targets, reveal);

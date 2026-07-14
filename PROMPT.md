@@ -57,8 +57,6 @@ JSON is **camelCase** throughout.
 | GET    | `/api/credit-cards`                   | 200 (array, paginated) | — |
 | GET    | `/api/credit-cards/{id}`              | 200 | 404 if not found |
 | POST   | `/api/credit-cards`                   | 201 (+`Location`, body with `id`) | 400 if `cardholderName`/`cardNumber` empty |
-| PUT    | `/api/credit-cards/{id}`              | 200 or 204 | 404 if not found; 400 if invalid |
-| DELETE | `/api/credit-cards/{id}`              | 204 | 404 if not found |
 | GET    | `/api/credit-cards/{id}/transactions` | 200 (array) | 404 if card not found |
 
 `TransactionsController` under `api/transactions`:
@@ -67,8 +65,8 @@ JSON is **camelCase** throughout.
 | GET    | `/api/transactions`      | 200 (array, paginated) | — |
 | GET    | `/api/transactions/{id}` | 200 | 404 if not found |
 | POST   | `/api/transactions`      | 201 (+`Location`, body with `id`) | 400 if `merchant` empty, `amount` <= 0, or `creditCardId` doesn't exist |
-| PUT    | `/api/transactions/{id}` | 200 or 204 | 404 if not found; 400 if invalid |
-| DELETE | `/api/transactions/{id}` | 204 | 404 if not found |
+
+> The surface is **read + create only** — there is **no `PUT` and no `DELETE`** in scope. Don't add them.
 
 Example — `POST /api/transactions` with `{ "creditCardId": 1, "amount": 199.90, "merchant": "Amazon", "category": "shopping" }` → **201**:
 ```json
@@ -105,45 +103,70 @@ bare comment still counts as swallowing); no dead code or `TODO`/`FIXME`; analyz
 **REST API design** — correct verbs and status codes; return errors as **RFC 9457 Problem Details**
 (`application/problem+json`); use **DTOs** in and out (never expose EF entities); paginate collections;
 expose **OpenAPI/Swagger** whose document actually **describes every endpoint** (a served-but-empty spec
-does not count); version the API.
+does not count).
 
 **Persistence** — **EF Core migrations** (not `EnsureCreated`); FK constraints and **indexes** on FK /
-filter columns; concurrency control (e.g. rowversion); `AsNoTracking` on read paths; no N+1 queries.
+filter columns; `AsNoTracking` on read paths; no N+1 queries.
 
-**Messaging** — a **durable producer** (acks + retries); an **idempotent consumer** (dedupe by key/id);
-a **Transactional Outbox** so the DB and broker stay consistent; a **dead-letter** path; commit offsets
-**after** processing.
+**Messaging** — a **durable producer** (acks + retries) that publishes the transaction event **after**
+the row is persisted. A broker hiccup must **not** fail the request: handle a publish failure
+gracefully (catch-and-log — don't turn it into a 500 once the data is saved). *Publishing the event
+reliably is the whole requirement here — there is **no consumer, outbox, or dead-letter** in scope; don't
+build one.*
 
 **Security** — no hardcoded secrets (env vars only); **protect the PAN** — encrypt, tokenize, or truncate
 it, and never log it — and **never store CVV/PIN/track data**; validate all input; apply rate limiting;
-keep dependencies free of known vulnerabilities; configure TLS/HSTS for production. Do **not** force an
-HTTPS redirect on the container's HTTP port — the API must stay reachable at `http://localhost:8080`.
-Authentication/authorization is **optional**: there's no user or ownership model in scope.
+keep dependencies free of known vulnerabilities. The API is served over plain HTTP on
+`http://localhost:8080` (TLS terminates upstream in this deployment) — so **no TLS/HSTS config and no
+HTTPS redirect**. Authentication/authorization is **optional**: there's no user or ownership model in
+scope.
 
 **Resilience** — a single **global exception handler** (no stack traces leak to clients); **liveness and
 readiness** health checks; retries / timeouts / circuit breakers on Kafka and the DB (e.g. **Polly**);
 graceful shutdown.
 
-**Testing** — xUnit or NUnit; **unit** tests for business rules plus **integration** tests (e.g.
-Testcontainers) in a healthy pyramid; collect coverage (**Coverlet**) and aim for **≥80% line coverage**;
-cover the endpoints with **black-box/acceptance tests** that prove the rules hold (FK exists, `amount > 0`,
-required fields). Mutation testing (**Stryker.NET**) is **optional**.
+**Testing** — xUnit or NUnit, **unit tests only**. Cover the business rules that matter (the FK must
+exist, `amount > 0`, required fields non-empty) with fast, isolated tests; collect coverage (**Coverlet**)
+and aim for a **reasonable bar (~60%+)** on the code that matters — not a number for its own sake.
+*No integration, end-to-end or acceptance tests* — **no Testcontainers, no `WebApplicationFactory`**, and
+no test may need Docker, a database, or a broker. The suite must run **in-process, offline, in seconds**.
 
-**Observability** — **OpenTelemetry** (traces / metrics / logs); **structured** JSON logs; a request /
-correlation id propagated end to end; a `/health` and a `/metrics` endpoint.
+**Performance** — async, non-blocking I/O throughout (**no sync-over-async**: no `.Result`, `.Wait()`,
+`.GetAwaiter().GetResult()`); a **stateless** API; pagination on collections.
 
-**Performance** — async, non-blocking I/O throughout (no sync-over-async); a **stateless** API;
-pagination on collections; stay correct under **dozens of concurrent requests** — no 5xx, no hangs.
+**Observability** — **structured** JSON logs (and never log the PAN); a request / correlation id
+propagated end to end. The `/health` endpoint is already in the API surface above.
 
 **Portability & deploy** — a `Dockerfile` (running as a **non-root** user) and the `docker-compose.yml`;
 config via env vars; **pin dependency versions** (a NuGet lock file, `global.json`, or Central Package
-Management); a **CI workflow** that builds, tests, and lints; one-command boot.
+Management); one-command boot.
 
 **Documentation** — a `README` covering **purpose**, **prerequisites/setup**, **how to run**, the stack,
-and env vars; OpenAPI/Swagger; doc comments on public contracts.
+and env vars.
 
 > Standard fake test-card numbers used only inside the test project are normal and fine — they're test
 > fixtures, not stored secrets.
+
+---
+
+## Out of scope — do NOT build these
+
+The brief means what it says about simplicity: **shipping machinery nobody asked for is a defect, and it
+is scored as one.** None of the following earns credit; each one costs you.
+
+| Don't build | Why it's out of scope |
+|-------------|------------------------|
+| `PUT` / `PATCH` / `DELETE` endpoints | the surface is **read + create only** |
+| A Kafka **consumer**, a **transactional outbox**, a **dead-letter** path | the requirement is to *publish* reliably — producer-only |
+| **OpenTelemetry** (SDK, collector, exporters) | not required; structured logs + a correlation id is the bar |
+| **API versioning** (`Asp.Versioning`, `/v1/` routing) | there is one version of one API |
+| A **`/metrics`** endpoint | not required |
+| **Testcontainers** / `WebApplicationFactory` / any integration or e2e test | the suite is **unit-only**, offline, in seconds |
+| **Optimistic concurrency** (rowversion / `IsConcurrencyToken`) | nothing in scope ever updates a row — there is no write conflict to lose |
+| A **CI workflow** | nothing here runs it |
+| Auth / users / ownership | optional and unscored — there is no user model in scope |
+
+Build the thing the brief asks for, and build *that* well.
 
 ---
 

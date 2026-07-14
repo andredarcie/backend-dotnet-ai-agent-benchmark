@@ -3,13 +3,13 @@ using BackendEvaluator.Core;
 namespace BackendEvaluator.Evaluators;
 
 /// <summary>Category 4 — REST API Design (🟡 semi: status codes need an oracle).
-/// Tools: Spectral (OpenAPI lint), swagger-cli (validate), oasdiff (breaking changes). Roslyn detects
-/// verbs, status codes, ProblemDetails and DTOs.</summary>
+/// Roslyn detects verbs, status codes, ProblemDetails and DTOs; the live contract oracle asserts the real
+/// response shape and OpenApiProbe checks the served document actually declares the operations.</summary>
 public sealed class ApiDesignEvaluator : CategoryEvaluatorBase
 {
     public override int Number => 4;
     public override string Name => "REST API Design";
-    public override double Weight => 0.11;
+    public override double Weight => 0.14;
     public override AutomationLevel Automation => AutomationLevel.SemiOracle;
 
     public override Task<CategoryResult> EvaluateAsync(EvaluationContext ctx)
@@ -22,19 +22,12 @@ public sealed class ApiDesignEvaluator : CategoryEvaluatorBase
                      || f.Invokes("MapGet", "MapPost", "MapPut", "MapPatch", "MapDelete");
         r.Metrics.Add(Bool("http-verbs", verbs, "correct HTTP verbs (Richardson L2)"));
 
-        bool statusCodes = f.IdentifierEquals("StatusCodes") || f.Invokes("Created", "CreatedAtAction", "Ok", "NoContent", "BadRequest", "NotFound", "Conflict", "UnprocessableEntity");
-        r.Metrics.Add(Bool("status-codes", statusCodes, "explicit, coherent status codes"));
-
+        // No static `status-codes` metric: "the source mentions BadRequest somewhere" is a strictly weaker
+        // proxy for the real 201/400/404 the live oracle already asserts (category 1). No `versioning`
+        // metric either — the task no longer asks for it (see `no-gold-plating` in category 2).
         bool problem = f.ObjectCreationTypes.Any(t => t.Contains("ProblemDetails")) || f.Invokes("AddProblemDetails", "Problem")
                        || f.IdentifierEquals("IExceptionHandler");
         r.Metrics.Add(Bool("problem-details", problem, "standardized errors RFC 9457 (ProblemDetails)"));
-
-        bool openapi = p.HasPackage("Swashbuckle") || p.HasPackage("NSwag") || p.HasPackage("Microsoft.AspNetCore.OpenApi")
-                       || f.Invokes("AddOpenApi", "AddSwaggerGen", "MapOpenApi", "UseSwagger");
-        r.Metrics.Add(Bool("openapi", openapi, "OpenAPI/Swagger contract exposed"));
-
-        bool versioning = f.UsesNamespace("Asp.Versioning") || f.IdentifierEquals("ApiVersion");
-        r.Metrics.Add(Bool("versioning", versioning, "API versioning", weight: 0.5));
 
         bool dtos = p.AnyDir("Dtos") || p.AnyDir("DTOs") || f.TypeNameContains("Request", "Response", "Dto");
         r.Metrics.Add(Bool("dtos", dtos, "separates DTOs from domain entities", weight: 0.5));
@@ -45,15 +38,19 @@ public sealed class ApiDesignEvaluator : CategoryEvaluatorBase
             foreach (var check in contract.Checks.Where(c => c.Area == BackendEvaluator.Core.ContractArea.RestDesign))
                 r.Metrics.Add(check.ToMetric());
 
-        // The served OpenAPI document must actually DOCUMENT the API. The static `openapi` metric above
-        // only proves the middleware is wired; a doc that is served but declares zero operations
-        // (e.g. AddOpenApi() failing to discover the controllers -> "paths": {}) is an empty, useless
-        // contract — a real API-design defect that presence-detection alone silently passes.
+        // The OpenAPI contract, asserted on the RUNNING system — this replaces the old static `openapi`
+        // presence metric entirely (which only proved the middleware was wired, and which Documentation
+        // scored a second time as `api-docs`). Three outcomes, all of them scored:
+        //   served + declares operations -> Pass;  served but empty ("paths": {}) -> Fail (a useless
+        //   contract that presence-detection silently passed);  NOT SERVED AT ALL -> Fail, not
+        //   Indeterminate: the task requires an OpenAPI document, so its absence is a defect, not a
+        //   measurement we failed to take.
         if (!string.IsNullOrEmpty(ctx.Options.BaseUrl))
         {
             var doc = OpenApiProbe.Discover(ctx.Options.BaseUrl);
             if (doc == null)
-                r.Metrics.Add(Unknown("openapi-populated", "served OpenAPI documents its operations", "no OpenAPI document served — not scored"));
+                r.Metrics.Add(Fail("openapi-populated", "no document served", "served OpenAPI documents its operations",
+                    "no OpenAPI/Swagger document is served on the running system"));
             else if (doc.Operations > 0)
                 r.Metrics.Add(Pass("openapi-populated", $"{doc.Operations} operation(s) across {doc.Paths} path(s)", "served OpenAPI documents its operations"));
             else
@@ -61,24 +58,8 @@ public sealed class ApiDesignEvaluator : CategoryEvaluatorBase
                     "the OpenAPI document is served but declares no endpoints — an empty contract"));
         }
 
-        // Real tools on a spec file, when one is present.
-        var spec = p.FindByNamePattern(@"^(openapi|swagger)\.(json|ya?ml)$").FirstOrDefault();
-        if (spec != null)
-        {
-            RunTool(ctx, r, "spectral", $"lint \"{spec}\" -f json", "spectral", "OpenAPI lint with no errors (Spectral)", o =>
-            {
-                int errors = System.Text.RegularExpressions.Regex.Matches(o.Stdout, "\"severity\"\\s*:\\s*0").Count;
-                return errors == 0 ? Pass("spectral", "0 errors", "OpenAPI lint with no errors (Spectral)")
-                                   : Fail("spectral", $"{errors} error(s)", "OpenAPI lint with no errors (Spectral)");
-            });
-            RunTool(ctx, r, "swagger-cli", $"validate \"{spec}\"", "swagger-validate", "OpenAPI spec is valid (swagger-cli)",
-                o => o.Success ? Pass("swagger-validate", "valid", "OpenAPI spec is valid (swagger-cli)")
-                               : Fail("swagger-validate", "invalid", "OpenAPI spec is valid (swagger-cli)"), weight: 0.5);
-        }
-        else r.Notes.Add("No static OpenAPI file found (spec is likely generated at runtime); run --deep to generate and lint it.");
-
         if (ctx.Contract is not { Reachable: true })
-            r.Notes.Add("SEMI: pass --base-url (the harness does) to assert live status codes / Location / Problem Details / pagination.");
+            r.Notes.Add("ORACLE: pass --base-url (the harness does) to assert live status codes / Location / Problem Details / pagination / OpenAPI.");
         return Task.FromResult(r);
     }
 }

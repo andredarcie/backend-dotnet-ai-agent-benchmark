@@ -1,0 +1,17 @@
+# .NET
+bin/
+obj/
+*.user
+TestResults/
+coverage-report/
+*.received.*
+
+# IDE / OS
+.vs/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local overrides
+appsettings.*.local.json
+.env

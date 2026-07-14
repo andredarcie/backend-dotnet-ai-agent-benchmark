@@ -1,0 +1,688 @@
+{
+  "Target": "sonnet-5/run1",
+  "EvaluatedAtUtc": "2026-07-14 14:40:41Z",
+  "Deep": true,
+  "Environment": [
+    "dotnet",
+    "gitleaks",
+    "hadolint"
+  ],
+  "Categories": [
+    {
+      "Number": 1,
+      "Name": "Functional Correctness & Tests",
+      "Weight": 0.2,
+      "Automation": "SemiOracle",
+      "Metrics": [
+        {
+          "Name": "create-card-201",
+          "Observed": "HTTP 201",
+          "Target": "POST credit-card -> 201 Created",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "create-card-id",
+          "Observed": "id=1",
+          "Target": "create response returns the new id",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "card-required-400",
+          "Observed": "HTTP 400",
+          "Target": "empty cardholderName/cardNumber -> 400",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "list-cards-200",
+          "Observed": "HTTP 200",
+          "Target": "GET credit-cards collection -> 200",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "get-card-200",
+          "Observed": "HTTP 200",
+          "Target": "GET existing card -> 200",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "get-card-404",
+          "Observed": "HTTP 404",
+          "Target": "GET missing card -> 404",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "create-tx-201",
+          "Observed": "HTTP 201",
+          "Target": "POST transaction -> 201 Created",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "create-tx-id",
+          "Observed": "id=1",
+          "Target": "create response returns the new id",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "create-tx-echo",
+          "Observed": "amount+merchant echoed",
+          "Target": "create echoes the persisted fields",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "tx-amount-positive-400",
+          "Observed": "HTTP 400",
+          "Target": "amount <= 0 -> 400",
+          "Status": "Pass",
+          "Weight": 1.5
+        },
+        {
+          "Name": "tx-merchant-required-400",
+          "Observed": "HTTP 400",
+          "Target": "empty merchant -> 400",
+          "Status": "Pass",
+          "Weight": 1.5
+        },
+        {
+          "Name": "tx-fk-exists-400",
+          "Observed": "HTTP 400",
+          "Target": "non-existent creditCardId -> 400",
+          "Status": "Pass",
+          "Weight": 1.5
+        },
+        {
+          "Name": "list-tx-200",
+          "Observed": "HTTP 200",
+          "Target": "GET transactions collection -> 200",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "get-tx-200",
+          "Observed": "HTTP 200",
+          "Target": "GET existing transaction -> 200",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "get-tx-404",
+          "Observed": "HTTP 404",
+          "Target": "GET missing transaction -> 404",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "card-transactions-200",
+          "Observed": "HTTP 200",
+          "Target": "GET card's transactions -> 200",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "card-transactions-404",
+          "Observed": "HTTP 404",
+          "Target": "transactions of a missing card -> 404",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "unit-tests",
+          "Observed": "yes",
+          "Target": "unit tests for the business rules",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "unit-only",
+          "Observed": "unit tests only",
+          "Target": "unit-only suite (no Docker/DB/broker needed)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "test-pass-rate",
+          "Observed": "72/72 passed",
+          "Target": "100% of tests pass",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "coverage",
+          "Observed": "72 % of 543 coverable lines (1 report(s)); 674 generated/composition-root line(s) excluded",
+          "Target": "line coverage >=60% (on the code that matters)",
+          "Status": "Pass",
+          "Weight": 2
+        }
+      ],
+      "Notes": [],
+      "MissingTools": [],
+      "Badge": "🟡",
+      "Score": 5,
+      "MeasuredCount": 21,
+      "IndeterminateCount": 0
+    },
+    {
+      "Number": 2,
+      "Name": "Architecture & Design",
+      "Weight": 0.12,
+      "Automation": "ProxyReview",
+      "Metrics": [
+        {
+          "Name": "layering",
+          "Observed": "yes",
+          "Target": "layer separation (domain/infra/presentation)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "application-layer",
+          "Observed": "yes",
+          "Target": "application/use-case layer present",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "dependency-direction",
+          "Observed": "0 leaks",
+          "Target": "domain does not reference infrastructure (Roslyn usings)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "no-gold-plating",
+          "Observed": "none",
+          "Target": "no machinery the brief ruled out (YAGNI)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "no-god-class",
+          "Observed": "largest type: 123 lines",
+          "Target": "no 'god classes' (<=600 lines)",
+          "Status": "Pass",
+          "Weight": 0.5
+        }
+      ],
+      "Notes": [
+        "PROXY: layering, dependency direction, class size and unrequested machinery are all scored automatically from the Roslyn AST."
+      ],
+      "MissingTools": [],
+      "Badge": "🟠",
+      "Score": 5,
+      "MeasuredCount": 5,
+      "IndeterminateCount": 0
+    },
+    {
+      "Number": 3,
+      "Name": "Code Quality",
+      "Weight": 0.1,
+      "Automation": "FullAuto",
+      "Metrics": [
+        {
+          "Name": "no-empty-catch",
+          "Observed": "0",
+          "Target": "no empty catch (no swallowed exceptions)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "no-todos",
+          "Observed": "0",
+          "Target": "no pending TODO/FIXME/HACK",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "analyzers-enabled",
+          "Observed": "yes",
+          "Target": "analyzers/.editorconfig enabled",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "async-io",
+          "Observed": "yes",
+          "Target": "asynchronous, non-blocking I/O (60 async methods)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "no-sync-over-async",
+          "Observed": "yes",
+          "Target": "no sync-over-async blocking (.Result/.Wait()/.GetResult())",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "format",
+          "Observed": "no changes",
+          "Target": "code is formatted (dotnet format)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "build-warnings",
+          "Observed": "0 warning(s)",
+          "Target": "0 build warnings",
+          "Status": "Pass",
+          "Weight": 1
+        }
+      ],
+      "Notes": [],
+      "MissingTools": [],
+      "Badge": "🟢",
+      "Score": 5,
+      "MeasuredCount": 7,
+      "IndeterminateCount": 0
+    },
+    {
+      "Number": 4,
+      "Name": "REST API Design",
+      "Weight": 0.14,
+      "Automation": "SemiOracle",
+      "Metrics": [
+        {
+          "Name": "http-verbs",
+          "Observed": "yes",
+          "Target": "correct HTTP verbs (Richardson L2)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "problem-details",
+          "Observed": "yes",
+          "Target": "standardized errors RFC 9457 (ProblemDetails)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "dtos",
+          "Observed": "yes",
+          "Target": "separates DTOs from domain entities",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "create-card-location",
+          "Observed": "http://host.docker.internal:8080/api/credit-cards/1",
+          "Target": "201 carries a Location header",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "json-camelcase",
+          "Observed": "camelCase",
+          "Target": "JSON properties are camelCase",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "problem-details-live",
+          "Observed": "application/problem+json",
+          "Target": "errors use application/problem+json (RFC 9457)",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "pagination",
+          "Observed": "pageSize=1 -> 1 item(s)",
+          "Target": "collection honors a page size",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "create-tx-location",
+          "Observed": "http://host.docker.internal:8080/api/transactions/1",
+          "Target": "201 carries a Location header",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "openapi-populated",
+          "Observed": "8 operation(s) across 6 path(s)",
+          "Target": "served OpenAPI documents its operations",
+          "Status": "Pass",
+          "Weight": 1
+        }
+      ],
+      "Notes": [],
+      "MissingTools": [],
+      "Badge": "🟡",
+      "Score": 5,
+      "MeasuredCount": 9,
+      "IndeterminateCount": 0
+    },
+    {
+      "Number": 5,
+      "Name": "Persistence & Database",
+      "Weight": 0.13,
+      "Automation": "ProxyReview",
+      "Metrics": [
+        {
+          "Name": "migrations",
+          "Observed": "versioned migrations",
+          "Target": "schema evolves via migrations (not EnsureCreated)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "referential-integrity",
+          "Observed": "yes",
+          "Target": "referential integrity (FK/relationships)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "indexes",
+          "Observed": "yes",
+          "Target": "indexes defined (incl. FKs/queries)",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "read-perf",
+          "Observed": "yes",
+          "Target": "AsNoTracking on reads (efficiency proxy)",
+          "Status": "Pass",
+          "Weight": 0.5
+        }
+      ],
+      "Notes": [
+        "PROXY: schema shape (migrations, FKs, indexes) is scored automatically from Roslyn; the schema is then exercised end to end by the live contract oracle."
+      ],
+      "MissingTools": [],
+      "Badge": "🟠",
+      "Score": 5,
+      "MeasuredCount": 4,
+      "IndeterminateCount": 0
+    },
+    {
+      "Number": 6,
+      "Name": "Messaging",
+      "Weight": 0.13,
+      "Automation": "FullAuto",
+      "Metrics": [
+        {
+          "Name": "broker-client",
+          "Observed": "yes",
+          "Target": "Kafka client present (Confluent.Kafka)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "publishes",
+          "Observed": "yes",
+          "Target": "producer publishes the transaction event (Produce/ProduceAsync)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "durable-producer",
+          "Observed": "yes",
+          "Target": "durable producer (Acks.All / idempotence)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "kafka-event-live",
+          "Observed": "1 event(s), key=id",
+          "Target": "transaction event published, keyed by id",
+          "Status": "Pass",
+          "Weight": 1
+        }
+      ],
+      "Notes": [
+        "Live check (deep, harness): a real transaction event must land on the 'transactions' topic keyed by id — folded in from the harness kafka-check consumer."
+      ],
+      "MissingTools": [],
+      "Badge": "🟢",
+      "Score": 5,
+      "MeasuredCount": 4,
+      "IndeterminateCount": 0
+    },
+    {
+      "Number": 7,
+      "Name": "Security",
+      "Weight": 0.14,
+      "Automation": "ProxyReview",
+      "Metrics": [
+        {
+          "Name": "pci-pan",
+          "Observed": "0",
+          "Target": "no PAN (Luhn-valid card) embedded in code/config",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "pci-sad",
+          "Observed": "absent",
+          "Target": "no sensitive auth data stored (CVV/track/PIN)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "validation",
+          "Observed": "yes",
+          "Target": "input validation",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "rate-limit",
+          "Observed": "yes",
+          "Target": "rate limiting (OWASP API #4)",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "secrets",
+          "Observed": "0 leaks",
+          "Target": "no hardcoded secrets (gitleaks)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "sca",
+          "Observed": "none reported",
+          "Target": "0 High/Critical dependencies",
+          "Status": "Pass",
+          "Weight": 1
+        }
+      ],
+      "Notes": [
+        "PROXY: scored automatically from the PCI checks (Luhn PAN / CVV / track / PIN over the Roslyn AST), gitleaks and the NuGet vulnerability graph."
+      ],
+      "MissingTools": [],
+      "Badge": "🟠",
+      "Score": 5,
+      "MeasuredCount": 6,
+      "IndeterminateCount": 0
+    },
+    {
+      "Number": 8,
+      "Name": "Resilience & Error Handling",
+      "Weight": 0.04,
+      "Automation": "FullAuto",
+      "Metrics": [
+        {
+          "Name": "resilience-policies",
+          "Observed": "yes",
+          "Target": "retry/timeout/circuit-breaker policies (Polly)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "global-error-handling",
+          "Observed": "yes",
+          "Target": "global exception handling (no stack-trace leak)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "graceful-shutdown",
+          "Observed": "yes",
+          "Target": "graceful shutdown / hosted services",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "timeouts",
+          "Observed": "yes",
+          "Target": "timeouts / cancellation propagated",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "no-stacktrace-leak",
+          "Observed": "HTTP 400, clean body",
+          "Target": "errors don't leak stack traces / internals",
+          "Status": "Pass",
+          "Weight": 1
+        }
+      ],
+      "Notes": [],
+      "MissingTools": [],
+      "Badge": "🟢",
+      "Score": 5,
+      "MeasuredCount": 5,
+      "IndeterminateCount": 0
+    },
+    {
+      "Number": 9,
+      "Name": "Observability (informational)",
+      "Weight": 0,
+      "Automation": "FullAuto",
+      "Metrics": [
+        {
+          "Name": "structured-logs",
+          "Observed": "yes",
+          "Target": "structured logging (JSON / Serilog)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "correlation",
+          "Observed": "yes",
+          "Target": "request correlation (trace/correlation id)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "live-health",
+          "Observed": "HTTP 200",
+          "Target": "/health responds 2xx live",
+          "Status": "Pass",
+          "Weight": 1
+        }
+      ],
+      "Notes": [
+        "INFORMATIONAL: reported, but weight 0 — it does not move the score. /health is already enforced by the executability gate (capped at 1.5/5 if it never answers)."
+      ],
+      "MissingTools": [],
+      "Badge": "🟢",
+      "Score": 5,
+      "MeasuredCount": 3,
+      "IndeterminateCount": 0
+    },
+    {
+      "Number": 10,
+      "Name": "Portability & Deploy (informational)",
+      "Weight": 0,
+      "Automation": "FullAuto",
+      "Metrics": [
+        {
+          "Name": "dockerfile",
+          "Observed": "yes",
+          "Target": "Dockerfile present",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "compose",
+          "Observed": "yes",
+          "Target": "docker-compose for dependencies",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "env-config",
+          "Observed": "yes",
+          "Target": "externalized config (env vars, 12-Factor III/IV)",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "pinning",
+          "Observed": "yes",
+          "Target": "pinned dependencies (lock file / global.json / Central Package Management)",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "non-root",
+          "Observed": "yes",
+          "Target": "container runs as non-root",
+          "Status": "Pass",
+          "Weight": 0.5
+        },
+        {
+          "Name": "hadolint",
+          "Observed": "clean",
+          "Target": "Dockerfile with no violations (hadolint)",
+          "Status": "Pass",
+          "Weight": 0.5
+        }
+      ],
+      "Notes": [
+        "INFORMATIONAL: reported, but weight 0 — whether the project actually deploys is decided by the executability gate (the harness boots its own compose), not by this checklist."
+      ],
+      "MissingTools": [],
+      "Badge": "🟢",
+      "Score": 5,
+      "MeasuredCount": 6,
+      "IndeterminateCount": 0
+    },
+    {
+      "Number": 11,
+      "Name": "Documentation (informational)",
+      "Weight": 0,
+      "Automation": "ProxyReview",
+      "Metrics": [
+        {
+          "Name": "readme",
+          "Observed": "yes",
+          "Target": "README present",
+          "Status": "Pass",
+          "Weight": 1
+        },
+        {
+          "Name": "readme-sections",
+          "Observed": "3/3",
+          "Target": "README with purpose+setup+run",
+          "Status": "Pass",
+          "Weight": 1
+        }
+      ],
+      "Notes": [
+        "INFORMATIONAL: reported, but weight 0 — it does not move the score. That the OpenAPI document really describes the endpoints is asserted live by category 4."
+      ],
+      "MissingTools": [],
+      "Badge": "🟠",
+      "Score": 5,
+      "MeasuredCount": 2,
+      "IndeterminateCount": 0
+    }
+  ],
+  "WeightedScore": 5,
+  "Coverage": 1,
+  "Builds": true,
+  "Boots": true
+}

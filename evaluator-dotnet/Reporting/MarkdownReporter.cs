@@ -34,8 +34,11 @@ public static class MarkdownReporter
         foreach (var c in report.Categories)
         {
             string score = c.Score.HasValue ? $"{c.Score:0.0}/5" : "n/a";
-            sb.AppendLine($"| {c.Number} | {c.Name} | {c.Automation.Badge()} | {score} | {c.Weight * 100:0.#}% |");
+            string weight = c.Weight > 0 ? $"{c.Weight * 100:0.#}%" : "_informational_";
+            sb.AppendLine($"| {c.Number} | {c.Name} | {c.Automation.Badge()} | {score} | {weight} |");
         }
+        sb.AppendLine();
+        sb.AppendLine("> Categories with weight **_informational_** are measured and reported but excluded from the weighted score: at 1–4% they could never separate two submissions, and each duplicated a signal the run already decides (the executability gate, the live oracle).");
         sb.AppendLine();
 
         foreach (var c in report.Categories)
@@ -43,7 +46,8 @@ public static class MarkdownReporter
             sb.AppendLine($"## {c.Number}. {c.Name} {c.Automation.Badge()}");
             sb.AppendLine();
             string score = c.Score.HasValue ? $"{c.Score:0.0}/5" : "n/a (not measured)";
-            sb.AppendLine($"**Score:** {score} · **Weight:** {c.Weight * 100:0.#}% · **Automation:** {c.Automation.Label()}");
+            string weight = c.Weight > 0 ? $"{c.Weight * 100:0.#}%" : "0% (informational — not scored)";
+            sb.AppendLine($"**Score:** {score} · **Weight:** {weight} · **Automation:** {c.Automation.Label()}");
             sb.AppendLine();
             sb.AppendLine("| Status | Metric | Observed | Target |");
             sb.AppendLine("|--------|--------|----------|--------|");

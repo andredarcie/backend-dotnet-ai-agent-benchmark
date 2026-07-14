@@ -4,9 +4,17 @@ One prompt, many models, one automated score. Every model gets the same [`PROMPT
 must build a **.NET 10 Credit Card REST API** (Controllers + EF Core + PostgreSQL + Kafka, all in
 Docker). Each run is generated in **two passes** — a build pass, then a **self-review / validate / patch**
 pass ([`PROMPT-REVIEW.md`](./PROMPT-REVIEW.md), the "second chance" every model gets). The
-**[.NET evaluator](./evaluator-dotnet)** then walks the **13 categories** of
+**[.NET evaluator](./evaluator-dotnet)** then walks the **8 scored categories** of
 [`EVALUATION-CRITERIA.md`](./EVALUATION-CRITERIA.md) (Roslyn AST + a live contract oracle in deep mode)
 and produces a **weighted 0–5 score**.
+
+> **The benchmark grades engineering, not ceremony.** It used to have 13 categories — but three of them
+> (Documentation, Portability, Performance) were **6% of the score combined**, arithmetically incapable of
+> separating two submissions, while the same signals were counted twice and three times over (health in
+> three places, OpenAPI in two, a test project's existence in two). The rubric now measures each thing
+> **once, where it is strongest**: 8 weighted categories, 3 reported as *informational*. And it cuts both
+> ways — the model is now **penalized for gold-plating** (`no-gold-plating`): shipping a `PUT`, an outbox,
+> OpenTelemetry or API versioning that the brief explicitly ruled out is a defect, not ambition.
 
 > 🌐 **Interactive site (PT/EN):** the criteria (with a **per-metric technical breakdown**), the two-pass
 > flow, scoring, methodology, per-run **provenance**, and a live leaderboard — explained with diagrams in
@@ -15,13 +23,25 @@ and produces a **weighted 0–5 score**.
 
 ## 🏆 Leaderboard
 
-> Weighted **0–5** across the 13 categories, ranked by **per-model median** of **deep** runs. The
-> leaderboard was **reset** to the new **two-pass** standard — every earlier single-pass run was removed,
-> so only `haiku-4-5` is here for now. The site also shows each run's **effort, time and cost**.
+> The leaderboard was **reset** for the new rubric: every earlier run was graded under the old
+> 13-category rubric and a tool set that no longer exists, so no published score was reproducible by the
+> code in this repo. Ranked by **per-model median** of **deep** runs; models with fewer than 5 runs are
+> **provisional**.
 
 | # | Model | Score (median /5) | Effort | Time | Cost | Build | Boot |
 |--:|-------|:---:|:---:|:---:|:---:|:---:|:---:|
-| 1 | `haiku-4-5` | **1.50 / 5** | — | 20m 32s | $1.70 | ✅ | ❌ |
+| 1 | `sonnet-5` ⚠ | **5.00 / 5** | xhigh | 46m | — | ✅ | ✅ |
+
+⚠ **Provisional (n=1), and a perfect score deserves scepticism, not applause.** The run boots, the live
+oracle passes all 17 contract checks, a real event lands on the Kafka topic keyed by id, its own 72 tests
+pass, and it covers **72% of the code it wrote** — on a **single pass**, with no self-review. But grading
+it also exposed **four bugs in the evaluator**, all of which had punished it for doing the *right* thing:
+coverage counted EF migrations and source-generated code the task itself mandates (72% read as 32%);
+`application-layer` missed the idiomatic project-per-layer layout; `validation` recognised only
+DataAnnotations/FluentValidation, not explicit guard clauses; `graceful-shutdown` knew `BackgroundService`
+but not `IHostedService`. All four are fixed and pinned by regression tests. **A rubric that a
+first-graded single-pass run tops at 5.00 is not yet discriminating at the top** — the honest reading is
+that the ceiling needs raising, not that the problem is solved.
 
 Scores are produced **100% by the `evaluator-dotnet` tool** — no human, no LLM. A run is graded exactly
 as the model produced it (**including its own second-pass review**); a build/boot blocker is not patched
@@ -29,16 +49,27 @@ by us but **capped by the executability gate**: source doesn't compile **≤ 0.5
 (no `docker-compose.yml`) **≤ 1.0**, compiles but never boots healthy **≤ 1.5**. The cap is a pure
 function of how far the submission got, so the ranking is fully reproducible.
 
-`haiku-4-5` compiles **and its Docker image builds**, but the API **crashes on startup** — a
-`TypeLoadException` from an incompatible **Swashbuckle** version (`AddSwaggerGen` calls a method that
-version doesn't implement) — so `/health` never comes up and it hits the **boot-fail cap (1.5)**. It's a
-**runtime-only** defect: `dotnet build` is green, so the model's own second-pass self-review (which never
-actually ran the app) missed it — the executability gate catches it at grading time. Even with the
-open-ended review prompt, the model did a static/build check rather than booting its own service.
+### What is scored
+
+| # | Category | Weight | | # | Informational (reported, **not scored**) |
+|--:|----------|:------:|-|--:|------------------------------------------|
+| 1 | Functional Correctness & Tests 🟡 | **20%** | | 9 | Observability |
+| 4 | REST API Design 🟡 | **14%** | | 10 | Portability & Deploy |
+| 7 | Security (PCI) 🟠 | **14%** | | 11 | Documentation |
+| 5 | Persistence & Database 🟠 | **13%** | | | |
+| 6 | Messaging (Kafka) 🟢 | **13%** | | | |
+| 2 | Architecture & Design 🟠 | **12%** | | | |
+| 3 | Code Quality 🟢 | **10%** | | | |
+| 8 | Resilience & Error Handling 🟢 | **4%** | | | |
+
+The heaviest signal by far is the **live contract oracle** in category 1: the evaluator drives the real
+API against the real Postgres and Kafka and asserts the documented contract. It is the one thing a model
+**cannot write in its own favour** — which is exactly why the submission's own test suite sits *beside*
+it, at low weight, instead of standing alone as a category.
 
 Measurement badges (**all 100% automated**, the colour only marks how *directly* a category is measured):
 🟢 deterministic · 🟡 oracle · 🟠 proxy. **Per-category scores, the per-metric analysis and the cap
-reason** are in each run's report under [`evaluator-dotnet/results/`](./evaluator-dotnet/results/).
+reason** are in each run's report under `evaluator-dotnet/results/`.
 
 ## Generating a run — `model-runner`
 
@@ -94,7 +125,7 @@ Reports land in `evaluator-dotnet/results/<target>.dotnet.{md,json}`.
 - 🔬 **[evaluator-dotnet/README.md](./evaluator-dotnet/README.md)** — evaluator internals: what each
   category measures in light vs deep mode.
 - 🐳 **[evaluator-dotnet/harness/README.md](./evaluator-dotnet/harness/README.md)** — the single-command
-  deep harness (boots the stack + ZAP + all bundled tools against the live system).
+  deep harness (boots the stack and grades it against the live system).
 - 🗂️ **[submissions/README.md](./submissions/README.md)** — the submission layout and the provenance
   (`<run>.meta.json`) schema.
 
@@ -110,7 +141,7 @@ Reports land in `evaluator-dotnet/results/<target>.dotnet.{md,json}`.
 │   └── <model>/<run>.meta.json   # authored provenance (harness, effort, time, cost)
 ├── evaluator-dotnet/       # the .NET 10 evaluator (Roslyn AST + live oracle)
 │   ├── Evaluators/         # one evaluator per category
-│   ├── harness/            # docker-compose deep harness (boots stack + tools + ZAP)
+│   ├── harness/            # docker-compose deep harness (boots the stack, grades it live)
 │   └── results/            # generated reports (<target>.dotnet.md/.json)
 └── docs/                   # the interactive site (leaderboard, criteria, provenance)
 ```

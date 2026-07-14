@@ -4,12 +4,12 @@ namespace BackendEvaluator.Evaluators;
 
 /// <summary>Category 2 — Architecture &amp; Design (🟠 proxy).
 /// Engine: Roslyn AST (the NetArchTest/architecture-rule role) for layering, dependency direction,
-/// single-implementation interfaces and type size. ReSharper CLI (jb inspectcode) is used when present.</summary>
+/// type size and unrequested machinery.</summary>
 public sealed class ArchitectureEvaluator : CategoryEvaluatorBase
 {
     public override int Number => 2;
     public override string Name => "Architecture & Design";
-    public override double Weight => 0.10;
+    public override double Weight => 0.12;
     public override AutomationLevel Automation => AutomationLevel.ProxyReview;
 
     public override Task<CategoryResult> EvaluateAsync(EvaluationContext ctx)
@@ -30,45 +30,34 @@ public sealed class ArchitectureEvaluator : CategoryEvaluatorBase
             ? Pass("dependency-direction", "0 leaks", "domain does not reference infrastructure (Roslyn usings)")
             : Fail("dependency-direction", $"{f.DomainInfraLeakFiles} domain file(s) reference infra", "domain does not reference infrastructure"));
 
-        // Single-implementation interfaces are the standard Dependency-Inversion seam at layer boundaries
-        // (I*Repository / IUnitOfWork / I*Publisher) — the very pattern the layering & dependency-direction
-        // checks above REWARD, and each has a second implementation in practice (the test doubles). So a
-        // high single-impl ratio is surfaced as informational only (Indeterminate, excluded from the
-        // score), never an automatic penalty that contradicts the same category's other metrics.
-        if (f.InterfaceCount == 0)
-            r.Metrics.Add(Pass("overengineering-proxy", "no interfaces", "few speculative abstractions", weight: 0.5));
-        else
-        {
-            double ratio = (double)f.SingleImplementationInterfaces / f.InterfaceCount;
-            r.Metrics.Add(ratio <= 0.5
-                ? Pass("overengineering-proxy", $"{f.SingleImplementationInterfaces}/{f.InterfaceCount} interfaces with <=1 impl", "few speculative abstractions", weight: 0.5)
-                : Unknown("overengineering-proxy", "few speculative abstractions",
-                    $"{f.SingleImplementationInterfaces}/{f.InterfaceCount} single-implementation interfaces — normal DIP ports (repository/UoW/publisher); informational, not scored", 0.5));
-        }
+        // YAGNI, made enforceable. The old `overengineering-proxy` counted single-implementation
+        // interfaces — but those are the standard Dependency-Inversion seam (I*Repository / I*Publisher)
+        // that this very category REWARDS, so it could never fail without contradicting itself, and in
+        // practice it was a free pass. It is replaced by the one overengineering signal that is both
+        // objective and unambiguous: machinery the brief EXPLICITLY ruled out. Building it is not
+        // ambition, it is not following the spec — and the spec says overengineering is a defect.
+        var goldPlating = new List<string>();
+        if (f.UsesAttribute("HttpPut", "HttpPatch", "HttpDelete") || f.Invokes("MapPut", "MapPatch", "MapDelete"))
+            goldPlating.Add("PUT/PATCH/DELETE endpoints (surface is read+create only)");
+        if (f.HasOutboxType) goldPlating.Add("transactional outbox (out of scope)");
+        if (f.IdentifierEquals("IConsumer", "ConsumeResult") || f.Invokes("Consume", "Subscribe"))
+            goldPlating.Add("a Kafka consumer (producer-only is in scope)");
+        if (p.HasPackage("OpenTelemetry") || f.UsesNamespace("OpenTelemetry"))
+            goldPlating.Add("the OpenTelemetry SDK (explicitly not required)");
+        if (f.UsesNamespace("Asp.Versioning") || f.IdentifierEquals("ApiVersion"))
+            goldPlating.Add("API versioning (not asked for)");
+        if (p.HasPackage("Testcontainers")) goldPlating.Add("Testcontainers (forbidden)");
+
+        r.Metrics.Add(Grade("no-gold-plating",
+            goldPlating.Count == 0 ? 1 : goldPlating.Count <= 2 ? 0.5 : 0,
+            goldPlating.Count == 0 ? "none" : string.Join("; ", goldPlating),
+            "no machinery the brief ruled out (YAGNI)"));
 
         r.Metrics.Add(f.LargestTypeLines <= 600
             ? Pass("no-god-class", $"largest type: {f.LargestTypeLines} lines", "no 'god classes' (<=600 lines)", weight: 0.5)
             : Partial("no-god-class", $"{f.LargestTypeName}: {f.LargestTypeLines} lines", "no 'god classes' (<=600 lines)", weight: 0.5));
 
-        // ReSharper CLI (real tool) when present: surfaces dead code / redundancies that feed the score.
-        if (ctx.Options.Deep && ctx.Tools.IsAvailable("jb", "--version"))
-        {
-            var outFile = Path.Combine(Path.GetTempPath(), "jb-" + Guid.NewGuid().ToString("N")[..8] + ".xml");
-            var o = ctx.Tools.Run("jb", $"inspectcode \"{p.Root}\" -o=\"{outFile}\" -f=Xml", p.Root, 600_000);
-            try
-            {
-                if (!o.NotFound && File.Exists(outFile))
-                {
-                    int issues = 0;
-                    try { issues = System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(outFile), "<Issue ").Count; } catch { }
-                    r.Metrics.Add(issues == 0 ? Pass("resharper", "0 issues", "ReSharper inspectcode clean", weight: 0.5)
-                                              : Partial("resharper", $"{issues} issue(s)", "ReSharper inspectcode clean", weight: 0.5));
-                }
-            }
-            finally { try { if (File.Exists(outFile)) File.Delete(outFile); } catch { } }
-        }
-
-        r.Notes.Add("PROXY: layering and overengineering are scored automatically from Roslyn dependency-direction, class-size and single-implementation-interface metrics. NDepend/SonarQube can deepen this.");
+        r.Notes.Add("PROXY: layering, dependency direction, class size and unrequested machinery are all scored automatically from the Roslyn AST.");
         return Task.FromResult(r);
     }
 }

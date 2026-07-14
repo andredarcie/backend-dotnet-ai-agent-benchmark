@@ -4,17 +4,12 @@ obj/
 *.user
 TestResults/
 
-# Tool run caches / transient benchmark-harness artifacts (regenerated every run)
-.schemathesis/
+# Transient benchmark-harness artifacts (regenerated every run)
 evaluator-dotnet/harness/results/
 evaluator-dotnet/harness/shared/
 
-# Node (evaluator)
-node_modules/
-evaluator/dist/
-
-# Evaluator output: results/*.json, *.md and leaderboard.md are committed as the
-# reproducibility artifact behind the README leaderboard (regenerate with `npm run eval`).
+# Evaluator output: evaluator-dotnet/results/*.{json,md} IS committed — it is the reproducibility
+# artifact behind the leaderboard. Regenerate it with the evaluator, then ./docs/generate-data.ps1.
 
 # OS / editor
 .DS_Store

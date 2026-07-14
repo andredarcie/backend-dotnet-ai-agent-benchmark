@@ -9,11 +9,13 @@ namespace ModelRunner;
 ///
 /// You say WHICH model; this does the rest, cross-platform (Windows/macOS/Linux):
 ///   1. picks the next runN under submissions/&lt;model&gt;/
-///   2. PASS 1 — feeds PROMPT.md to the model's CLI; the model writes the whole project
-///      into submissions/&lt;model&gt;/&lt;runN&gt;/
-///   3. PASS 2 — feeds PROMPT.md + PROMPT-REVIEW.md back in the SAME folder so the model
+///   2. generates in an ISOLATED scratch dir OUTSIDE the repo (OS temp), so the model can't walk up
+///      the tree and read the benchmark's own rubric / evaluator / other submissions
+///   3. PASS 1 — feeds PROMPT.md to the model's CLI; the model writes the whole project into the scratch
+///   4. PASS 2 — feeds PROMPT.md + PROMPT-REVIEW.md back in the SAME folder so the model
 ///      reviews, runs, validates and applies a final patch ("second chance")
-///   4. times both passes, captures token/cost usage when the CLI reports it, and writes
+///   5. moves the finished tree into submissions/&lt;model&gt;/&lt;runN&gt;/, then times both passes,
+///      captures token/cost usage when the CLI reports it, and writes
 ///      submissions/&lt;model&gt;/&lt;runN&gt;.meta.json — the provenance the site shows.
 ///
 /// The meta.json is authored provenance about HOW the run was produced; the evaluator never
@@ -27,14 +29,27 @@ internal static class Program
     {
         ["opus-4-8"]  = new("claude", "claude-opus-4-8",           "high", "Claude Code"),
         ["sonnet-5"]  = new("claude", "claude-sonnet-5",           "high", "Claude Code"),
-        ["haiku-4-5"] = new("claude", "claude-haiku-4-5-20251001", "",     "Claude Code"),
+        ["haiku-4-5"] = new("claude", "claude-haiku-4-5-20251001", "",     "Claude Code"), // effort empty by design: Haiku 4.5 rejects the effort param (400)
         ["fable-5"]   = new("claude", "claude-fable-5",            "high", "Claude Code"),
         ["gpt-5-5"]   = new("codex",  "gpt-5.5-codex",             "high", "Codex CLI"),
         ["gemini"]    = new("agy",    "gemini-3-pro",              "",     "Antigravity (agy)"), // ⚠ confirm id
     };
 
+    // UTF-8 without BOM for every redirected pipe — Windows would otherwise use the console code page
+    // (e.g. CP-1252) and mangle the em-dashes / arrows / ≥≤ in the prompt sent to the model, and any
+    // unicode in the captured JSON.
+    private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
+
+    // The currently-running child, so Ctrl+C can kill it (and its whole tree) instead of orphaning it.
+    private static Process? _child;
+
     private static int Main(string[] args)
     {
+        Console.CancelKeyPress += (_, _) =>
+        {
+            var c = Volatile.Read(ref _child);
+            if (c != null) { try { c.Kill(entireProcessTree: true); } catch { } }
+        };
         try { return Run(args); }
         catch (UsageException ux) { Console.Error.WriteLine("error: " + ux.Message); return 2; }
         catch (Exception ex) { Console.Error.WriteLine("error: " + ex.Message); return 1; }
@@ -45,6 +60,8 @@ internal static class Program
         // ---- parse args -----------------------------------------------------
         string? model = null, effortOverride = null, repoOverride = null;
         int forcedRun = 0;
+        int stallMin = 20;   // kill the child if it writes no files for this long (0 = off) — a stuck prompt
+        int hardMin = 0;     // hard cap per pass in minutes (0 = off)
         bool dryRun = false, noReview = false, hasEffort = false;
 
         for (int i = 0; i < args.Length; i++)
@@ -57,8 +74,28 @@ internal static class Program
                 case "--dry-run": dryRun = true; break;
                 case "--no-review": noReview = true; break;
                 case "--effort": effortOverride = Next(args, ref i, a); hasEffort = true; break;
-                case "--run": forcedRun = int.Parse(Next(args, ref i, a)); break;
+                case "--run":
+                {
+                    var rv = Next(args, ref i, a);
+                    if (!int.TryParse(rv, out forcedRun) || forcedRun < 1)
+                        throw new UsageException($"--run needs a positive integer (got '{rv}')");
+                    break;
+                }
                 case "--repo": repoOverride = Next(args, ref i, a); break;
+                case "--stall":
+                {
+                    var v = Next(args, ref i, a);
+                    if (!int.TryParse(v, out stallMin) || stallMin < 0)
+                        throw new UsageException($"--stall needs a non-negative integer of minutes (got '{v}')");
+                    break;
+                }
+                case "--timeout":
+                {
+                    var v = Next(args, ref i, a);
+                    if (!int.TryParse(v, out hardMin) || hardMin < 0)
+                        throw new UsageException($"--timeout needs a non-negative integer of minutes (got '{v}')");
+                    break;
+                }
                 default:
                     if (a.StartsWith('-')) throw new UsageException($"unknown option '{a}' (try --help)");
                     if (model != null) throw new UsageException($"unexpected argument '{a}'");
@@ -80,8 +117,20 @@ internal static class Program
         string modelDir = Path.Combine(repo, "submissions", model);
         int runNo = forcedRun > 0 ? forcedRun : NextRunNumber(modelDir);
         string runName = $"run{runNo}";
-        string runDir = Path.Combine(modelDir, runName);
+        string runDir = Path.Combine(modelDir, runName);          // final, graded location (inside the repo)
         string metaOut = Path.Combine(modelDir, $"{runName}.meta.json");
+
+        // ── ISOLATION ────────────────────────────────────────────────────────────────
+        // The model must NOT generate directly inside the repo. Run with cwd =
+        // submissions/<model>/<run> and full FS access (--dangerously-skip-permissions), and a capable
+        // model walks UP the tree, reads the benchmark's own EVALUATION-CRITERIA.md / evaluator-dotnet /
+        // other submissions — Sonnet 5 @ xhigh was even observed fabricating its own provenance sidecar.
+        // That destroys the "blind, no-rubric" premise. So the model generates in a scratch dir OUTSIDE
+        // the repo (OS temp — walking up from there never reaches the repo) and we only MOVE the finished
+        // tree into submissions/ afterwards. Not a hard sandbox: skip-perms still lets a model that
+        // *deliberately* hunts read any absolute path — but it removes the accidental "my cwd is literally
+        // inside the benchmark" leak, which is the vector we actually observed.
+        string buildDir = Path.Combine(Path.GetTempPath(), "model-runner-work", $"{model}-{runName}");
         int passes = noReview ? 1 : 2;
 
         Console.WriteLine();
@@ -89,6 +138,7 @@ internal static class Program
                           $"effort={(effort.Length > 0 ? effort : "(none)")}  passes={passes}");
         Console.WriteLine($"    output : {runDir}");
         Console.WriteLine($"    meta   : {metaOut}");
+        Console.WriteLine($"    build  : {buildDir}  (isolated from the repo; moved into place on success)");
         if (dryRun) { Console.WriteLine("    (dry run — nothing executed)"); return 0; }
 
         if (Directory.Exists(runDir))
@@ -96,7 +146,9 @@ internal static class Program
         if (ResolveExecutable(spec.Cli) == null)
             throw new UsageException($"CLI '{spec.Cli}' not found on PATH");
 
-        Directory.CreateDirectory(runDir);
+        // Fresh scratch — nuke any leftovers from a previously-aborted run of the same model/run number.
+        try { if (Directory.Exists(buildDir)) Directory.Delete(buildDir, true); } catch { }
+        Directory.CreateDirectory(buildDir);
         string harnessVersion = SafeVersion(spec.Cli);
         string promptVersion = PromptVersion(repo, noReview);
 
@@ -106,26 +158,27 @@ internal static class Program
         // ---- run the passes, timed, accumulating usage ----------------------
         long? tokensIn = null, tokensOut = null;
         double? costUsd = null;
+        int stallMs = stallMin * 60_000, hardMs = hardMin * 60_000;
         string logDir = Path.Combine(Path.GetTempPath(), "model-runner");
         Directory.CreateDirectory(logDir);
         var sw = Stopwatch.StartNew();
 
         Console.WriteLine($"\n--- pass 1/{passes}: build (PROMPT.md) ---");
-        var u1 = RunAgent(spec, effort, runDir, repo, prompt);
+        var u1 = RunAgent(spec, effort, buildDir, prompt, stallMs, hardMs);
         Accumulate(ref tokensIn, ref tokensOut, ref costUsd, u1);
         string? log1 = SaveLog(logDir, model, runName, 1, u1.RawOutput);
 
         // Pass 1 must actually produce a project. If the CLI reported an error (e.g. an auth /
         // "Credit balance is too low" failure) or wrote nothing, abort BEFORE wasting the review
         // pass on an empty folder — and don't leave a misleading empty run + provenance behind.
-        int filesAfter1 = FilesIn(runDir);
+        int filesAfter1 = FilesIn(buildDir);
         if (u1.IsError || filesAfter1 == 0)
         {
             sw.Stop();
             Console.Error.WriteLine($"\nERROR: pass 1 failed — {u1.ErrorText ?? $"{spec.Cli} exit {u1.Exit}"}.");
             if (filesAfter1 == 0) Console.Error.WriteLine("       no files were produced; aborting before the review pass.");
             if (log1 != null) Console.Error.WriteLine($"       raw output: {log1}");
-            if (filesAfter1 == 0) { try { Directory.Delete(runDir, true); } catch { } }
+            try { Directory.Delete(buildDir, true); } catch { }   // never leave a partial scratch behind
             return 1;
         }
 
@@ -134,7 +187,7 @@ internal static class Program
         if (!noReview)
         {
             Console.WriteLine($"\n--- pass 2/{passes}: review + validate + patch (PROMPT-REVIEW.md) ---");
-            var u2 = RunAgent(spec, effort, runDir, repo, pass2Input);
+            var u2 = RunAgent(spec, effort, buildDir, pass2Input, stallMs, hardMs);
             Accumulate(ref tokensIn, ref tokensOut, ref costUsd, u2);
             SaveLog(logDir, model, runName, 2, u2.RawOutput);
             if (u2.IsError)
@@ -148,6 +201,10 @@ internal static class Program
 
         sw.Stop();
         int durationSec = (int)Math.Round(sw.Elapsed.TotalSeconds);
+
+        // ---- promote the finished (isolated) tree into the graded location --
+        Directory.CreateDirectory(modelDir);
+        MoveTree(buildDir, runDir);
         int fileCount = FilesIn(runDir);
 
         // ---- write the provenance sidecar -----------------------------------
@@ -170,8 +227,11 @@ internal static class Program
 
     // ── agent invocation ────────────────────────────────────────────────────
 
-    /// <summary>Runs one pass. Returns exit code, error state, parsed usage and the raw CLI output.</summary>
-    private static PassResult RunAgent(ModelSpec spec, string effort, string runDir, string repo, string input)
+    /// <summary>Runs one pass. Returns exit code, error state, parsed usage and the raw CLI output.
+    /// The run dir is watched so a stuck/blocked CLI (stallMs of no file activity, or hardMs elapsed)
+    /// is killed instead of hanging forever.</summary>
+    private static PassResult RunAgent(ModelSpec spec, string effort, string runDir, string input,
+                                       int stallMs, int hardMs)
     {
         bool hasEffort = effort.Length > 0;
         switch (spec.Cli)
@@ -182,17 +242,18 @@ internal static class Program
                 var a = new List<string> { "-p", "--output-format", "json", "--model", spec.Model };
                 if (hasEffort) { a.Add("--effort"); a.Add(effort); }
                 a.Add("--dangerously-skip-permissions");
-                int exit = RunCaptured(spec.Cli, a, runDir, input, out string stdout);
+                var (exit, kill) = RunCaptured(spec.Cli, a, runDir, input, out string stdout, runDir, stallMs, hardMs);
                 var (isErr, errText, ti, to, cost) = ReadClaude(stdout);
-                return new PassResult(exit, isErr || exit != 0, errText ?? (exit != 0 ? $"exit {exit}" : null), ti, to, cost, stdout);
+                string? msg = kill ?? errText ?? (exit != 0 ? $"exit {exit}" : null);
+                return new PassResult(exit, kill != null || isErr || exit != 0, msg, ti, to, cost, stdout);
             }
             case "codex":
             {
                 var a = new List<string> { "exec", "-m", spec.Model };
                 if (hasEffort) { a.Add("-c"); a.Add($"model_reasoning_effort=\"{effort}\""); }
                 a.AddRange(new[] { "-C", runDir, "--skip-git-repo-check", "--dangerously-bypass-approvals-and-sandbox", "-" });
-                int exit = RunCaptured(spec.Cli, a, repo, input, out string stdout);
-                return new PassResult(exit, exit != 0, exit != 0 ? $"exit {exit}" : null, null, null, null, stdout);
+                var (exit, kill) = RunCaptured(spec.Cli, a, runDir, input, out string stdout, runDir, stallMs, hardMs);
+                return new PassResult(exit, kill != null || exit != 0, kill ?? (exit != 0 ? $"exit {exit}" : null), null, null, null, stdout);
             }
             case "agy":
             {
@@ -201,8 +262,8 @@ internal static class Program
                 EnsureAgyTrusted(runDir);
                 var a = new List<string> { "-p", input, "--model", spec.Model,
                                            "--dangerously-skip-permissions", "--print-timeout", "30m" };
-                int exit = RunInherited(spec.Cli, a, runDir);
-                return new PassResult(exit, exit != 0, exit != 0 ? $"exit {exit}" : null, null, null, null, "");
+                var (exit, kill) = RunInherited(spec.Cli, a, runDir, runDir, stallMs, hardMs);
+                return new PassResult(exit, kill != null || exit != 0, kill ?? (exit != 0 ? $"exit {exit}" : null), null, null, null, "");
             }
             default: throw new UsageException($"unknown cli '{spec.Cli}'");
         }
@@ -218,6 +279,33 @@ internal static class Program
     private static int FilesIn(string dir) => Directory.Exists(dir)
         ? Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories).Count() : 0;
 
+    // Transient dirs the model leaves in the scratch that must NOT enter the graded submission: build
+    // outputs (bloat + their build-server file locks would break the move) and a nested repo the model
+    // may `git init` (would show up as an embedded repo and break committing). The evaluator builds from
+    // source, so dropping these is lossless.
+    private static readonly string[] PruneDirs = { "bin", "obj", ".git", ".vs" };
+
+    /// <summary>Promotes the finished scratch tree into place. Prunes transient dirs first, then moves;
+    /// Directory.Move can't cross volumes (scratch is in OS temp, target in the repo — possibly a
+    /// different drive), so it falls back to copy+delete.</summary>
+    private static void MoveTree(string src, string dst)
+    {
+        // Prune bottom-up so nested matches (e.g. obj under a project) are removed before their parents.
+        foreach (var dir in Directory.EnumerateDirectories(src, "*", SearchOption.AllDirectories)
+                     .Where(d => PruneDirs.Contains(Path.GetFileName(d), StringComparer.OrdinalIgnoreCase))
+                     .OrderByDescending(d => d.Length))
+            try { Directory.Delete(dir, true); } catch { }
+
+        try { Directory.Move(src, dst); return; }
+        catch (IOException) { /* cross-volume move — fall back to copy */ }
+        Directory.CreateDirectory(dst);
+        foreach (var dir in Directory.EnumerateDirectories(src, "*", SearchOption.AllDirectories))
+            Directory.CreateDirectory(Path.Combine(dst, Path.GetRelativePath(src, dir)));
+        foreach (var file in Directory.EnumerateFiles(src, "*", SearchOption.AllDirectories))
+            File.Copy(file, Path.Combine(dst, Path.GetRelativePath(src, file)), overwrite: true);
+        try { Directory.Delete(src, true); } catch { }
+    }
+
     /// <summary>Persists a pass's raw CLI output for diagnosis / manual token entry; null if nothing captured.</summary>
     private static string? SaveLog(string dir, string model, string run, int pass, string raw)
     {
@@ -228,28 +316,113 @@ internal static class Program
 
     // ── process helpers (cross-platform) ────────────────────────────────────
 
-    /// <summary>Runs a child process capturing stdout (stderr inherited); optionally writes stdin.</summary>
-    private static int RunCaptured(string exe, IList<string> cliArgs, string? workDir, string? stdin, out string stdout)
+    /// <summary>Runs a child process capturing stdout (stderr inherited); optionally writes stdin.
+    /// Returns the exit code and a non-null kill reason if the watchdog had to terminate it.</summary>
+    private static (int exit, string? killReason) RunCaptured(
+        string exe, IList<string> cliArgs, string? workDir, string? stdin, out string stdout,
+        string? watchDir = null, int stallMs = 0, int hardMs = 0)
     {
         var psi = BuildStartInfo(exe, cliArgs, workDir);
         psi.RedirectStandardOutput = true;
-        psi.RedirectStandardInput = stdin != null;
-        using var p = Process.Start(psi) ?? throw new Exception($"failed to start {exe}");
-        var outTask = p.StandardOutput.ReadToEndAsync();
-        if (stdin != null) { p.StandardInput.Write(stdin); p.StandardInput.Close(); }
-        p.WaitForExit();
-        stdout = outTask.GetAwaiter().GetResult();
-        return p.ExitCode;
+        psi.StandardOutputEncoding = Utf8NoBom;
+        if (stdin != null) { psi.RedirectStandardInput = true; psi.StandardInputEncoding = Utf8NoBom; }
+        using var p = StartTracked(psi, exe);
+        try
+        {
+            var outTask = p.StandardOutput.ReadToEndAsync();
+            // Feed stdin on a BACKGROUND task, never inline. A CLI that blocks (e.g. on an interactive
+            // prompt) before draining a prompt larger than the OS pipe buffer (~4-64KB) would make a
+            // synchronous Write() hang the whole runner — WaitOrKill would never even start, so the
+            // stall/timeout watchdog could never fire (observed: a run sat 2.5h past --stall 45).
+            // Backgrounding it keeps the watchdog live; when the watchdog kills the child the pipe breaks
+            // and this task just throws (broken pipe / disposed), which we swallow.
+            Task inTask = Task.CompletedTask;
+            if (stdin != null)
+                inTask = Task.Run(() =>
+                {
+                    try { p.StandardInput.Write(stdin); p.StandardInput.Close(); }
+                    catch (IOException) { } catch (ObjectDisposedException) { }
+                });
+            string? killReason = WaitOrKill(p, watchDir, stallMs, hardMs);
+            stdout = outTask.GetAwaiter().GetResult();
+            try { inTask.Wait(2000); } catch { }
+            return (SafeExitCode(p), killReason);
+        }
+        finally { Volatile.Write(ref _child, null); }
     }
 
     /// <summary>Runs a child process inheriting the console (needed for agy's TTY requirement).</summary>
-    private static int RunInherited(string exe, IList<string> cliArgs, string? workDir)
+    private static (int exit, string? killReason) RunInherited(
+        string exe, IList<string> cliArgs, string? workDir, string? watchDir = null, int stallMs = 0, int hardMs = 0)
     {
         var psi = BuildStartInfo(exe, cliArgs, workDir);
-        using var p = Process.Start(psi) ?? throw new Exception($"failed to start {exe}");
-        p.WaitForExit();
-        return p.ExitCode;
+        using var p = StartTracked(psi, exe);
+        try
+        {
+            string? killReason = WaitOrKill(p, watchDir, stallMs, hardMs);
+            return (SafeExitCode(p), killReason);
+        }
+        finally { Volatile.Write(ref _child, null); }
     }
+
+    private static Process StartTracked(ProcessStartInfo psi, string exe)
+    {
+        var p = Process.Start(psi) ?? throw new Exception($"failed to start {exe}");
+        Volatile.Write(ref _child, p);
+        return p;
+    }
+
+    /// <summary>
+    /// Waits for the child. A hung run — most often the CLI blocking on an interactive prompt
+    /// (permission, re-auth, "continue?") — would make a plain WaitForExit() never return. This bounds
+    /// that: if the run produces no file activity under <paramref name="watchDir"/> for stallMs, or runs
+    /// past hardMs, the child (and its whole process tree) is killed and a reason is returned. 0 disables
+    /// a check. Returns null on a normal exit.
+    /// </summary>
+    private static string? WaitOrKill(Process p, string? watchDir, int stallMs, int hardMs)
+    {
+        var total = Stopwatch.StartNew();
+        var sinceProgress = Stopwatch.StartNew();
+        long lastSig = ProgressSignal(watchDir);
+        const int pollMs = 5000;
+        while (!p.WaitForExit(pollMs))
+        {
+            if (hardMs > 0 && total.ElapsedMilliseconds >= hardMs)
+                return KillWith(p, $"exceeded the {hardMs / 60000}-min hard timeout (--timeout)");
+            if (watchDir != null && stallMs > 0)
+            {
+                long sig = ProgressSignal(watchDir);
+                if (sig != lastSig) { lastSig = sig; sinceProgress.Restart(); }
+                else if (sinceProgress.ElapsedMilliseconds >= stallMs)
+                    return KillWith(p, $"stalled — no file activity for {stallMs / 60000} min " +
+                                       "(the CLI is likely blocked on an interactive prompt; raise/lower with --stall)");
+            }
+        }
+        return null;
+    }
+
+    private static string KillWith(Process p, string reason)
+    {
+        try { p.Kill(entireProcessTree: true); } catch { }
+        try { p.WaitForExit(5000); } catch { }
+        return reason;
+    }
+
+    /// <summary>A value that changes whenever any file under <paramref name="dir"/> is added or modified.</summary>
+    private static long ProgressSignal(string? dir)
+    {
+        if (dir == null) return 0;
+        try
+        {
+            long sig = 17;
+            foreach (var f in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
+                sig = sig * 31 + File.GetLastWriteTimeUtc(f).Ticks + 1;
+            return sig;
+        }
+        catch { return -1; }
+    }
+
+    private static int SafeExitCode(Process p) { try { return p.HasExited ? p.ExitCode : -1; } catch { return -1; } }
 
     private static ProcessStartInfo BuildStartInfo(string exe, IEnumerable<string> cliArgs, string? workDir)
     {
@@ -297,7 +470,7 @@ internal static class Program
 
     private static string SafeVersion(string cli)
     {
-        try { return RunCaptured(cli, new[] { "--version" }, null, null, out var v) == 0
+        try { return RunCaptured(cli, new[] { "--version" }, null, null, out var v).exit == 0
                      ? v.Trim().Split('\n')[0].Trim() : ""; }
         catch { return ""; }
     }
@@ -366,7 +539,7 @@ internal static class Program
             var pathArgs = noReview
                 ? new[] { "-C", repo, "log", "-1", "--format=%h", "--", "PROMPT.md" }
                 : new[] { "-C", repo, "log", "-1", "--format=%h", "--", "PROMPT.md", "PROMPT-REVIEW.md" };
-            if (RunCaptured("git", pathArgs, null, null, out var sha) == 0 && sha.Trim().Length > 0)
+            if (RunCaptured("git", pathArgs, null, null, out var sha).exit == 0 && sha.Trim().Length > 0)
                 return $"{files}@{sha.Trim()}";
         }
         catch { }
@@ -446,6 +619,9 @@ options:
   --run <n>      force the run number (default: next available)
   --no-review    single-pass only (skip PROMPT-REVIEW.md)
   --repo <path>  repo root (default: found by walking up for PROMPT.md + submissions/)
+  --stall <min>  kill the run if it writes no files for this long — catches a CLI stuck on an
+                 interactive prompt (default 20; 0 = off)
+  --timeout <min> hard cap per pass in minutes (default 0 = off)
   --dry-run      print the plan, run nothing
   --list         list the model matrix
   -h, --help     this help

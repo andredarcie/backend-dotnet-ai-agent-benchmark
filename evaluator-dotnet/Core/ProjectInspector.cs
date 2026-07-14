@@ -132,8 +132,19 @@ public sealed class ProjectInspector
 
     public bool AnyFile(params string[] names) => FindByName(names).Any();
 
+    /// <summary>
+    /// True when any path segment is named <paramref name="name"/> — or <b>ends with <c>.name</c></b>.
+    ///
+    /// The suffix rule matters: the idiomatic .NET layered layout is a PROJECT PER LAYER
+    /// (<c>CreditCardApi.Domain</c>, <c>CreditCardApi.Application</c>, <c>CreditCardApi.Infrastructure</c>),
+    /// not a folder literally called "Application". Matching the exact segment only would reward the
+    /// weaker layout (folders inside one project) and penalize the stronger one — a submission that gives
+    /// the application layer its own assembly, with compiler-enforced dependency direction, would score
+    /// "no application layer". That is the rubric grading a naming convention instead of the architecture.
+    /// </summary>
     public bool AnyDir(string name) => _allFiles.Any(f => f.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                                                          .Any(seg => string.Equals(seg, name, StringComparison.OrdinalIgnoreCase)));
+                                                          .Any(seg => string.Equals(seg, name, StringComparison.OrdinalIgnoreCase)
+                                                                      || seg.EndsWith("." + name, StringComparison.OrdinalIgnoreCase)));
 
     public bool AnyPathContains(string fragment) => _allFiles.Any(f => f.Replace('\\', '/').Contains(fragment, StringComparison.OrdinalIgnoreCase));
 

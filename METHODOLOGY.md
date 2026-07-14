@@ -2,13 +2,47 @@
 
 How to read the [leaderboard](./README.md#-leaderboard).
 
+## What is scored — and what deliberately is not
+
+**8 categories carry weight** (they sum to 100%): Functional Correctness & Tests (20%), REST API Design
+(14%), Security (14%), Persistence (13%), Messaging (13%), Architecture (12%), Code Quality (10%),
+Resilience (4%). **Three more are measured and reported but carry no weight** — Observability, Portability
+and Documentation.
+
+That is not a shortcut, it is a correction. Those three used to be 1–4% categories worth **6% combined**:
+the swing between a flawless README and *no README at all* moved the final score by **0.05**, well inside
+the run-to-run noise of the same model on the same prompt. They looked like measurements and could not act
+like one. Worse, the same signal was being counted repeatedly — health statically in Resilience *and*
+statically in Observability *and* live *and* as the executability gate; OpenAPI in REST Design *and* in
+Documentation; a test project's existence in Correctness *and* in Testing. **Each thing is now measured
+once, where it is strongest**, and what cannot decide a ranking is reported rather than ranked. See
+[EVALUATION-CRITERIA.md](./EVALUATION-CRITERIA.md).
+
+It cuts the other way too: **gold-plating is now a defect with a score attached.** The brief lists what
+*not* to build (no `PUT`/`DELETE`, no consumer or outbox, no OpenTelemetry, no API versioning, no
+Testcontainers, no rowversion), and `no-gold-plating` in Architecture penalizes shipping it anyway.
+Ambition that ignores the spec is not engineering — it is not reading the brief.
+
 ## Deterministic vs runtime scoring
 
-- **Static** categories (Static, Architecture, Quality, and the static Kafka checks) are
+- **Static** categories (Architecture, Code Quality, and the static Kafka/persistence checks) are
   **deterministic given the Roslyn engine** - the same source always produces the same score.
-- **Runtime** categories (Build/boot, Functional, runtime Kafka, Stress) depend on Docker and the host,
-  so they **vary run-to-run**. Stress is the highest-variance category and is scored by the
-  **conservative median across attempts**.
+- **Runtime** signals (build/boot, the live contract oracle, the real Kafka event) depend on Docker and
+  the host, so they **vary run-to-run**.
+
+Grading is deliberately **offline and lean**. The checks that once needed the network — DAST (OWASP ZAP),
+SAST with a remote rule set (Semgrep `--config auto`), CVE feeds (Trivy), fuzzing (Schemathesis), plus a
+tail of linters (Spectral, sqlfluff, markdownlint, lychee, dotnet-outdated) and the k6 load test — were
+**retired**. They were the bulk of the wall-clock, and a verdict that depends on a rule set or CVE feed
+that changes daily grades *the day*, not the submission. What proves a submission works is what remains:
+the source compiles, formats and passes its own tests; the **live contract oracle** drives the running API
+and gets the documented answers; a **real event** lands on the Kafka topic. Same source in, same score out.
+
+The one exception, stated plainly: `dotnet list package --vulnerable` reads NuGet's vulnerability data
+from the network, and that data moves as CVEs are disclosed — so a newly-disclosed CVE in an unchanged
+package can flip that single metric. It is kept because it costs seconds (not the minutes its predecessors
+cost) and dependency hygiene is a real production concern; when no NuGet source is reachable it is
+reported **Indeterminate**, never a silent pass.
 
 ## Why multiple runs
 
@@ -16,8 +50,8 @@ Models are **stochastic**: the same prompt yields a different project each time,
 is a weak sample and a 1-2 point gap is almost certainly noise. The leaderboard groups runs per model
 (`submissions/<model>/run1`, `run2`, …), ranks by the **per-model median total**, and reports the spread
 (**±σ, mean, range, run count**). Models with **fewer than 5 runs are flagged ⚠ provisional**; treat
-small gaps - within the spread you actually observe - as ties. See [TUTORIAL.md](./TUTORIAL.md) for how
-to add runs.
+small gaps - within the spread you actually observe - as ties. See the
+[README](./README.md#generating-a-run--model-runner) for how to add runs.
 
 ## How runs are produced — two passes
 
@@ -49,20 +83,35 @@ always yields the same cap.
 
 ## Per-run notes (current leaderboard)
 
-The leaderboard was **reset** to the two-pass standard; earlier single-pass runs were removed.
+The leaderboard was **reset** for this rubric: every previous run was graded under the old 13-category
+version and a tool set since retired — those reports even cite metrics (`sca-trivy`, `semgrep`,
+`schemathesis`) that **no evaluator in this repo can emit any more**. A number the current code cannot
+regenerate is not a result, it is a claim, so they were deleted rather than re-published.
 
-- **haiku-4-5 → 1.5** — a two-pass run ($1.70, 20m). The source compiles and the Docker image builds, but
-  the API **crashes on startup**: a `TypeLoadException` from an incompatible **Swashbuckle** version
-  (`AddSwaggerGen`), so `/health` never returns 2xx. Graded as submitted, it hits the **boot-fail cap
-  (1.5)**. This is a **runtime-only** defect — `dotnet build` is green — so a self-review that doesn't
-  actually run the service can't catch it; the executability gate does, at grading time. Notably, even
-  with the **open-ended** review prompt ("verify it however you judge best"), the model reviewed and built
-  but did **not** boot its own app — a real signal about a smaller model's self-validation.
+- **sonnet-5 → 5.00 (⚠ provisional, n=1)** — Claude Code, effort `xhigh`, 46 min, **single-pass** (built
+  from `PROMPT.md` only; it never got the `PROMPT-REVIEW.md` second chance). It boots, the live oracle
+  passes all 17 contract checks, a real event lands on `transactions` keyed by id, its own 72 tests pass,
+  and it covers **72% of the code it actually wrote**. It also built exactly what was asked and nothing
+  more — `no-gold-plating` is clean.
+
+  **Grading it exposed four bugs in the evaluator, and all four had penalised it for doing the right
+  thing.** (1) Coverage counted EF migration scaffolding and source-generated OpenAPI code in the
+  denominator — code the task *mandates* and that no unit test can reach — so 72% was scored as **32%**, a
+  Fail. (2) `application-layer` looked for a folder literally named `Application` and so missed
+  `CreditCardApi.Application`, the *more* idiomatic project-per-layer layout. (3) `validation` recognised
+  only DataAnnotations/FluentValidation and marked "no input validation" on a submission that validates
+  with explicit guard clauses and a `ValidationException` — while the live oracle was simultaneously
+  proving all four 400s work. (4) `graceful-shutdown` knew `BackgroundService` but not `IHostedService`,
+  the interface it derives from. Each fix is a submission-independent rule, pinned by a regression test.
+
+  **Read the 5.00 with scepticism.** A perfect score on the first run graded — single-pass, no less —
+  means the rubric is **not yet discriminating at the top**, not that the model has solved the problem.
+  The bar needs raising, and n=1 is not a measurement.
 
 ## Takeaway
 
 The executability gate is what keeps the headline honest: a clean-reading project that never runs has
 demonstrated nothing, so it cannot outrank one that boots and passes the live oracle. And because every
-step — the gate, the caps, the 13 category scores — is computed by the `evaluator-dotnet` tool, the
+step — the gate, the caps, the 8 weighted category scores — is computed by the `evaluator-dotnet` tool, the
 ranking is fully reproducible: same submissions in, same scores out, with **no human or LLM in the
 path**.

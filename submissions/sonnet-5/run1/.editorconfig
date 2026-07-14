@@ -1,0 +1,38 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.cs]
+indent_size = 4
+csharp_new_line_before_open_brace = all
+csharp_prefer_braces = true:silent
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+dotnet_sort_system_directives_first = true
+dotnet_style_qualification_for_field = false:suggestion
+dotnet_style_readonly_field = true:warning
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+
+# CA1515: recommends sealing public types to internal for apps that aren't NuGet packages.
+# This solution exposes types across project references (Domain/Application/Infrastructure),
+# so most types must stay public — enforcing this rule repo-wide would fight the layering.
+dotnet_diagnostic.CA1515.severity = none
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[tests/**/*.cs]
+# Method_Scenario_Result is the standard xUnit naming convention; CA1707 (no underscores) fights it.
+dotnet_diagnostic.CA1707.severity = none
+
+[**/Migrations/*.cs]
+generated_code = true
+dotnet_diagnostic.IDE0161.severity = none
+dotnet_diagnostic.IDE0005.severity = none

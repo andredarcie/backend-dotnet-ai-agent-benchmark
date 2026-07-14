@@ -5,17 +5,23 @@ namespace BackendEvaluator.Core;
 /// <see cref="CategoryResult.Score"/> (weighted mean of measured metrics × 5); this folds the scored
 /// categories into the weighted final, <b>renormalized over the categories that produced a score</b>
 /// so unmeasured categories neither help nor hurt, and reports the coverage fraction.
+///
+/// A category with <b>Weight == 0 is INFORMATIONAL</b>: it is still measured and printed, but it is
+/// excluded from the weighted score and from the coverage denominator. That is how the benchmark keeps
+/// reporting a signal (docs, portability, observability) without letting it move a ranking it is too
+/// weak to decide — a 1%-weight category could never separate two submissions, it only pretended to.
 /// </summary>
 public static class Scoring
 {
     public static (double? weightedScore, double coverage) Aggregate(IReadOnlyList<CategoryResult> categories)
     {
-        var scored = categories.Where(c => c.Score.HasValue).ToList();
+        var ranked = categories.Where(c => c.Weight > 0).ToList();   // informational categories don't count
+        var scored = ranked.Where(c => c.Score.HasValue).ToList();
         double wsum = scored.Sum(c => c.Weight);
         double? weighted = wsum > 0
             ? Math.Round(scored.Sum(c => c.Score!.Value * c.Weight) / wsum, 2)
             : null;
-        double coverage = categories.Count == 0 ? 0 : (double)scored.Count / categories.Count;
+        double coverage = ranked.Count == 0 ? 0 : (double)scored.Count / ranked.Count;
         return (weighted, coverage);
     }
 
@@ -23,9 +29,9 @@ public static class Scoring
     // reads — so quality alone must not earn a high score. These caps make the headline honest.
     //
     // THE RUN IS THE MEASUREMENT. A deep evaluation must EXERCISE the running system: the live oracle
-    // (real 201/Location/400/404), a real event on the topic, DAST and load are what actually prove the
-    // project works. Static signals ("the code contains an Outbox class / a Polly policy / the right
-    // attributes") only show it LOOKS right. So a deep run that never booted has demonstrated nothing —
+    // (real 201/Location/400/404) and a real event on the topic are what actually prove the project
+    // works. Static signals ("the code contains a Polly policy / the right attributes") only show it
+    // LOOKS right. So a deep run that never booted has demonstrated nothing —
     // and, because unmeasured metrics are excluded (not failed), it would otherwise keep a near-perfect
     // static score. We refuse to certify that: no live boot ⇒ a grave cap.
     // The caps form a monotonic severity gradient keyed on how far the submission got: the less it ran,

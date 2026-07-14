@@ -30,8 +30,9 @@ public static class ConsoleReporter
         foreach (var c in report.Categories)
         {
             string score = c.Score.HasValue ? $"{c.Score:0.0}/5" : "n/a";
+            string weight = c.Weight > 0 ? $"{c.Weight * 100:0.#}%" : "informational (not scored)";
             w($"#{c.Number,2} [{c.Automation.Label(),-14}] {c.Name}");
-            w($"      score: {score}   weight: {c.Weight * 100:0.#}%");
+            w($"      score: {score}   weight: {weight}");
             foreach (var m in c.Metrics)
             {
                 w($"      {Sym(m.Status)} {m.Name}: {m.Observed}  (target: {m.Target})");
@@ -49,9 +50,12 @@ public static class ConsoleReporter
             w($"  /!\\ SCORE CAPPED: {report.ScoreCapReason}");
         if (!report.Deep)
             w("  NOTE: light mode (static only) — not comparable to deep/harness scores.");
-        var notScored = report.Categories.Where(c => !c.Score.HasValue).Select(c => $"#{c.Number}").ToList();
+        var notScored = report.Categories.Where(c => c.Weight > 0 && !c.Score.HasValue).Select(c => $"#{c.Number}").ToList();
         if (notScored.Count > 0)
             w($"  Not scored (missing tool/Docker or --deep): {string.Join(", ", notScored)}");
+        var informational = report.Categories.Where(c => c.Weight <= 0).Select(c => $"#{c.Number}").ToList();
+        if (informational.Count > 0)
+            w($"  Informational (reported, excluded from the score): {string.Join(", ", informational)}");
         w("----------------------------------------------------------------");
         w("");
     }

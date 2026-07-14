@@ -311,6 +311,11 @@ button { font-family: inherit; cursor: pointer; }
   transition: width .9s var(--ease); }
 .crit__wt { font-family: var(--font-mono); font-weight: 600; font-size: 14px; color: var(--ink);
   width: 40px; text-align: right; }
+/* Informational categories carry no weight: measured and reported, never ranked. Render the label as
+   muted prose, not as a number — a "0%" in a weight column reads like a score, which is the confusion
+   we removed from the rubric in the first place. */
+.crit__wt--info { font-family: var(--font-sans); font-weight: 500; font-size: 11px; letter-spacing: .02em;
+  color: var(--muted); width: auto; font-style: italic; white-space: nowrap; }
 .crit__chev { color: var(--muted); transition: transform .25s var(--ease); flex: none; }
 .crit.is-open .crit__chev { transform: rotate(180deg); }
 

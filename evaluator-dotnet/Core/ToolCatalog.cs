@@ -1,6 +1,18 @@
 namespace BackendEvaluator.Core;
 
-/// <summary>The local support tools cited in EVALUATION-CRITERIA.md: how to probe and how to install each.</summary>
+/// <summary>
+/// The local support tools the evaluator actually invokes: how to probe and how to install each.
+///
+/// The set is deliberately small, so a grading run is cheap and reproducible (same source ⇒ same score).
+/// Tools whose rule set drifts over time (Semgrep `--config auto`, Trivy's CVE database, OWASP ZAP,
+/// Schemathesis, dotnet-outdated, lychee) were retired: they dominated the wall-clock, and a score that
+/// changes because a remote rule set changed is not a benchmark score.
+///
+/// One honest caveat: `dotnet` still reaches nuget.org for `restore` and for the vulnerability audit
+/// behind `list package --vulnerable`, whose data moves as CVEs are disclosed. That single metric is
+/// therefore time-dependent (and is reported Indeterminate when no source is reachable, rather than
+/// silently passing — see SecurityEvaluator). Roslyn, gitleaks and hadolint are fully offline.
+/// </summary>
 public static class ToolCatalog
 {
     public sealed record ToolInfo(string Probe, string Install);
@@ -9,22 +21,8 @@ public static class ToolCatalog
     {
         ["dotnet"] = new("--version", "https://dotnet.microsoft.com/download"),
         ["docker"] = new("version", "https://docs.docker.com/get-docker/"),
-        ["spectral"] = new("--version", "npm i -g @stoplight/spectral-cli"),
-        ["semgrep"] = new("--version", "pip install semgrep"),
-        ["trivy"] = new("--version", "https://aquasecurity.github.io/trivy/"),
         ["gitleaks"] = new("version", "https://github.com/gitleaks/gitleaks"),
-        ["sqlfluff"] = new("--version", "pip install sqlfluff"),
         ["hadolint"] = new("--version", "https://github.com/hadolint/hadolint"),
-        ["markdownlint"] = new("--version", "npm i -g markdownlint-cli"),
-        ["lychee"] = new("--version", "https://github.com/lycheeverse/lychee"),
-        ["k6"] = new("version", "https://k6.io/docs/get-started/installation/"),
-        ["dotnet-stryker"] = new("--version", "dotnet tool install -g dotnet-stryker"),
-        ["dotnet-outdated"] = new("--version", "dotnet tool install -g dotnet-outdated-tool"),
-        ["reportgenerator"] = new("--help", "dotnet tool install -g dotnet-reportgenerator-globaltool"),
-        ["oasdiff"] = new("--version", "https://github.com/oasdiff/oasdiff"),
-        ["swagger-cli"] = new("--version", "npm i -g @apidevtools/swagger-cli"),
-        ["schemacrawler"] = new("--version", "https://www.schemacrawler.com/"),
-        ["toxiproxy-cli"] = new("--version", "https://github.com/Shopify/toxiproxy"),
     };
 
     public static string Probe(string tool) => Tools.TryGetValue(tool, out var t) ? t.Probe : "--version";

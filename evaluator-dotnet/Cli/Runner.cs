@@ -149,9 +149,9 @@ public static class Runner
             }
         }
 
-        // Fold in results dropped by sidecar tool containers (e.g. OWASP ZAP).
+        // Fold in what the harness's kafka-check sidecar observed on the topic during the run.
         if (options.IngestDir != null && Directory.Exists(options.IngestDir))
-            IngestSidecars(report, options.IngestDir);
+            IngestKafka(report, options.IngestDir);
 
         // Weighted final over categories that produced a score (renormalized), on the 0..5 scale.
         (report.WeightedScore, report.Coverage) = Scoring.Aggregate(report.Categories);
@@ -177,31 +177,6 @@ public static class Runner
         Console.WriteLine($"Reports: {jsonPath}");
         Console.WriteLine($"         {mdPath}");
         return 0;
-    }
-
-    /// <summary>Reads result files written by sidecar tool containers and attaches them as metrics.</summary>
-    private static void IngestSidecars(EvaluationReport report, string dir)
-    {
-        IngestKafka(report, dir);
-
-        // OWASP ZAP baseline: exit 0 = clean, 2 = warnings, 1/3 = fail. Written to zap.exit by the ZAP service.
-        var zapExit = Path.Combine(dir, "zap.exit");
-        if (File.Exists(zapExit))
-        {
-            var cat = report.Categories.FirstOrDefault(c => c.Number == 7);
-            if (cat != null)
-            {
-                int code = int.TryParse(File.ReadAllText(zapExit).Trim(), out var x) ? x : -1;
-                var metric = code switch
-                {
-                    0 => new MetricResult { Name = "dast-zap", Observed = "no alerts", Target = "OWASP ZAP baseline clean", Status = MetricStatus.Pass },
-                    2 => new MetricResult { Name = "dast-zap", Observed = "warnings", Target = "OWASP ZAP baseline clean", Status = MetricStatus.Partial, Note = "review ZAP warnings" },
-                    -1 => new MetricResult { Name = "dast-zap", Observed = "unreadable", Target = "OWASP ZAP baseline clean", Status = MetricStatus.Indeterminate },
-                    _ => new MetricResult { Name = "dast-zap", Observed = "alerts found", Target = "OWASP ZAP baseline clean", Status = MetricStatus.Fail, Note = "review ZAP findings" },
-                };
-                cat.Metrics.Add(metric);
-            }
-        }
     }
 
     /// <summary>
@@ -386,8 +361,8 @@ public static class Runner
         Arguments:
           <path-or-submission>  Target project folder, or a submission name
                                 (e.g. "claude-haiku-4-5/run1").
-          --deep                Also run the heavy/dynamic tools
-                                (dotnet build gate, dotnet test, coverage, format, SCA, external lints).
+          --deep                Also run the dynamic checks (dotnet build gate, dotnet test + coverage,
+                                dotnet format, NuGet vulnerability scan).
                                 Default mode (light) does static analysis + detection only.
           --base-url <url>      Live system under test; runs the contract oracle + live probes.
           --leaderboard         Aggregate existing *.dotnet.json reports into a per-model median

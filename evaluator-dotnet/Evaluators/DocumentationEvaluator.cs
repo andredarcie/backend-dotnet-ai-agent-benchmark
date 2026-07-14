@@ -3,21 +3,24 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 13 — Documentation (🟠 proxy).
-/// Tools: markdownlint (README lint), lychee (broken links), swagger-cli (OpenAPI validity).
-/// README section presence is parsed from the markdown; doc-comment density comes from Roslyn.</summary>
+/// <summary>Category 11 — Documentation (🟠 proxy) — <b>INFORMATIONAL: weight 0, not ranked.</b>
+///
+/// Reported, never scored. At its old 1% weight, the gap between a perfect README and no README at all
+/// moved the final score by 0.05 — less than the run-to-run noise of the same model on the same prompt.
+/// It was a number that looked like a measurement and could not act like one. What genuinely matters
+/// about the contract — that the served OpenAPI actually describes the endpoints — is asserted LIVE by
+/// category 4 (`openapi-populated`), where it counts.</summary>
 public sealed class DocumentationEvaluator : CategoryEvaluatorBase
 {
-    public override int Number => 13;
-    public override string Name => "Documentation";
-    public override double Weight => 0.01;
+    public override int Number => 11;
+    public override string Name => "Documentation (informational)";
+    public override double Weight => 0.00;   // informational — excluded from the weighted score
     public override AutomationLevel Automation => AutomationLevel.ProxyReview;
 
     public override Task<CategoryResult> EvaluateAsync(EvaluationContext ctx)
     {
         var r = New();
         var p = ctx.Project;
-        var f = ctx.Facts;
 
         var readmeFile = p.FindByName("README.md", "readme.md", "README.markdown").FirstOrDefault();
         var readme = readmeFile != null ? SafeRead(readmeFile) : null;
@@ -32,57 +35,14 @@ public sealed class DocumentationEvaluator : CategoryEvaluatorBase
             r.Metrics.Add(Grade("readme-sections", sections / 3.0, $"{sections}/3", "README with purpose+setup+run"));
         }
 
-        bool apiDocs = p.HasPackage("Swashbuckle") || p.HasPackage("NSwag") || p.HasPackage("Microsoft.AspNetCore.OpenApi")
-                       || f.Invokes("AddOpenApi", "AddSwaggerGen");
-        r.Metrics.Add(Bool("api-docs", apiDocs, "API documentation (OpenAPI/Swagger)", weight: 0.5));
+        // No `api-docs` metric: it was the same package/invocation predicate as category 4's OpenAPI check,
+        // scoring one fact twice — and the live `openapi-populated` probe there is the stronger form of it.
+        // No `doc-comments` metric either, and the task no longer asks for XML docs: `///` density measures
+        // typing, not engineering, and it was trivially gamed by a model that comments every property.
 
-        bool xmlDoc = p.PropertyIs("GenerateDocumentationFile", "true") || f.DocCommentCount > 5;
-        r.Metrics.Add(Bool("doc-comments", xmlDoc, "doc comments / XML docs", weight: 0.5));
-
-        // Real tools.
-        // markdownlint with a consistent, deliberately lenient benchmark ruleset (below): scores real
-        // README problems (broken tables, unclosed fences, heading order), NOT cosmetic column discipline
-        // that PROMPT.md never asks for. A Node runtime crash is Indeterminate, not "violations".
-        if (readmeFile != null)
-        {
-            var cfg = MarkdownlintConfigPath();
-            var cfgArg = cfg != null ? $"-c \"{cfg}\" " : "";
-            RunTool(ctx, r, "markdownlint", $"{cfgArg}\"{readmeFile}\"", "markdownlint", "README passes markdownlint",
-                o => CouldNotRun(o, "SyntaxError", "node:internal", "Cannot find module", "internal/modules")
-                        ? Unknown("markdownlint", "README passes markdownlint", "markdownlint could not run (runtime error) — not scored", 0.5)
-                   : o.Success ? Pass("markdownlint", "clean", "README passes markdownlint", weight: 0.5)
-                               : Partial("markdownlint", "violations", "README passes markdownlint", weight: 0.5), weight: 0.5);
-        }
-
-        // lychee: exclude loopback/localhost — a README documenting the service's own local endpoints
-        // (http://localhost:8080/health, /swagger, …) is correct docs, not a broken link; those hosts are
-        // simply not listening during the lint phase.
-        if (ctx.Options.Deep && readmeFile != null)
-            RunTool(ctx, r, "lychee", $"--no-progress --exclude-loopback --exclude localhost \"{readmeFile}\"", "links", "no broken links (lychee)",
-                o => o.Success ? Pass("links", "no broken links", "no broken links (lychee)", weight: 0.5)
-                               : Partial("links", "broken link(s)", "no broken links (lychee)", weight: 0.5), weight: 0.5);
-
-        r.Notes.Add("PROXY: README section/link presence, OpenAPI completeness and doc-comment coverage are scored automatically.");
+        r.Notes.Add("INFORMATIONAL: reported, but weight 0 — it does not move the score. That the OpenAPI document really describes the endpoints is asserted live by category 4.");
         return Task.FromResult(r);
     }
 
     private static string? SafeRead(string path) { try { return File.ReadAllText(path); } catch { return null; } }
-
-    /// <summary>
-    /// Writes the benchmark's markdownlint ruleset to a temp file and returns its path (or null on failure).
-    /// Disables the purely cosmetic rules — MD013 (line length) and MD034 (bare URLs: a README legitimately
-    /// shows endpoint URLs like http://localhost:8080/swagger) — while <c>"default": true</c> keeps every
-    /// structural rule on. Passing this with <c>-c</c> lints every submission identically and stops a
-    /// submission from shipping its own all-disabling config to game the check.
-    /// </summary>
-    private static string? MarkdownlintConfigPath()
-    {
-        try
-        {
-            var path = Path.Combine(Path.GetTempPath(), "bench-markdownlint.json");
-            File.WriteAllText(path, "{ \"default\": true, \"MD013\": false, \"MD034\": false }");
-            return path;
-        }
-        catch { return null; }
-    }
 }

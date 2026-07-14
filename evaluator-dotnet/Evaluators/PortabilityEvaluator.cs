@@ -2,14 +2,18 @@ using BackendEvaluator.Core;
 
 namespace BackendEvaluator.Evaluators;
 
-/// <summary>Category 12 — Portability, Configuration &amp; Deploy (🟢 deterministic).
-/// Tools: hadolint (Dockerfile lint), dotnet-outdated (dependency freshness). File/Roslyn checks for
-/// compose, env-based config, dependency pinning, CI and non-root container.</summary>
+/// <summary>Category 10 — Portability &amp; Deploy (🟢 deterministic) — <b>INFORMATIONAL: weight 0.</b>
+///
+/// Reported, never scored — because the part of it that matters is not a checkbox here, it is the
+/// executability gate: the harness boots the submission's OWN docker-compose, and a project that does not
+/// come up is capped at 1.0–1.5/5 no matter how clean its Dockerfile lints. Ranking "a Dockerfile exists"
+/// at 2% on top of that was double-counting a fact the run already decided.
+/// Tools: hadolint (Dockerfile lint); file checks for compose, env config, pinning and a non-root USER.</summary>
 public sealed class PortabilityEvaluator : CategoryEvaluatorBase
 {
-    public override int Number => 12;
-    public override string Name => "Portability, Configuration & Deploy";
-    public override double Weight => 0.02;
+    public override int Number => 10;
+    public override string Name => "Portability & Deploy (informational)";
+    public override double Weight => 0.00;   // informational — the executability gate is the real signal
     public override AutomationLevel Automation => AutomationLevel.FullAuto;
 
     public override Task<CategoryResult> EvaluateAsync(EvaluationContext ctx)
@@ -43,7 +47,10 @@ public sealed class PortabilityEvaluator : CategoryEvaluatorBase
         }
         r.Metrics.Add(Bool("pinning", p.AnyFile("packages.lock.json") || p.AnyFile("global.json") || cpm,
             "pinned dependencies (lock file / global.json / Central Package Management)", weight: 0.5));
-        r.Metrics.Add(Bool("ci", p.AnyPathContains(".github/workflows/") || p.AnyFile(".gitlab-ci.yml", "azure-pipelines.yml"), "CI pipeline present", weight: 0.5));
+
+        // No `ci` metric, and the task no longer asks for a CI workflow: nothing in this benchmark ever
+        // RUNS it, so it scored the existence of a YAML file — the definition of ceremony. What CI would
+        // have proven (it builds, its tests pass, it lints) the evaluator already does itself, for real.
 
         bool nonRoot = false;
         if (dockerfile != null)
@@ -59,11 +66,7 @@ public sealed class PortabilityEvaluator : CategoryEvaluatorBase
                 o => o.Success ? Pass("hadolint", "clean", "Dockerfile with no violations (hadolint)", weight: 0.5)
                                : Partial("hadolint", "violations", "Dockerfile with no violations (hadolint)", weight: 0.5), weight: 0.5);
 
-        if (ctx.Options.Deep)
-            RunTool(ctx, r, "dotnet-outdated", $"\"{p.Root}\"", "outdated", "dependencies reasonably up to date",
-                o => o.Success ? Pass("outdated", "checked", "dependencies reasonably up to date", weight: 0.5)
-                               : Partial("outdated", "outdated packages found", "dependencies reasonably up to date", weight: 0.5), weight: 0.5);
-
+        r.Notes.Add("INFORMATIONAL: reported, but weight 0 — whether the project actually deploys is decided by the executability gate (the harness boots its own compose), not by this checklist.");
         return Task.FromResult(r);
     }
 }

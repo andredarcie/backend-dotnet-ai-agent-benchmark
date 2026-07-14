@@ -18,9 +18,24 @@ The goal is to provide a consistent, comparable, and auditable criterion for **f
 
 > Whenever possible, the score should derive from an **objective, reproducible measurement that runs in CI**, with no human judgment. Each category includes a **🤖 Automated evaluation** block with three elements: **Method** (how to measure), **Metric / threshold** (the number that becomes the score), and **Tools** (focused on the project stack — **.NET 10 / PostgreSQL / Kafka** — with generic equivalents). Where a category is partly subjective (e.g., architectural clarity), measurable *proxies* are used (coupling metrics, rule-violation counts) and scored automatically — never by human triage.
 >
-> **Constraint — 100% local execution:** all tools must run locally, with no dependency on SaaS/cloud services. Where a cloud variant exists, the local one is used: **self-hosted SonarQube** (Docker) instead of SonarCloud; local **CodeQL CLI**; **`act`** to run GitHub Actions on the machine; Postgres metrics via **pg_stat_statements/pgBadger** instead of SaaS. Common prerequisite: **Docker** (Testcontainers, ephemeral brokers and databases).
+> **Constraint — 100% local, deterministic execution.** Every check runs locally, with no SaaS/cloud dependency, and the whole grading run is a single `docker compose up`. Two properties are non-negotiable, and they are what shape the tool list:
 >
-> **Scope of "local" (not *air-gapped*):** some steps need the **network** to download data — not a third-party service: CVE feeds (**Trivy** / **OWASP Dependency-Check** / `dotnet list --vulnerable`), `nuget restore`, and external link checking (**lychee**). To run 100% offline, mirror these feeds. Defaults chosen to avoid license nuance in local execution: **Semgrep OSS** (instead of CodeQL) and **Apicurio Registry** (Apache-2, instead of the Confluent Schema Registry).
+> 1. **Reproducible** — the same source must always produce the same score. A check whose verdict depends on a *remote* rule set (Semgrep `--config auto`), a CVE feed that changes daily (Trivy), or a reachable third-party URL (a link checker) is not a benchmark measurement: it grades the day, not the submission.
+> 2. **Fast** — grading a submission is on the critical path of every run, so a check must earn its wall-clock. A DAST scan that adds 3–5 minutes to emit the same near-identical alert list for every submission does not.
+>
+> **Retired checks (and why).** The rubric previously cited OWASP ZAP (DAST), Semgrep (SAST), Trivy (SCA), Schemathesis (fuzzing), Stryker.NET (mutation), sqlfluff, Spectral, swagger-cli, markdownlint, lychee, dotnet-outdated, Toxiproxy, SonarQube, ReSharper CLI and k6. They are **no longer part of the score.** Each was slow, network-bound, non-reproducible, or redundant with a signal already measured directly — and together they were the bulk of the grading time. What remains is what actually discriminates between submissions:
+>
+> | Signal | How it is measured |
+> |--------|--------------------|
+> | Does the code compile, format and pass its own tests? | `dotnet build` / `dotnet format` / `dotnet test` + **Coverlet** |
+> | Does the running system honor the contract? | the **live contract oracle** (drives the real API end to end) |
+> | Did a real event reach the broker? | the harness **kafka-check** consumer (kcat) on the live topic |
+> | What is actually in the source? | **Roslyn AST** (never regex) |
+> | Secrets, vulnerable packages, Dockerfile | **gitleaks**, `dotnet list package --vulnerable`, **hadolint** |
+>
+> **One honest caveat.** This is *local*, not *air-gapped*: `dotnet restore` and the vulnerability audit behind `dotnet list package --vulnerable` still reach nuget.org, and that vulnerability data moves as CVEs are disclosed. So the **SCA metric is the one check that is not a pure function of the source** — a newly-disclosed CVE in an unchanged, pinned package can flip it. It is kept because dependency hygiene is a real production concern and it costs seconds, not minutes (unlike the tools it replaced); and when no NuGet source is reachable it is reported **Indeterminate**, never a silent Pass. Every other check — Roslyn, gitleaks, hadolint, the live oracle — is offline and deterministic.
+>
+> *The run is still the measurement* — a submission that never boots is capped, exactly as before (see the executability gate).
 >
 > **Metric → score (0–5) mapping rule:** define *thresholds* per metric and convert. Generic example: target met with margin = 5; target met = 4; close to target = 3; below = 2; far below = 1; absent/not measured = 0. The suggested *thresholds* below are a starting point.
 
@@ -39,23 +54,32 @@ The goal is to provide a consistent, comparable, and auditable criterion for **f
 
 > **There is no external consensus on weights.** ISO/IEC 25010 itself defines *what* to evaluate but deliberately does **not** prescribe weights — the relative importance depends on the context and the product's requirements. The weights below are a **proposed calibration** for the context of this benchmark (a credit card API, a critical domain → more weight on Correctness, Security, Messaging, and Persistence) and should be adjusted deliberately.
 
+### Scored categories (weights sum to 100%)
+
 | # | Category | Related ISO 25010 attribute | Weight | Automation |
 |---|-----------|--------------------------------|------|-----------|
-| 1 | Functional Suitability / Correctness | Functional suitability | 12% | 🟡 |
-| 2 | Architecture and Design | Maintainability | 10% | 🟠 |
-| 3 | Code Quality | Maintainability | 8% | 🟢 |
-| 4 | REST API Design | Compatibility / Interoperability | 11% | 🟡 |
-| 5 | Persistence and Database | Reliability / Performance | 10% | 🟠 |
-| 6 | Messaging | Reliability / Compatibility | 11% | 🟢 |
-| 7 | Security | Security | 12% | 🟠 |
-| 8 | Resilience and Error Handling | Reliability | 8% | 🟢 |
-| 9 | Testing (*enabler*) | — (means, not an attribute) | 8% | 🟢 |
-| 10 | Observability (*enabler*) | — (means, not an attribute) | 4% | 🟢 |
-| 11 | Performance and Scalability | Performance efficiency | 3% | 🟡 |
-| 12 | Portability, Configuration, and Deployment | Portability | 2% | 🟢 |
-| 13 | Documentation | Maintainability / Usability | 1% | 🟠 |
+| 1 | Functional Correctness & Tests | Functional suitability | 20% | 🟡 |
+| 2 | Architecture and Design | Maintainability | 12% | 🟠 |
+| 3 | Code Quality | Maintainability | 10% | 🟢 |
+| 4 | REST API Design | Compatibility / Interoperability | 14% | 🟡 |
+| 5 | Persistence and Database | Reliability / Performance | 13% | 🟠 |
+| 6 | Messaging | Reliability / Compatibility | 13% | 🟢 |
+| 7 | Security | Security | 14% | 🟠 |
+| 8 | Resilience and Error Handling | Reliability | 4% | 🟢 |
 
-**Measurement legend — every category is scored 100% by machine; the colour only marks how *directly* it is measured (no human is ever in the loop):**
+### Informational categories (measured, reported, **not scored**)
+
+| # | Category | Why it does not carry weight |
+|---|-----------|------------------------------|
+| 9 | Observability | Its decisive signal is `/health`, and that is already the **executability gate** — a service that never answers it is capped at 1.5/5 no matter what. What remains (JSON logs, correlation id) is worth *showing*, not ranking. |
+| 10 | Portability & Deploy | Whether the project deploys is not a checklist item here: the harness **boots the submission's own compose**. The gate already decides it; a 2% "a Dockerfile exists" score was double-counting. |
+| 11 | Documentation | At 1%, the gap between a perfect README and none at all moved the final score by **0.05** — less than the run-to-run noise of the same model. That the OpenAPI document really describes the endpoints is asserted **live** in cat. 4, where it counts. |
+
+> **Why cut 13 categories down to 8.** Three of the old categories (Documentation 1% + Portability 2% + Performance 3%) were **6% of the score combined** — arithmetically incapable of separating two submissions, but presented as peers of Security and Correctness. Meanwhile the same signal was being counted two and three times over: health statically in Resilience *and* statically in Observability *and* live *and* as the gate; a test project's existence in Correctness *and* in Testing; OpenAPI in REST Design *and* in Documentation; pagination statically in Performance *and* live in REST Design. The rubric now measures each thing **once, where it is strongest** — and reports the rest without pretending it decides anything.
+>
+> **Two categories were dissolved, not deleted.** *Testing* is folded into cat. 1: a suite the model writes to grade itself is a self-graded signal, so it belongs *next to* the independent oracle and outweighed by it — not standing alone at 8%. *Performance* is folded into cat. 3: once the load test was dropped it held nothing but two Roslyn facts (async I/O, sync-over-async — real code defects, now scored as such), one metric that could never fail (`stateless`) and one already asserted live (`pagination`).
+
+**Measurement legend — every scored category is 100% machine-graded; the colour only marks how *directly* it is measured (no human is ever in the loop):**
 - 🟢 **Deterministic** — scored 100% by machine from static analysis; the same source always produces the same score.
 - 🟡 **Oracle** — scored 100% by machine on every run against an oracle/threshold defined once per benchmark (see [Oracle setup](#oracle-setup-defined-once-per-benchmark)).
 - 🟠 **Proxy** — scored 100% by machine from an objective *proxy* metric (coupling, rule-violation counts, presence checks). Less direct than a deterministic count, but still fully automated.
@@ -70,7 +94,7 @@ Coldly comparing the original list (12 categories) against the researched source
 
 1. **"Functional Suitability / Correctness" was missing — the biggest gap.** ISO/IEC 25010 places *Functional suitability* (completeness, correctness, and appropriateness of functions) as the **first** quality attribute. The original list started straight at "Architecture" and never explicitly assessed whether the API **does what it should**. In a benchmark, this is the most basic criterion. → **New category added (no. 1).**
 
-2. **"Testing" and "Observability" are not quality attributes — they are *means*.** ISO 25010 does not list them as product quality characteristics; they are *enablers* (ways to obtain and evidence quality). Kept as evaluable categories (they are observable in the code and relevant to the benchmark), but **marked as *enablers*** to make the distinction explicit.
+2. **"Testing" and "Observability" are not quality attributes — they are *means*.** ISO 25010 does not list them as product quality characteristics; they are *enablers* (ways to obtain and evidence quality). Both are still measured — but neither stands as a peer category any more: **Testing** is folded into cat. 1, beside (and outweighed by) the independent oracle, because a suite the model writes to grade itself is not an independent signal; **Observability** is reported as **informational** (weight 0), because its decisive signal (`/health`) is the executability gate.
 
 3. **"Messaging" and "Persistence" are not standalone ISO attributes** — they are **technical subdomains** where Reliability, Performance, Security, and Compatibility manifest. Since this project **explicitly** uses a database + broker, keeping them as concrete categories is justifiable (they instantiate cross-cutting attributes in a specific technology). I have only documented the relationship.
 
@@ -80,10 +104,12 @@ Coldly comparing the original list (12 categories) against the researched source
    - *REST API* → Richardson Maturity Model, Microsoft REST Guidelines, RFC 9457 (Problem Details), RFC 9110 (HTTP).
    - *Security* → OWASP API Security Top 10 (2023) and, for the domain, PCI DSS Requirement 3.
    - *Resilience* → the ISO *Reliability* attribute + retry/circuit breaker/idempotency patterns.
-   - *Performance* → the *Performance efficiency* attribute + Google SRE's *Four Golden Signals*.
-   - *Observability* → the three pillars (logs/metrics/traces) of OpenTelemetry/CNCF.
+   - *Performance* → the *Performance efficiency* attribute. Its two real signals (async, non-blocking I/O; bounded/paginated responses) are now scored where they are strongest — as a **code defect** in cat. 3 and as a **live assertion** in cat. 4 — rather than as a 3%-weight category of their own.
+   - *Observability* → the CNCF pillars of telemetry (logs / metrics / traces) as the **concept**; the benchmark reports structured logs and a correlation id, does **not** require the OpenTelemetry SDK or a `/metrics` endpoint, and does not rank on any of it.
 
 6. **Weights have no consensus backing** — the presentation was corrected to make this explicit (see above).
+
+7. **A category too light to decide anything should not pretend to be one.** Documentation at 1%, Portability at 2% and Performance at 3% were **6% of the score combined** — a perfect-vs-absent swing in Documentation moved the final by **0.05**, well inside the noise between two runs of the same model. They are now **informational**: still measured, still printed, never ranked. And the signals worth keeping were moved to where they are actually *proved* rather than *declared*.
 
 ### ISO/IEC 25010 coverage map → categories
 
@@ -92,13 +118,13 @@ ISO/IEC 25010:2023 defines 9 product quality characteristics. Mapping to verify 
 | ISO 25010 characteristic | Covered by |
 |--------------------------|-------------|
 | Functional suitability | Cat. 1 (Functional Suitability / Correctness) |
-| Performance efficiency | Cat. 11 (Performance and Scalability) |
+| Performance efficiency | Cat. 3 (async / non-blocking I/O, scored as a code defect) and Cat. 4 (pagination, asserted live) |
 | Compatibility | Cat. 4 (REST API), Cat. 6 (Messaging) |
-| Usability | Cat. 4 (API as "developer UX"), Cat. 13 (Documentation) |
+| Usability | Cat. 4 (API as "developer UX" — the served OpenAPI, asserted live), Cat. 11 (Documentation, *informational*) |
 | Reliability | Cat. 5 (Persistence), Cat. 6 (Messaging), Cat. 8 (Resilience) |
 | Security | Cat. 7 (Security) |
-| Maintainability | Cat. 2 (Architecture), Cat. 3 (Code Quality), Cat. 13 (Docs) |
-| Portability | Cat. 12 (Portability, Config, and Deployment) |
+| Maintainability | Cat. 2 (Architecture), Cat. 3 (Code Quality), Cat. 11 (Docs, *informational*) |
+| Portability | The **executability gate** (the harness boots the submission's own compose) + Cat. 10 (*informational*) |
 | Safety (new in 2023) | Partial — Cat. 7/8 (relevant to critical domains; not core for CRUD) |
 
 > *Usability* in ISO refers to the end user; in a "headless" API we reinterpret it as **developer experience** (contract clarity + documentation). Conclusion: **all 9 characteristics are covered**; "Testing" and "Observability" complement them as *enablers*.
@@ -109,19 +135,20 @@ ISO/IEC 25010:2023 defines 9 product quality characteristics. Mapping to verify 
 
 The 🟡 categories only become automatic scores **after** defining, once, the "answer key" against which each implementation is measured. This does **not** repeat on every run — it is the benchmark's initial setup.
 
-- **Cat. 1 — Correctness:** a black-box acceptance test suite with the **expected results** of the domain flows.
-- **Cat. 4 — REST API:** the **expected status codes and contracts** per endpoint (in the reference OpenAPI).
-- **Cat. 11 — Performance:** the **target SLO** (p95/p99 latency, minimum RPS, maximum error rate).
+- **Cat. 1 — Correctness:** the **expected results** of the domain flows — encoded once, as executable code, in the evaluator's `ContractOracle` (create card → create transaction → read → list → 404 → the validation rules).
+- **Cat. 4 — REST API:** the **expected status codes and contracts** per endpoint (same oracle: `201` + `Location`, `problem+json` on a validation error, camelCase, an honored page size).
 - **Cat. 2 — Architecture (partial):** the **layer rules** (which namespaces are domain / application / infra) for the *fitness functions*.
-- **Cat. 7 — Security (partial):** the **BOLA test** scenario (user A × user B's resource) and the list of forbidden patterns (PAN/CVV).
+- **Cat. 7 — Security (partial):** the list of **forbidden patterns** — a Luhn-valid PAN in production code/config, and CVV/track/PIN fields. *(There is no BOLA scenario: auth is optional in this task and there is no user/ownership model to violate.)*
 
-The 🟠 categories (2, 5, 7, 13) are scored **100% automatically** from objective proxies once the oracle is configured — SAST/DAST tool output, 3NF/schema-shape heuristics, the overengineering metrics (class size, single-implementation-interface ratio) and documentation completeness (section/OpenAPI/doc-comment presence). No human verdict is applied; a proxy is simply less direct than a deterministic count.
+The 🟠 categories (2, 5, 7, 13) are scored **100% automatically** from objective proxies once the oracle is configured — the Roslyn AST facts (layering, class size, the single-implementation-interface ratio, schema shape, the PCI patterns), the gitleaks/NuGet-vulnerability output and documentation completeness (section/OpenAPI/doc-comment presence). No human verdict is applied; a proxy is simply less direct than a deterministic count.
 
 ---
 
-## 1. Functional Suitability / Correctness 🟡
+## 1. Functional Correctness & Tests 🟡 — 20%
 
-Evaluates whether the system **does what it should do**, completely and correctly. It is ISO/IEC 25010's attribute no. 1.
+Evaluates whether the system **does what it should do**, completely and correctly. It is ISO/IEC 25010's attribute no. 1, and it is the heaviest category here.
+
+> **Testing lives here now** (it used to be a standalone category no. 9). A suite the model writes is a **self-graded** signal — it can always author three trivial tests that pass — so it belongs *beside* the independent oracle and **outweighed by it**, not standing alone at 8%. The oracle carries roughly three quarters of this category's weight; the submission's own suite (does it exist, is it genuinely unit-only, what does it cover, does it pass) carries the rest.
 
 **What to look for**
 - Completeness: all specified requirements/endpoints exist and respond.
@@ -138,13 +165,15 @@ Evaluates whether the system **does what it should do**, completely and correctl
 📚 **Consensus basis:** ISO/IEC 25010 — *Functional suitability* (functional completeness, correctness, appropriateness).
 
 🤖 **Automated evaluation**
-- **Method:** a **black-box** acceptance/integration test suite running all flows against the real API, with real dependencies brought up by **Testcontainers** (Postgres + Kafka); fuzzing/property-based derived from the **OpenAPI** contract; **mutation testing** to prove the tests actually catch defects (passing isn't enough — they must detect breakage).
-- **Metric / threshold:** % of specified endpoints implemented and correct (target **100%**); acceptance test pass rate (**100%**); **mutation score ≥ 70%** (Stryker.NET).
-- **Tools (local):** xUnit/NUnit + `WebApplicationFactory` + **Testcontainers**; **Schemathesis** (property-based via OpenAPI); **Postman/Newman** or `.http` files; **Stryker.NET** (mutation). Generic: REST-assured, schemathesis, PIT.
+- **Method:** the **live contract oracle** — the evaluator itself drives the documented flows black-box against the **running** system (create card → create transaction → read → list → 404s → the business rules: FK exists, `amount > 0`, `merchant` non-empty) and asserts the real request→response contract. This is the *independent* signal: it does not trust the submission's own tests, nor its self-declared OpenAPI. The submission's suite is then run **once** (`dotnet test --collect:"XPlat Code Coverage"`) — that single run yields both its pass rate and its coverage.
+- **Metric / threshold:** contract-oracle checks passing (target **100%**) — *the bulk of the weight*; real unit tests present (`[Fact]`/`[Theory]`/`[Test]`); **unit-only** — a `Testcontainers` reference is a **Fail** (forbidden: it needs a Docker daemon and boots a Postgres/Kafka per run), a `WebApplicationFactory` reference is **partial credit** (in-process, but an acceptance test the task never asked for); **line coverage ≥ 60%** (full credit; half credit at ≥ 35%) — a **relaxed bar** on purpose, so a lean suite scores well and there's no incentive to pad; the suite's own pass rate (**100%**), at low weight because it is self-graded.
+- **Coverage is merged, not sampled:** every `coverage.cobertura.xml` produced is unioned (one report per test project, so reading a single file would understate — or zero — a well-tested project), and pre-existing reports are deleted first, so a committed cobertura file cannot inflate the number.
+- **Tools (local):** the evaluator's `ContractOracle` (real HTTP against the live API) + `dotnet test` + **Coverlet** + **Roslyn**. *The oracle **is** the acceptance suite — which is why the task asks the model for unit tests only: an independent oracle beats a suite the submission writes to grade itself, and a suite that boots its own broker is the single slowest thing in a grading run. Fuzzing (Schemathesis), mutation testing (Stryker.NET) and the flakiness reruns are retired: none justified its cost.*
+- **Retired metrics:** `test-project` / `test-framework` / `coverage-tool` — three presence checks for one fact ("a test csproj exists"), one of them counted in *this* category and another in the old cat. 9. "A package is referenced" is not an engineering signal; `unit-tests` (does it declare real test cases?) replaces all three.
 
 ---
 
-## 2. Architecture and Design 🟠
+## 2. Architecture and Design 🟠 — 12%
 
 Evaluates the macro-level organization of the system and the separation of responsibilities. Underpins ISO 25010's *Maintainability*.
 
@@ -165,15 +194,18 @@ Evaluates the macro-level organization of the system and the separation of respo
 📚 **Consensus basis:** ISO/IEC 25010 — *Maintainability* (modularity, reusability, modifiability); Microsoft Azure Architecture Center (Microservices design).
 
 🤖 **Automated evaluation**
-- **Method:** *architecture fitness functions* — tests that **assert dependency rules** between layers (e.g., the domain does not reference infrastructure); detection of **dependency cycles**; coupling/instability metrics.
-- **Metric / threshold:** architecture rule violations = **0**; dependency cycles = **0**; instability (I) and distance from the main sequence (D) per module within a healthy range; no "god classes" (LOC/responsibilities per class above a limit = flag). ***Overengineering* proxies:** interfaces/abstractions with a **single implementation** close to 0 (when there is no real point of variation), low depth of inheritance (DIT), **0 unused public abstractions/members**.
-- **Tools (local):** **NetArchTest** or **ArchUnitNET** (rules as tests — including a custom "interface with 1 implementation" rule); **Roslyn analyzers** + **ReSharper CLI** (`jb inspectcode`) for unused abstractions/code; **NDepend** (local; CQLinq, coupling/cycles — commercial, optional); self-hosted **SonarQube** (Docker). Generic: ArchUnit (JVM), dependency-cruiser.
+- **Method:** *architecture fitness functions* — the Roslyn AST **asserts the dependency rules** between layers (the domain must not reference infrastructure), resolves the layer of each file, measures type size, and detects **machinery the brief explicitly ruled out**.
+- **Metric / threshold:** architecture rule violations = **0** (`dependency-direction`); layers present (`layering`, `application-layer`); no "god classes" (largest type ≤ 600 lines); **`no-gold-plating` = 0 items** — see below.
+- **YAGNI, made enforceable (`no-gold-plating`).** The task says overengineering is a defect; this is the metric that makes that true. It counts machinery the brief **explicitly told the model not to build**: `PUT`/`PATCH`/`DELETE` endpoints, a Kafka consumer, a transactional outbox, the OpenTelemetry SDK, API versioning, Testcontainers. **0 → Pass · 1–2 → half credit · ≥3 → Fail.** It replaces the old `overengineering-proxy`, which counted **single-implementation interfaces** — but those are the standard Dependency-Inversion seam (`IRepository`, `IProducer`) that *this very category rewards* under layering, so it could never fail without contradicting itself: in practice it was a free half-point for everyone. Ambition that ignores the spec is not engineering; it is not reading the brief.
+- **Tools (local):** the **Roslyn AST** (`Microsoft.CodeAnalysis.CSharp`), in-process — it plays the NetArchTest/ArchUnit role here: it follows the `using` graph to catch a domain→infrastructure reference, measures type size, and detects the out-of-scope constructs above. No external analyzer is invoked.
 
 ---
 
-## 3. Code Quality 🟢
+## 3. Code Quality 🟢 — 10%
 
 Evaluates readability and maintainability at the micro level (ISO 25010's *analysability* and *modifiability*).
+
+> **Async/blocking I/O lives here now** (it used to be the separate "Performance and Scalability" category). Once the load test was dropped, that category held nothing but two Roslyn facts — async I/O and sync-over-async — plus one metric that could never fail (`stateless`) and one already asserted live in cat. 4 (`pagination`). A `.Result`/`.Wait()` on a request path in ASP.NET Core is a thread-pool starvation **bug**, so it is scored as a code defect (a **Fail**, not the half-credit it used to earn), not as a 3%-weight category of its own.
 
 **What to look for**
 - Consistent, expressive naming.
@@ -194,40 +226,42 @@ Evaluates readability and maintainability at the micro level (ISO 25010's *analy
 
 🤖 **Automated evaluation**
 - **Method:** static analysis + formatting checks in CI, all as pipeline *gates* (fails the build on violation).
-- **Metric / threshold:** cyclomatic complexity **≤ 10** and cognitive **≤ 15** per method; **duplication ≤ 3%**; SonarQube *maintainability rating* = **A**; low *technical debt ratio*; **0 warnings** with `TreatWarningsAsErrors`; **0 dead code** (unused-member analyzers). **Premature optimization:** micro-optimizations (`unsafe`, manual cache, *pooling*) are only accepted with a **benchmark proving the gain** — otherwise they count as accidental complexity and lower the score.
-- **Tools (local):** **self-hosted SonarQube** (Docker — smells, duplication, complexity, technical debt); **Roslyn analyzers** via `.editorconfig` (including dead code IDE0051/IDE0052); **ReSharper CLI** (`jb inspectcode`) for dead code/redundancies; `dotnet format --verify-no-changes`; `dotnet` code metrics (maintainability index). Generic: ESLint, RuboCop, golangci-lint.
+- **Metric / threshold:** **0 empty catches** (a swallowed exception, even with a comment); **0** pending `TODO`/`FIXME`/`HACK`; analyzers enabled (`.editorconfig` / `EnableNETAnalyzers` / `TreatWarningsAsErrors`); **0 build warnings** in Release; `dotnet format --verify-no-changes` clean; **async I/O present** and **0 sync-over-async** blocking calls (`.Result` / `.Wait()` / `.GetAwaiter().GetResult()`). **Premature optimization:** micro-optimizations (`unsafe`, manual cache, *pooling*) are only accepted with a **benchmark proving the gain** — otherwise they are flagged as accidental complexity.
+- **Tools (local):** `dotnet format --verify-no-changes`; the analyzer warning count from the single Release build (the same build that gates executability — no second build is run); **Roslyn** for empty catches, TODOs, `unsafe`/`stackalloc` and the blocking-call detection. *SonarQube and ReSharper CLI are retired (heavy, and largely redundant with the analyzers already enforced by the build).*
 
 ---
 
-## 4. REST API Design 🟡
+## 4. REST API Design 🟡 — 14%
 
 Evaluates the exposed HTTP contract. Underpins *Compatibility/Interoperability* and the "developer UX".
 
 **What to look for**
-- Resource modeling and correct use of HTTP verbs (GET, POST, PUT, PATCH, DELETE).
-- Coherent status codes (200, 201, 204, 400, 401, 403, 404, 409, 422, 500) — practical target: **Level 2 of the Richardson Maturity Model**.
-- Consistent payload structure (naming, date formats).
-- Pagination, filtering, and sorting on collections.
+- Resource modeling and correct use of the HTTP verbs **in scope** (`GET`, `POST` — the task's surface is read + create only; `PUT`/`DELETE` are deliberately out of scope and adding them is **penalized** as gold-plating in cat. 2, not credited).
+- Coherent status codes (200, 201, 400, 404) — practical target: **Level 2 of the Richardson Maturity Model**. *Asserted live, not inferred from the source.*
+- Consistent payload structure (camelCase, date formats).
+- Pagination on collections — *asserted live: a requested page size is actually honored.*
 - Input validation and **standardized errors via RFC 9457 (Problem Details, `application/problem+json`)**, successor to RFC 7807.
-- API versioning.
-- Idempotency on sensitive operations (idempotency key).
-- Contract documentation (OpenAPI/Swagger).
+- Contract documentation (OpenAPI/Swagger) that **actually documents the endpoints**.
+
+> **Not scored: API versioning** (`Asp.Versioning`, `/v1/` routing). There is one version of one API in scope; versioning it is ceremony, and the task now lists it as out of scope. **Not scored: idempotency keys** — nothing here re-executes a create.
 
 **Quality signals**
 - Predictable, stable contract; structured, actionable errors.
 - Separation between input/output DTOs and domain entities.
-- HTTP semantics respected (idempotency of PUT/DELETE, safety of GET).
+- HTTP semantics respected (safety of `GET`, `201` + `Location` on create).
 
 📚 **Consensus basis:** Richardson Maturity Model (Fowler); Microsoft REST API Guidelines; Azure Architecture Center (API design); IETF RFC 9457 (Problem Details); RFC 9110 (HTTP Semantics).
 
 🤖 **Automated evaluation**
-- **Method:** **OpenAPI contract lint** with a ruleset; **contract ↔ implementation conformance** testing (does the real response match the schema?); automatic **breaking-change** checks between versions; verification that errors return `application/problem+json`.
-- **Metric / threshold:** **Spectral** violations of `error` severity = **0**; error responses in **RFC 9457** = **100%**; status code correctness (validated by tests); **Richardson level ≥ 2**; 0 unversioned breaking changes.
-- **Tools (local):** **Spectral** (OpenAPI lint, custom ruleset); **Schemathesis** (contract↔runtime conformance); **openapi-diff**/oasdiff (breaking changes); OpenAPI generation via Swashbuckle/NSwag to validate the published contract.
+- **Method:** the **live contract oracle** observes the real response shape (the `Location` header on 201, the `application/problem+json` media type on a validation error, camelCase keys, whether a page size is actually honored); the **OpenAPI probe** fetches the served document and counts the operations it declares; Roslyn detects the verbs, `ProblemDetails` and DTOs in the source.
+- **Metric / threshold:** the served OpenAPI declares **> 0 operations**; error responses in **RFC 9457** (`application/problem+json`); `201` carries a `Location`; JSON is camelCase; pagination honors a page size; **Richardson level ≥ 2**.
+- **`openapi-populated` has three outcomes, and all three are scored:** served *and* declaring operations → **Pass**; served but **empty** (`"paths": {}`, e.g. `AddOpenApi()` never discovering the controllers) → **Fail**, because an empty contract is a real defect that presence-detection silently passes; **not served at all** → **Fail**, not "indeterminate" — the task requires an OpenAPI document, so its absence is a defect, not a measurement we failed to take.
+- **Tools (local):** the evaluator's `ContractOracle` + `OpenApiProbe` (live HTTP) and **Roslyn**. *Spectral, swagger-cli and oasdiff are retired: linting a spec file says less than asserting the API's real answers, and most submissions generate the spec at runtime (there is no file to lint).*
+- **Retired metrics:** the static `status-codes` check ("the source mentions `BadRequest` somewhere") — a strictly weaker proxy for the real 201/400/404 the oracle already asserts; the static `openapi` presence check — superseded by the live `openapi-populated` above, and it was scored a *second* time as `api-docs` under Documentation; `versioning` — see above.
 
 ---
 
-## 5. Persistence and Database 🟠
+## 5. Persistence and Database 🟠 — 13%
 
 Evaluates database usage and the data access layer (contributes to *Reliability* and *Performance*).
 
@@ -237,9 +271,10 @@ Evaluates database usage and the data access layer (contributes to *Reliability*
 - Indexes consistent with query patterns (incl. FK columns and filter/join/sort columns).
 - Versioned, reproducible migrations.
 - Transaction management and an appropriate isolation level.
-- Concurrency control (optimistic/pessimistic) where needed.
 - No N+1 and no inefficient queries.
 - Handling of sensitive data (see Security).
+
+> **Not scored: optimistic concurrency (rowversion / `IsConcurrencyToken`)** — and the task no longer asks for it. The API surface is **read + create only**: there is no `UPDATE` anywhere in scope, so a concurrency token guards against a write conflict that **cannot happen**. Demanding it was the rubric contradicting its own YAGNI rule — rewarding a pattern with no variation point to justify it. Adding one now counts as gold-plating (cat. 2).
 
 **Quality signals**
 - The schema evolves via migrations, never manually.
@@ -249,52 +284,52 @@ Evaluates database usage and the data access layer (contributes to *Reliability*
 📚 **Consensus basis:** Relational design best practices (normalization 1NF→3NF/BCNF, referential integrity, workload-oriented indexing). See the database design sources.
 
 🤖 **Automated evaluation**
-- **Method:** apply **migrations on a clean database** (Testcontainers) and validate idempotency; analyze the **execution plan** (`EXPLAIN ANALYZE`) of hot-path queries; **detect N+1** via query logs during tests; query the **Postgres catalog** to verify FKs and indexes.
-- **Metric / threshold:** every FK has a supporting index (a query joining `pg_constraint` × `pg_indexes`) = **100%**; **0** N+1 queries in critical flows; **0** *sequential scans* on hot paths under volume; migrations come up from scratch without error; schema in **3NF** (except for justified denormalization).
-- **Tools (local):** `EXPLAIN (ANALYZE, BUFFERS)` + **pg_stat_statements**; **SchemaCrawler** (schema lint/diff); **sqlfluff** (SQL lint); **EF Core** / MiniProfiler logs to flag N+1. Generic (local): **pgBadger** (log analysis), **HypoPG** (hypothetical indexes).
+- **Method:** Roslyn reads the data layer — versioned **migrations** vs `EnsureCreated`, FK/relationship configuration, `HasIndex`, a concurrency token, `AsNoTracking` on read paths. The schema is then **exercised for real**: the live contract oracle creates cards and transactions against the actual Postgres the submission booted, so migrations that don't apply, a missing FK or a broken mapping surface as failed contract checks (a 500 instead of a 201) rather than as a static opinion.
+- **Metric / threshold:** schema evolves via **migrations**, not `EnsureCreated` (`EnsureCreated` = half credit at best); referential integrity configured; **indexes** on FK/filter columns; `AsNoTracking` on reads.
+- **Tools (local):** **Roslyn** + the live contract oracle against the running Postgres. *`EXPLAIN ANALYZE`/pg_stat_statements, SchemaCrawler and sqlfluff are retired: the submissions use EF Core migrations (there is no `.sql` to lint), and the N+1/seq-scan signals never discriminated between submissions at this data volume.*
 
 ---
 
-## 6. Messaging 🟢
+## 6. Messaging 🟢 — 13%
 
-Evaluates asynchronous integration via a broker (Kafka, RabbitMQ, etc.). Contributes to *Reliability* and *Compatibility*.
+Evaluates asynchronous integration via a broker (Kafka). Contributes to *Reliability* and *Compatibility*.
+
+> **Scope: producer-only (the essence).** This benchmark asks for the *publishing* side only — on a
+> successful transaction create, a durable producer publishes the event to the `transactions` topic,
+> keyed by id. A **consumer, Transactional Outbox, and dead-letter path are explicitly out of scope**
+> and are **not scored** (building them is unrequested gold-plating). What we verify is that the model
+> can wire a broker and publish reliably.
 
 **What to look for**
-- Clear definition of topics/queues and their responsibilities.
-- Versioned, documented message/event schema (event contract).
-- Delivery semantics handled: the real-world default is **at-least-once → idempotent consumers** (check whether `event_id` was already processed before applying effects).
-- Failure handling: retry, backoff, **dead-letter queue (DLQ)**.
-- Ordering and partitioning (partition key) when relevant.
-- Offset commit / ack **after** successful processing (never before).
-- **Consistency between database and broker via the Transactional Outbox Pattern** (solves the *dual-write* problem).
-- On "exactly-once": Kafka's EOS holds **within** Kafka (consume→process→produce with transactions + `isolation.level`); when integrating external systems, the recommendation is **idempotency**, not distributed EOS.
+- A Kafka client is present and a real publish call runs on the successful create (`Produce`/`ProduceAsync`).
+- The event lands on the `transactions` topic, keyed by the transaction **id** (same tx → same partition).
+- A **durable** producer config (`Acks.All` / `EnableIdempotence`) so an acknowledged publish is not silently lost.
+- Publish is **decoupled from the request's success**: a broker hiccup is caught-and-logged, **not** turned into a 500 after the row is already persisted.
 
 **Quality signals**
-- Idempotent consumers — reprocessing does not duplicate effects.
-- Messages are not lost on consumer failure.
-- Production/consumption decoupled from the HTTP request cycle.
-- DLQ monitored with a reprocessing strategy.
+- The producer is configured for durability, not fire-and-forget with default acks.
+- A broker outage degrades gracefully (the write still succeeds) instead of failing the API.
 
-📚 **Consensus basis:** microservices.io — Transactional Outbox & Idempotent Consumer (Chris Richardson); Confluent/Apache Kafka — Delivery Semantics & Exactly-Once.
+📚 **Consensus basis:** Confluent/Apache Kafka — Producer durability (`acks=all`, idempotence) & Delivery Semantics.
 
 🤖 **Automated evaluation**
-- **Method:** integration tests with **real Kafka (Testcontainers)**: (1) publish the **same event twice** and assert a **single effect** (idempotency); (2) **kill the consumer mid**-processing and verify lossless reprocessing (at-least-once); (3) validate **schema compatibility**; (4) inspect the **Outbox** table and **DLQ**.
-- **Metric / threshold:** the idempotency test passes (duplicate → **1** effect); the message is reprocessed after a crash (loss = **0**); **BACKWARD/FULL** schema compatibility in the Schema Registry = ok; the Outbox is drained (pending rows → 0); DLQ configured and tested; *consumer lag* stable under load.
-- **Tools (local):** **Testcontainers-Kafka**; **Schema Registry** compatibility check (Avro/Protobuf/JSON Schema); **Pact** (message contract testing); fault injection by killing the consumer process in the test.
+- **Method:** static (Roslyn) detects the client, the publish call and the durable config. In `--deep`, the harness attaches its **own** consumer to the `transactions` topic and confirms a real event was published for a just-created transaction, keyed by id.
+- **Metric / threshold:** client present + publish call present + durable config present (static); and, live, ≥1 event observed on `transactions` with `key == id` within the timeout.
+- **Tools (local):** the harness `kafka-check` consumer (**kcat**) tailing the live topic. *That live observation is the proof, which is why the submission is **not** asked for a Testcontainers-Kafka test of its own (the task rules Testcontainers out entirely — see cat. 1).*
 
 ---
 
-## 7. Security 🟠
+## 7. Security 🟠 — 14%
 
 Evaluates the protection of the application, its data, and its integrations (ISO 25010's *Security*).
 
 **What to look for**
-- Authentication and authorization — special attention to **BOLA/Broken Object Level Authorization (OWASP API #1)** and Broken Authentication (#2).
+- Authentication and authorization — *optional and **not scored** in this task: there is no user or ownership model in scope, so there is no **BOLA** (OWASP API #1) to test. If present it is mentioned in a report note; its absence is not a finding. (It used to be emitted as a **zero-weight metric** — a report line pretending to be a measurement, incapable of moving the score under any input. If a thing is worth reporting but cannot be scored, it is a note.)*
 - Secrets management (no *hardcoded* credentials; env vars / secret manager).
 - Validation and sanitization of **all** inputs (injection); beware of *mass assignment* / *excessive data exposure* (OWASP API #3).
 - **Unrestricted Resource Consumption (OWASP API #4)** → rate limiting / throttling.
 - Security Misconfiguration (#8), SSRF (#7), Unsafe Consumption of APIs (#10).
-- Sensitive data in transit (TLS) and at rest.
+- Sensitive data at rest. *(Data in transit is out of scope here: the benchmark serves the API over plain HTTP on `:8080` — TLS terminates upstream — so TLS/HSTS is **not** required and **not** scored.)*
 - Principle of least privilege (database, broker, services).
 - Logs without leaking sensitive data (passwords, tokens, PII).
 
@@ -305,15 +340,17 @@ Evaluates the protection of the application, its data, and its integrations (ISO
 📚 **Consensus basis:** OWASP API Security Top 10 (2023); ISO/IEC 25010 — *Security* (confidentiality, integrity, authenticity, accountability, non-repudiation); PCI DSS v4.x Requirement 3.
 
 🤖 **Automated evaluation**
-- **Method:** a layered security pipeline — **SAST** (code), **DAST** (running API), **SCA** (dependencies), **secret scanning** (git history), and **PCI-specific checks** (scanning for PAN/CVV in logs and columns; **BOLA** authorization test: user A tries to access user B's resource and must receive 403/404).
-- **Metric / threshold:** **High/Critical vulnerabilities = 0** (SAST+SCA); **secrets in history = 0**; BOLA/BFLA test passes (cross access denied); **0** occurrences of forbidden storage (CVV/track/PIN); high-risk DAST alerts triaged; TLS mandatory.
-- **Tools (local):** **OWASP ZAP** (DAST via OpenAPI); **CodeQL**/**Semgrep** (SAST); `dotnet list package --vulnerable` + **Trivy**/**OWASP Dependency-Check** (SCA); **gitleaks**/**trufflehog** (secrets); custom regex/Semgrep for PAN patterns.
+- **Method:** the **PCI checks** are the core, and they run over the Roslyn AST, not over regex on raw text: every string literal in *production* source (test fixtures excluded) plus every `appsettings` value is Luhn-checked for an embedded **PAN**, and identifiers are searched for forbidden **sensitive authentication data** (`cvv`/`cvc`/track/PIN). Alongside: a **secret scan** of the tree and the **NuGet vulnerability graph**. Input validation and rate limiting are detected in the source.
+- **Metric / threshold:** **0** Luhn-valid PANs in production code/config (PCI DSS Req. 3); **0** CVV/track/PIN fields; **0** secrets (gitleaks); **0 High/Critical** vulnerable packages (`dotnet list package --vulnerable --include-transitive`); input validation present; rate limiting present.
+- **Tools (local):** **gitleaks**, `dotnet list package --vulnerable`, **Roslyn**. *OWASP ZAP (DAST), Semgrep (SAST) and Trivy (SCA) are retired: ZAP added 3–5 minutes per run to emit a near-identical alert list for every submission; Semgrep `--config auto` pulled a remote rule set that drifts (so the same source could score differently on two days); Trivy's NuGet findings duplicate `dotnet list --vulnerable`. **The BOLA scenario is also gone** — auth is optional in this task and there is no user/ownership model to violate.*
 
 ---
 
-## 8. Resilience and Error Handling 🟢
+## 8. Resilience and Error Handling 🟢 — 4%
 
 Evaluates behavior under failure (*Reliability*: fault tolerance, recoverability).
+
+> **Why only 4%.** Most of what this category used to claim is now measured where it is *proved* rather than *declared*: the executability gate already caps any submission whose `/health` never answers (so `health-checks` was the third static copy of a signal the gate decides), and the live oracle already fires a malformed request and asserts a clean 4xx with no stack trace. What is left here — that the retry/timeout policies and the graceful shutdown are actually **wired** — is a static, declarative signal, and it is weighted like one.
 
 **What to look for**
 - Centralized, consistent exception handling.
@@ -331,135 +368,96 @@ Evaluates behavior under failure (*Reliability*: fault tolerance, recoverability
 📚 **Consensus basis:** ISO/IEC 25010 — *Reliability* (maturity, availability, fault tolerance, recoverability); resilience patterns (retry/backoff, circuit breaker, bulkhead).
 
 🤖 **Automated evaluation**
-- **Method:** controlled **fault injection** — introduce latency/outage in Postgres and Kafka (via **Toxiproxy**) and measure whether the application recovers; test **health checks** (liveness/readiness reflect dependencies); test **graceful shutdown** (SIGTERM drains requests); verify that errors **do not leak a stack trace** to the client.
-- **Metric / threshold:** automatic recovery after a transient failure (no manual restart); `/health/ready` reflects the real state of dependencies; error responses **without a stack trace** (validated by DAST); presence of retry/timeout/circuit breaker policies at external I/O points.
-- **Tools (local):** **Toxiproxy** (or Testcontainers pausing containers) for *fault injection*; **Polly** (detect usage and cover with tests); **ASP.NET HealthChecks**; **k6** with failure scenarios. Generic: Chaos Toolkit, Resilience4j.
+- **Method:** Roslyn detects the resilience policies (Polly / `AddStandardResilienceHandler`), the health checks, the single global exception handler, graceful shutdown and timeout/cancellation propagation. Live, the contract oracle **sends a deliberately malformed request** and asserts the answer is a clean 4xx — not a 500, and with no stack trace, `Npgsql.`/`EntityFrameworkCore` internals or `.cs:line` markers in the body.
+- **Metric / threshold:** a malformed request returns 4xx **without leaking internals**; retry/timeout/circuit-breaker policies present at the external I/O points (DB, broker); a single global exception handler; graceful shutdown wired.
+- **Tools (local):** **Roslyn** + the live contract oracle. *Toxiproxy fault injection is retired: it needed a proxy sidecar in front of Postgres and Kafka plus an outage-and-recover cycle per run — minutes of wall-clock for a signal the static policy detection already approximates.*
+- **Retired metric:** `health-checks`. Health was being counted **three times** — statically here, statically again in Observability, and by the live `/health` probe — on top of the executability gate that already caps a submission whose `/health` never answers at **1.5/5**. It was the most over-counted signal in the rubric and the one least able to change an outcome.
 
 ---
 
-## 9. Testing *(enabler)* 🟢
+# The informational categories (9–11) — measured, reported, not scored
 
-> *Not an ISO 25010 quality attribute, but the main means of evidencing it.* Evaluated because it is observable in the code.
-
-**What to look for**
-- Unit tests for business rules (base of the pyramid).
-- Integration tests for the API, database, and messaging.
-- **Contract tests** (consumer-driven, e.g., Pact) for the API and/or events.
-- Error and edge scenarios, not just the happy path.
-- Independence and determinism (no *flakiness*).
-- Use of *test containers* / ephemeral environments for dependencies.
-- Coverage of critical paths (not just raw %).
-
-**Quality signals**
-- The suite runs in CI and is reliable.
-- Tests serve as living documentation of behavior.
-- Easy to run locally with a single command.
-
-📚 **Consensus basis:** Practical Test Pyramid (Martin Fowler); Consumer-Driven Contract Testing (Pact; Microsoft Engineering Playbook).
-
-🤖 **Automated evaluation**
-- **Method:** measure test **coverage** and **strength**; **classify the pyramid** (count by type); **detect flakiness** by running the suite N times and comparing results.
-- **Metric / threshold:** **line/branch coverage ≥ 80%** on critical paths; **mutation score ≥ 70%** (coverage alone is misleading — mutation measures whether the tests *detect* bugs); a healthy pyramid ratio (a wide base of unit tests); **0 flaky tests** over ~10 runs; the suite runs in CI.
-- **Tools (local):** **Coverlet** + **ReportGenerator** (coverage, cobertura/lcov formats); **Stryker.NET** (mutation); CI reruns for flakiness. Generic: JaCoCo, PIT, Istanbul.
+The three categories below are still evaluated on every run and printed in full in each report. They
+carry **weight 0**: they do not move the weighted score and they are excluded from the coverage
+denominator. This is deliberate, and it is the honest version of what was already true — at 1–4% each,
+none of them could ever separate two submissions, and each duplicated a signal that something stronger
+already decides (the executability gate, or the live oracle). Reporting them is useful; **ranking on them
+was theatre.**
 
 ---
 
-## 10. Observability *(enabler)* 🟢
+## 9. Observability 🟢 — *informational (weight 0)*
 
-> *Also a means, not an ISO attribute.* Essential for operating the system.
+> *A means, not an ISO attribute.* Essential to operate the system — and still worth showing.
+
+> **Scope: OpenTelemetry is not required, and neither is `/metrics`.** The task no longer asks for
+> either; adding the OTel SDK is now counted as **gold-plating** (cat. 2). What the report shows is
+> whether the service is *operable*: structured JSON logs, a correlation id, and `/health` answering on
+> the running system.
 
 **What to look for**
-- **Three pillars: logs, metrics, and traces** (the OpenTelemetry/CNCF model), with correlation (trace/correlation id).
-- Metrics aligned with **Google SRE's Four Golden Signals: latency, traffic, errors, and saturation** (+ *consumer lag* in messaging).
-- Distributed tracing across the API, database, and broker.
-- Structured logging with appropriate levels.
-- Health/diagnostic endpoints.
+- **Structured (JSON) logging** with appropriate levels, and **no sensitive data in the logs** (the PAN rule is scored in Security).
+- A request / **correlation id** propagated end to end.
+- `/health` responding on the live system.
 
 **Quality signals**
 - Diagnose an incident without adding code.
-- End-to-end correlation of an operation (HTTP → event → consumption).
+- End-to-end correlation of an operation (HTTP → event).
 
 📚 **Consensus basis:** Google SRE — *Four Golden Signals*; OpenTelemetry / CNCF — three pillars (logs, metrics, traces).
 
 🤖 **Automated evaluation**
-- **Method:** verify the presence and **functioning** of the instrumentation (not just the dependency) — an **end-to-end trace/correlation id propagation** test (HTTP → event production → consumption); validate the structured log format; *scrape* the metrics endpoint; check that the 4 signals are exposed.
-- **Metric / threshold:** **OpenTelemetry** SDK present covering **traces + metrics + logs**; correlation id propagated end to end (verified in an integration test); **4 Golden Signals** exposed (latency/traffic/errors/saturation) **+ consumer lag**; `/health` and `/metrics` respond; logs in **structured JSON**.
-- **Tools (local):** **OpenTelemetry .NET** (+ an in-memory Collector in the test); **Prometheus** scrape test; a log-format validator; trace-context assertion in an integration test.
+- **Method:** Roslyn confirms structured logging and the correlation id in the source; a live HTTP probe confirms `/health` answers 2xx on the running system.
+- **Metric / threshold:** logs in **structured JSON** (Serilog / `AddJsonConsole`); a correlation/trace id propagated; `/health` responds **2xx live**.
+- **Tools (local):** live HTTP probes + **Roslyn**. *The OTel SDK, an in-memory Collector and the trace-context assertion are retired along with the requirement itself.*
+- **Why weight 0:** its decisive signal is `/health` — and that is the **executability gate**, which caps any submission that never answers it at **1.5/5** regardless of anything else here. The static `health-endpoint` and `metrics-endpoint` metrics are retired: the first was the third copy of the health signal, the second belonged to a requirement the task has dropped.
 
 ---
 
-## 11. Performance and Scalability 🟡
-
-Evaluates efficiency and the ability to scale (*Performance efficiency*: time behavior, resource utilization, capacity).
-
-**What to look for**
-- Efficient use of resources (CPU, memory, connections).
-- Asynchronous/non-blocking I/O where appropriate.
-- Caching strategies where they make sense.
-- API *statelessness* (horizontal scalability).
-- Absence of obvious bottlenecks (locks, heavy queries on the *hot path*).
-- **Measurement-guided optimization, not speculative:** micro-optimizations that add complexity without a benchmark-proven gain are *premature optimization* and should be penalized (see Cat. 2 and 3). Optimize what the profiler/load test flagged as a real bottleneck.
-
-**Quality signals**
-- Stateless API, horizontally scalable.
-- Parallelizable message consumption.
-- No connection/memory leaks under load.
-
-📚 **Consensus basis:** ISO/IEC 25010 — *Performance efficiency*; 12-Factor (*stateless* processes, factor VI).
-
-🤖 **Automated evaluation**
-- **Method:** a **load test** with a realistic profile against the API (with real Postgres + Kafka); **micro-benchmark** of the hot paths; **soak test** (sustained load) to detect leaks; verify **statelessness** (no session state in memory).
-- **Metric / threshold:** **p95/p99** latency under target load within SLO; **maximum throughput (RPS)** before violating the SLO; **error rate under load ≈ 0%**; memory/CPU stable in the soak (no *leak*); results versioned to compare implementations.
-- **Tools (local):** **k6** or **NBomber** (load); **BenchmarkDotNet** (hot paths); **dotnet-counters**/**dotnet-trace** (runtime resources). Generic: Gatling, JMeter, wrk.
-
----
-
-## 12. Portability, Configuration, and Deployment 🟢
+## 10. Portability, Configuration, and Deployment 🟢 — *informational (weight 0)*
 
 Evaluates reproducibility and operation (*Portability*: installability, adaptability, replaceability), guided by 12-Factor.
 
 **What to look for**
 - **Configuration externalized in environment variables** (12-Factor III) — no secrets/config in the code.
-- **Pluggable backing services** (database/broker treated as attached resources, swappable by config alone — 12-Factor IV).
-- Reproducible build and pinned dependencies (12-Factor I/II).
-- Containerization (Dockerfile, docker-compose for dependencies).
-- CI pipeline (build + tests + lint).
-- Clear deployment strategy.
+- **Pluggable backing services** (database/broker as attached resources, swappable by config alone — 12-Factor IV).
+- Reproducible build and **pinned** dependencies (12-Factor I/II).
+- Containerization (Dockerfile running as **non-root**, docker-compose for dependencies).
 
 **Quality signals**
 - `clone → up → run` works on any machine.
-- CI blocks the merge when the build/tests fail.
 - No environment configuration embedded in the code.
 
-📚 **Consensus basis:** The Twelve-Factor App (Config, Backing services, Build/Release/Run, Stateless processes); ISO/IEC 25010 — *Portability*. For **delivery** performance, a complementary reference: the **DORA metrics** (deployment frequency, lead time, change failure rate, time to restore) — note that these are *process* metrics, not assessable from a static code snapshot.
+📚 **Consensus basis:** The Twelve-Factor App (Config, Backing services, Build/Release/Run); ISO/IEC 25010 — *Portability*. For **delivery** performance, a complementary reference: the **DORA metrics** — note these are *process* metrics, not assessable from a static code snapshot.
 
 🤖 **Automated evaluation**
-- **Method:** an automated **clean clone → `docker compose up` → smoke test** (does it come up from scratch on a fresh machine?); **scanning for hardcoded config/secrets**; verification of dependency **pinning**; checking the **CI pipeline** status.
-- **Metric / threshold:** `docker build` and `compose up` bring up **all** dependencies; the app starts reading **only env vars** (12-Factor III/IV) — **0** sensitive config in the code; dependencies **pinned** (lock files); **green CI** (build + test + lint); Dockerfile free of lint violations.
-- **Tools (local):** **Docker** + **docker-compose**; **hadolint** (Dockerfile lint); a hardcoded config/env scanner (**gitleaks**/**Semgrep**); **dotnet-outdated**; **`act`** to run the GitHub Actions workflow locally (or run the pipeline steps directly in the shell).
+- **Method:** file checks for the Dockerfile, the compose, env-based config, dependency pinning and a non-root `USER`; **hadolint** lints the Dockerfile.
+- **Metric / threshold:** the app starts reading **only env vars** (12-Factor III/IV); dependencies **pinned** (lock file / `global.json` / Central Package Management); non-root container; Dockerfile free of lint violations.
+- **Tools (local):** **hadolint**; file/Roslyn checks. *dotnet-outdated and `act` are retired.*
+- **Why weight 0:** whether the project actually deploys is **not a checklist item here** — the harness boots the submission's **own** `docker-compose.yml`, and the **executability gate** caps it at **1.0–1.5/5** if it never comes up healthy. Scoring "a Dockerfile exists" at 2% on top of a gate that already ran the thing was double-counting.
+- **Retired metric:** `ci` (a CI workflow exists). **Nothing in this benchmark ever runs it** — the metric scored the existence of a YAML file, which is the definition of ceremony. What CI would have proven (it builds, its tests pass, it lints) the evaluator does itself, for real, on every run. The task no longer asks for a CI workflow.
 
 ---
 
-## 13. Documentation 🟠
+## 11. Documentation 🟠 — *informational (weight 0)*
 
 Evaluates support for understanding and operation (supports *Maintainability* and the developer's "Usability").
 
 **What to look for**
-- README with purpose, stack, and run instructions.
-- API documentation (accessible OpenAPI/Swagger).
-- Local setup instructions (dependencies, environment variables).
-- ADRs (architectural decisions) when relevant.
+- README with purpose, stack, setup, and run instructions.
+- API documentation (an accessible OpenAPI/Swagger document).
 
 **Quality signals**
 - A new dev brings the project up following only the README.
-- API and event contracts documented and up to date.
 
 📚 **Consensus basis:** ISO/IEC 25010 — *Maintainability/Usability*; contract convention via OpenAPI.
 
 🤖 **Automated evaluation**
-- **Method:** **validate the OpenAPI spec**; check the README's **required sections**; measure **doc-comment coverage** of public contracts; **check for broken links**; test the "**clone → run** following only the README" (the same automation as Cat. 12).
-- **Metric / threshold:** **valid** OpenAPI describing **100%** of the endpoints; README contains purpose + stack + setup + run; **0** broken links; the README setup reproduces the startup with no implicit steps.
-- **Tools (local):** **Spectral**/`swagger-cli validate` (OpenAPI); **markdownlint**; **lychee** (link checker); **DocFX** (doc coverage). Generic: redocly lint, vale (prose).
+- **Method:** parse the README for its required sections (purpose, setup/prerequisites, how to run).
+- **Metric / threshold:** README contains **purpose + setup + run**.
+- **Tools (local):** markdown section parsing. *markdownlint, lychee and DocFX are retired: they graded README cosmetics and reachable third-party URLs — network-bound, flaky checks on a 1%-weight category.*
+- **Why weight 0:** at 1%, the gap between a flawless README and **no README at all** moved the final score by **0.05** — less than the run-to-run noise of the same model on the same prompt. It was a number that looked like a measurement and could not act like one.
+- **Retired metrics:** `api-docs` — the same package/invocation predicate as cat. 4's OpenAPI check, scoring one fact in two categories; the live `openapi-populated` there is the stronger form of it, and it *is* scored. `doc-comments` — `///` density measures typing, not engineering, and it is trivially gamed by a model that comments every property. The task no longer asks for XML docs.
 
 ---
 
@@ -467,22 +465,22 @@ Evaluates support for understanding and operation (supports *Maintainability* an
 
 | # | Category | Weight | Score (0–5) | Weighted |
 |---|-----------|------|------------|-----------|
-| 1 | Functional Suitability / Correctness | 12% | | |
-| 2 | Architecture and Design | 10% | | |
-| 3 | Code Quality | 8% | | |
-| 4 | REST API Design | 11% | | |
-| 5 | Persistence and Database | 10% | | |
-| 6 | Messaging | 11% | | |
-| 7 | Security | 12% | | |
-| 8 | Resilience and Error Handling | 8% | | |
-| 9 | Testing (*enabler*) | 8% | | |
-| 10 | Observability (*enabler*) | 4% | | |
-| 11 | Performance and Scalability | 3% | | |
-| 12 | Portability, Configuration, and Deployment | 2% | | |
-| 13 | Documentation | 1% | | |
+| 1 | Functional Correctness & Tests | 20% | | |
+| 2 | Architecture and Design | 12% | | |
+| 3 | Code Quality | 10% | | |
+| 4 | REST API Design | 14% | | |
+| 5 | Persistence and Database | 13% | | |
+| 6 | Messaging | 13% | | |
+| 7 | Security | 14% | | |
+| 8 | Resilience and Error Handling | 4% | | |
 | | **Total** | **100%** | | |
+| 9 | Observability | *informational* | | — |
+| 10 | Portability, Configuration, and Deployment | *informational* | | — |
+| 11 | Documentation | *informational* | | — |
 
-> **Final score** = Σ (score × weight). Use the columns to record each implementation and allow direct comparison between projects.
+> **Final score** = Σ (score × weight) over categories **1–8 only**. Categories 9–11 are measured and reported but carry no weight — they are excluded from the score *and* from the coverage denominator.
+>
+> **The executability gate still overrides everything.** However well a submission reads, the headline is capped by how far it actually got: source that does not compile **≤ 0.5**; compiles but ships no runnable system (no `docker-compose.yml`) **≤ 1.0**; has a compose but never boots healthy **≤ 1.5**. The run is the measurement.
 
 ---
 

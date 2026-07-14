@@ -157,13 +157,13 @@
     return svg("0 0 480 206", i);
   }
 
-  // REST verb/status matrix
+  // REST verb/status matrix — the API surface is read + create only (no PUT, no DELETE)
   function dgRest() {
     var rows = [
       ["POST /…", "201", "dg-full", "+ Location"],
+      ["GET /…", "200", "dg-full", "paginated"],
       ["GET /{id}", "200 · 404", "dg-full", ""],
-      ["PUT /{id}", "204 · 404", "dg-full", ""],
-      ["DELETE /{id}", "204 · 404", "dg-full", ""],
+      ["GET /{id}/transactions", "200 · 404", "dg-full", ""],
       ["invalid body", "400", "dg-proxy", "problem+json"]
     ];
     var i = "", y = 12, rh = 34;
@@ -179,38 +179,28 @@
     return svg("0 0 480 " + (y + 4), i);
   }
 
-  // transactional outbox
-  function dgOutbox() {
+  // producer-only: persist the row, then publish the event (no consumer / outbox / DLQ)
+  function dgProduce() {
     var i = "";
     // API
-    i += box(12, 20, 96, 44, "dg-box");
-    i += tx(60, 46, "API", "dg-strong", 13, "middle");
-    // Postgres w/ tx boundary
-    i += '<rect x="168" y="10" width="184" height="96" rx="12" class="dg-box2" stroke-dasharray="5 4" stroke-width="1.4"/>';
-    i += tx(176, 26, "one DB transaction", "dg-muted", 10);
-    i += box(180, 32, 160, 30, "dg-box", 8);
-    i += tx(192, 51, "transactions row", "dg-strong", 11);
-    i += box(180, 68, 160, 30, "dg-box", 8);
-    i += tx(192, 87, "outbox row", "dg-accent", 11);
-    i += aRight(108, 168, 42, "dg-line-accent");
-    i += tx(138, 34, "write", "dg-muted", 9.5, "middle");
-    // dispatcher
-    i += aDown(260, 106, 138, "dg-line");
-    i += box(180, 138, 160, 36, "dg-box");
-    i += tx(260, 161, "outbox dispatcher", "dg-strong", 11.5, "middle");
-    // kafka
-    i += aRight(340, 400, 156, "dg-line-accent");
-    i += box(400, 138, 76, 36, "dg-box", 8);
-    i += tx(438, 161, "Kafka", "dg-accent", 12, "middle");
-    // consumer
-    i += aDown(260, 174, 206, "dg-line");
-    i += box(120, 206, 280, 40, "dg-box", 10);
-    i += tx(260, 224, "idempotent consumer · dedupe by id", "dg-strong", 11, "middle");
-    i += tx(260, 239, "commit offset AFTER processing", "dg-muted", 9.5, "middle");
-    // DLQ
-    i += '<line x1="400" y1="226" x2="452" y2="226" class="dg-line" stroke-width="1.4" stroke-dasharray="4 3"/>';
-    i += tx(430, 220, "DLQ", "dg-proxy-t", 10, "middle");
-    return svg("0 0 484 258", i);
+    i += box(12, 44, 96, 44, "dg-box");
+    i += tx(60, 70, "API", "dg-strong", 13, "middle");
+    // Postgres row
+    i += box(200, 14, 176, 40, "dg-box", 8);
+    i += tx(288, 32, "Postgres", "dg-strong", 11.5, "middle");
+    i += tx(288, 46, "transactions row", "dg-muted", 9.5, "middle");
+    // Kafka topic
+    i += box(200, 100, 176, 44, "dg-box", 8);
+    i += tx(288, 120, "Kafka · topic transactions", "dg-accent", 11, "middle");
+    i += tx(288, 134, "key = id · durable (acks=all)", "dg-muted", 9.5, "middle");
+    // arrows
+    i += aRight(108, 200, 34, "dg-line");
+    i += tx(154, 26, "1. persist", "dg-muted", 9.5, "middle");
+    i += aRight(108, 200, 122, "dg-line-accent");
+    i += tx(154, 114, "2. produce", "dg-muted", 9.5, "middle");
+    // note
+    i += tx(12, 172, "broker error → catch-and-log, never a 500 · no consumer / outbox / DLQ", "dg-muted", 9.5);
+    return svg("0 0 484 186", i);
   }
 
   // PAN masking (PCI)
@@ -260,30 +250,31 @@
     return svg("0 0 484 178", i);
   }
 
-  // test pyramid
+  // test pyramid — the submission builds only the base; the evaluator supplies the top
   function dgPyramid() {
     var i = "";
-    // three trapezoids
-    i += '<path d="M150 20 L230 20 L246 66 L134 66 Z" stroke-width="1.4" style="stroke:var(--accent);fill:var(--accent-soft)"/>';
-    i += tx(190, 48, "acceptance", "dg-accent", 11.5, "middle");
-    i += '<path d="M120 74 L260 74 L286 128 L94 128 Z" class="dg-box2" stroke-width="1.4"/>';
-    i += tx(190, 105, "integration · Testcontainers", "dg-strong", 11, "middle");
-    i += '<path d="M78 136 L302 136 L330 196 L50 196 Z" class="dg-box2" stroke-width="1.4"/>';
-    i += tx(190, 170, "unit · business rules", "dg-strong", 11.5, "middle");
+    // top: acceptance, supplied by the evaluator's live oracle (NOT the submission's job)
+    i += '<path d="M138 20 L242 20 L264 80 L116 80 Z" stroke-width="1.4" style="stroke:var(--accent);fill:var(--accent-soft)"/>';
+    i += tx(190, 44, "acceptance", "dg-accent", 11.5, "middle");
+    i += tx(190, 62, "live oracle · the evaluator", "dg-accent", 9.5, "middle");
+    // base: unit tests, the only thing the task asks the model for
+    i += '<path d="M78 90 L302 90 L330 196 L50 196 Z" class="dg-box2" stroke-width="1.4"/>';
+    i += tx(190, 130, "unit · business rules", "dg-strong", 11.5, "middle");
+    i += tx(190, 152, "no Docker · no DB · no broker", "dg-muted", 9.5, "middle");
     i += tx(350, 96, "coverage", "dg-muted", 11);
-    i += tx(350, 116, "≥ 80%", "dg-full-t", 15);
-    i += tx(350, 140, "critical path", "dg-muted", 10);
+    i += tx(350, 116, "≥ 60%", "dg-full-t", 15);
+    i += tx(350, 140, "code that matters", "dg-muted", 10);
     return svg("0 0 440 206", i);
   }
 
-  // observability pillars + correlation id
+  // observability signals + correlation id (structured logs, metrics, health — no tracing in scope)
   function dgPillars() {
     var i = "";
-    var cols = ["logs", "metrics", "traces"];
+    var cols = ["logs", "metrics", "health"];
     var x = 40, W = 96, gap = 132;
     // correlation thread
     i += '<line x1="24" y1="34" x2="416" y2="34" class="dg-line-accent" stroke-width="1.6" stroke-dasharray="6 4"/>';
-    i += tx(24, 26, "correlation id — HTTP → event → consume", "dg-accent", 10.5);
+    i += tx(24, 26, "correlation id — HTTP → event publish", "dg-accent", 10.5);
     for (var c = 0; c < cols.length; c++) {
       i += '<rect x="' + x + '" y="46" width="' + W + '" height="118" rx="10" class="dg-box2" stroke-width="1.4"/>';
       i += '<rect x="' + x + '" y="46" width="' + W + '" height="6" rx="3" class="dg-fill-accent"/>';
@@ -365,7 +356,7 @@
 
   var DG_BY_KEY = {
     requestFlow: dgRequestFlow, archLayers: dgArch, restStatus: dgRest, domain1n: dgDomain,
-    outbox: dgOutbox, panMask: dgPan, resilience: dgResilience, pyramid: dgPyramid, pillars: dgPillars
+    produce: dgProduce, panMask: dgPan, resilience: dgResilience, pyramid: dgPyramid, pillars: dgPillars
   };
 
   /* =====================================================================
@@ -416,10 +407,15 @@
     mount.innerHTML = html;
   }
 
+  // The weights chart only ranks what actually carries weight. The informational categories
+  // (weightPct 0) are reported in the criteria list below, but a 0%-wide bar in a "by weight"
+  // chart would be noise pretending to be a measurement — which is the very thing we removed.
   function renderWeights() {
     var mount = document.getElementById("weightsChart");
     if (!mount) return;
-    var list = C.criteria.slice().sort(function (a, b) { return b.weightPct - a.weightPct; });
+    var list = C.criteria.filter(function (c) { return c.weightPct > 0; })
+      .sort(function (a, b) { return b.weightPct - a.weightPct; });
+    if (!list.length) return;
     var max = list[0].weightPct;
     var html = "";
     list.forEach(function (c) {
@@ -464,11 +460,14 @@
     if (critSort === "weight") list.sort(function (a, b) { return b.weightPct - a.weightPct; });
     else list.sort(function (a, b) { return a.number - b.number; });
     var fr = featuredRun();
-    var maxW = 12; // heaviest category
+    var maxW = 20; // heaviest category (Functional Correctness & Tests)
     var html = "";
     list.forEach(function (c) {
       var av = AUTO_VAR[c.automation];
       var barW = (c.weightPct / maxW) * 100;
+      // Informational categories (weightPct 0) are measured and shown, but never ranked — so they
+      // read as "informational", not as a hollow "0%".
+      var wt = c.weightPct > 0 ? c.weightPct + "%" : t("criteria.informational");
       var look = c.look[lang].map(function (li) {
         return "<li>" + checkIcon() + "<span>" + esc(li) + "</span></li>";
       }).join("");
@@ -485,13 +484,13 @@
               '<span class="crit__titlerow">' +
                 '<span class="crit__title">' + esc(c.title[lang]) + "</span>" +
                 '<span class="crit__badge" style="color:var(' + av + ');background:color-mix(in srgb,var(' + av + ') 12%,transparent)"><span class="dot" style="background:var(' + av + ')"></span>' + esc(t("auto." + c.automation)) + "</span>" +
-                '<span class="crit__wt-inline">' + c.weightPct + "%</span>" +
+                '<span class="crit__wt-inline' + (c.weightPct > 0 ? "" : " crit__wt--info") + '">' + esc(wt) + "</span>" +
               "</span>" +
               '<span class="crit__tag">' + esc(c.tagline[lang]) + "</span>" +
             "</span>" +
             '<span class="crit__meter">' +
               '<span class="crit__bar"><span class="crit__fill" style="width:' + barW + '%"></span></span>' +
-              '<span class="crit__wt">' + c.weightPct + "%</span>" +
+              '<span class="crit__wt' + (c.weightPct > 0 ? "" : " crit__wt--info") + '">' + esc(wt) + "</span>" +
               '<svg class="crit__chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>' +
             "</span>" +
           "</button>" +

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- EF migrations are generated scaffolding, not hand-written logic to cover. -->
+          <ExcludeByFile>**/obj/**/*.cs,**/Migrations/*.cs</ExcludeByFile>
+          <Exclude>[CreditCardApi.UnitTests]*</Exclude>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

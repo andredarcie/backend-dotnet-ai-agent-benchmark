@@ -52,6 +52,43 @@ public class ScoringTests
     }
 
     [Fact]
+    public void Aggregate_excludes_informational_categories_from_the_score_and_from_coverage()
+    {
+        // A weight-0 category is INFORMATIONAL: measured and printed, but it must not move the weighted
+        // score, and it must not count against coverage either (it is not a category we failed to measure).
+        var cats = new[]
+        {
+            Cat(1, 0.20, MetricStatus.Pass),   // score 5.0
+            Cat(2, 0.20, MetricStatus.Fail),   // score 0.0
+            Cat(9, 0.00, MetricStatus.Fail),   // informational: a total failure here changes nothing
+        };
+
+        var (weighted, coverage) = Scoring.Aggregate(cats);
+
+        Assert.Equal(2.5, weighted);      // (5.0*0.20 + 0.0*0.20) / 0.40 — the informational Fail is ignored
+        Assert.Equal(1.0, coverage, 3);   // both RANKED categories were measured => full coverage
+    }
+
+    [Fact]
+    public void Aggregate_returns_null_when_only_informational_categories_exist()
+    {
+        var (weighted, coverage) = Scoring.Aggregate(new[] { Cat(9, 0.00, MetricStatus.Pass) });
+        Assert.Null(weighted);
+        Assert.Equal(0.0, coverage);
+    }
+
+    [Fact]
+    public void Registry_has_eight_scored_categories_whose_weights_sum_to_one()
+    {
+        var all = BackendEvaluator.Evaluators.EvaluatorRegistry.All;
+        var scored = all.Where(c => c.Weight > 0).ToList();
+
+        Assert.Equal(8, scored.Count);
+        Assert.Equal(1.00, scored.Sum(c => c.Weight), 3);
+        Assert.All(all.Where(c => c.Weight <= 0), c => Assert.Contains("informational", c.Name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Aggregate_returns_null_score_when_no_category_scored()
     {
         var (weighted, coverage) = Scoring.Aggregate(new[] { Cat(1, 0.1, MetricStatus.Indeterminate) });

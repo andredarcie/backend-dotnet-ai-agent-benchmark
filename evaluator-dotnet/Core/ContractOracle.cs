@@ -82,7 +82,7 @@ public static class ContractOracle
         c.Add(NoLeak("no-stacktrace-leak", malformed));
 
         // A second card so pagination has more than one row to slice.
-        long card2 = TryGetId(HttpProbe.Send("POST", Q(cards), cardJson).Body);
+        HttpProbe.Send("POST", Q(cards), cardJson);
         c.Add(Status("list-cards-200", HttpProbe.Send("GET", Q(cards)), 200, "GET credit-cards collection -> 200", ContractArea.Functional, 0.5));
         c.Add(Pagination(cards, Q));
 
@@ -131,36 +131,8 @@ public static class ContractOracle
         c.Add(Status("card-transactions-404", HttpProbe.Send("GET", Q($"{cards}/{MissingId}/transactions")), 404,
             "transactions of a missing card -> 404", ContractArea.Functional, 0.5));
 
-        // ---------- Update (PUT) ----------
-        if (cardId > 0)
-        {
-            var put = HttpProbe.Send("PUT", Q($"{cards}/{cardId}"),
-                """{"cardholderName":"Ada L. Updated","cardNumber":"4111111111111111","brand":"VISA","creditLimit":6000.00}""");
-            c.Add(StatusIn("update-card-2xx", put, new[] { 200, 204 }, "PUT existing card -> 200/204", ContractArea.Functional, 0.5));
-        }
-        c.Add(Status("update-card-404", HttpProbe.Send("PUT", Q($"{cards}/{MissingId}"),
-            """{"cardholderName":"Nobody","cardNumber":"4111111111111111","creditLimit":1}"""), 404,
-            "PUT missing card -> 404", ContractArea.Functional, 0.5));
-
-        if (txId > 0)
-        {
-            var putTx = HttpProbe.Send("PUT", Q($"{txs}/{txId}"),
-                $$"""{"creditCardId":{{cardId}},"amount":250.00,"merchant":"Amazon","category":"shopping"}""");
-            c.Add(StatusIn("update-tx-2xx", putTx, new[] { 200, 204 }, "PUT existing transaction -> 200/204", ContractArea.Functional, 0.5));
-        }
-        c.Add(Status("update-tx-404", HttpProbe.Send("PUT", Q($"{txs}/{MissingId}"),
-            $$"""{"creditCardId":{{cardId}},"amount":1,"merchant":"x"}"""), 404,
-            "PUT missing transaction -> 404", ContractArea.Functional, 0.5));
-
-        // ---------- Delete (cleanup doubles as 204 / 404 assertions) ----------
-        if (txId > 0)
-            c.Add(Status("delete-tx-204", HttpProbe.Send("DELETE", Q($"{txs}/{txId}")), 204, "DELETE transaction -> 204", ContractArea.Functional, 0.5));
-        c.Add(Status("delete-tx-404", HttpProbe.Send("DELETE", Q($"{txs}/{MissingId}")), 404, "DELETE missing transaction -> 404", ContractArea.Functional, 0.5));
-        if (cardId > 0)
-            c.Add(Status("delete-card-204", HttpProbe.Send("DELETE", Q($"{cards}/{cardId}")), 204, "DELETE card -> 204", ContractArea.Functional, 0.5));
-        c.Add(Status("delete-card-404", HttpProbe.Send("DELETE", Q($"{cards}/{MissingId}")), 404, "DELETE missing card -> 404", ContractArea.Functional, 0.5));
-        if (card2 > 0) HttpProbe.Send("DELETE", Q($"{cards}/{card2}")); // best-effort cleanup
-
+        // No PUT/DELETE section: the task's API surface is read + create only, so asserting update/delete
+        // would penalize a submission for not building what it was never asked to build.
         return report;
     }
 
@@ -184,10 +156,6 @@ public static class ContractOracle
 
     private static ContractCheck Status(string name, HttpProbe.Response r, int expected, string target, ContractArea area, double weight = 1)
         => new(name, r.Reached && r.Status == expected ? MetricStatus.Pass : MetricStatus.Fail,
-               r.Reached ? $"HTTP {r.Status}" : "unreachable", target, area, weight);
-
-    private static ContractCheck StatusIn(string name, HttpProbe.Response r, int[] expected, string target, ContractArea area, double weight = 1)
-        => new(name, r.Reached && expected.Contains(r.Status) ? MetricStatus.Pass : MetricStatus.Fail,
                r.Reached ? $"HTTP {r.Status}" : "unreachable", target, area, weight);
 
     private static ContractCheck Bool(string name, bool ok, string observed, string target, ContractArea area, double weight = 1)

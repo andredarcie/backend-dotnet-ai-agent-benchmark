@@ -3,13 +3,19 @@ using BackendEvaluator.Core;
 namespace BackendEvaluator.Evaluators;
 
 /// <summary>Category 3 — Code Quality (🟢 deterministic).
-/// Tools: dotnet format (--verify-no-changes) and dotnet build (analyzer warnings). Roslyn detects
-/// empty catches, TODO/FIXME comments and micro-optimization markers.</summary>
+/// Tools: dotnet format (--verify-no-changes) and dotnet build (analyzer warnings). Roslyn detects empty
+/// catches, TODO/FIXME comments, micro-optimization markers and sync-over-async blocking.
+///
+/// Async/blocking I/O lives here, not in a category of its own: the former "Performance &amp; Scalability"
+/// category was 3% of the score and, once the load test was dropped, held nothing but these two Roslyn
+/// facts plus two metrics that could never fail (`stateless`) or were already asserted live (`pagination`,
+/// which the contract oracle proves for real). Sync-over-async in an ASP.NET Core service is a code
+/// defect, so it is scored as one.</summary>
 public sealed class CodeQualityEvaluator : CategoryEvaluatorBase
 {
     public override int Number => 3;
     public override string Name => "Code Quality";
-    public override double Weight => 0.08;
+    public override double Weight => 0.10;
     public override AutomationLevel Automation => AutomationLevel.FullAuto;
 
     public override Task<CategoryResult> EvaluateAsync(EvaluationContext ctx)
@@ -27,6 +33,14 @@ public sealed class CodeQualityEvaluator : CategoryEvaluatorBase
 
         bool analyzers = p.PropertyIs("TreatWarningsAsErrors", "true") || p.PropertyIs("EnableNETAnalyzers", "true") || p.AnyFile(".editorconfig");
         r.Metrics.Add(Bool("analyzers-enabled", analyzers, "analyzers/.editorconfig enabled"));
+
+        // Idiomatic async I/O (was category 11). A blocking call on a request path (.Result / .Wait() /
+        // .GetAwaiter().GetResult()) is a thread-pool starvation bug in an ASP.NET Core service — a Fail,
+        // not the half-credit it used to earn.
+        r.Metrics.Add(Bool("async-io", f.AsyncMethodCount > 0,
+            $"asynchronous, non-blocking I/O ({f.AsyncMethodCount} async methods)"));
+        r.Metrics.Add(Bool("no-sync-over-async", !f.HasBlockingCalls,
+            "no sync-over-async blocking (.Result/.Wait()/.GetResult())"));
 
         if (f.HasUnsafeOrStackalloc)
             r.Notes.Add("FLAG (optional review): unsafe/stackalloc present - micro-optimizations are acceptable only with a benchmark proving the gain.");

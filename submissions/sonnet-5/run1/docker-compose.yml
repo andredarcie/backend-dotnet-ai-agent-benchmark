@@ -1,0 +1,63 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: creditcardapi
+      POSTGRES_USER: creditcardapi
+      POSTGRES_PASSWORD: creditcardapi_dev_password # gitleaks:allow - local dev only, see README
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U creditcardapi -d creditcardapi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    image: apache/kafka:4.0.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # KAFKA_LISTENERS is the bind spec: every listener must bind 0.0.0.0, never a hostname,
+      # or the in-container healthcheck (which dials localhost) can never connect.
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093
+      # KAFKA_ADVERTISED_LISTENERS is what's handed to clients: kafka:9092 inside the compose
+      # network, localhost:29092 from the host.
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "29092:29092"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=creditcardapi;Username=creditcardapi;Password=creditcardapi_dev_password" # gitleaks:allow
+      Kafka__BootstrapServers: kafka:9092
+      Kafka__TransactionsTopic: transactions
+      # Dev-only base64 AES-256 key. Generate a real one for any non-local deployment, e.g.:
+      #   openssl rand -base64 32
+      Security__PanEncryptionKey: "uO+9Anw4AgetgEyDt//K7i+gwsVA0Af29+vx/QAt+/A=" # gitleaks:allow - local dev only, see README
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

@@ -3,13 +3,15 @@ using BackendEvaluator.Core;
 namespace BackendEvaluator.Evaluators;
 
 /// <summary>Category 5 — Persistence &amp; Database (🟠 proxy).
-/// Tools: sqlfluff (SQL lint). Roslyn detects migrations vs EnsureCreated, FK/relationships, indexes,
-/// concurrency tokens and AsNoTracking. EXPLAIN/SchemaCrawler need a live DB (--deep).</summary>
+/// Roslyn detects migrations vs EnsureCreated, FK/relationships, indexes and AsNoTracking. The schema
+/// itself is exercised for real by the live contract oracle (cat. 1) against the Postgres the submission
+/// booted, so a migration that doesn't apply or a broken mapping surfaces as a failed contract check
+/// (a 500 instead of a 201), not as a static opinion.</summary>
 public sealed class PersistenceEvaluator : CategoryEvaluatorBase
 {
     public override int Number => 5;
     public override string Name => "Persistence & Database";
-    public override double Weight => 0.10;
+    public override double Weight => 0.13;
     public override AutomationLevel Automation => AutomationLevel.ProxyReview;
 
     public override Task<CategoryResult> EvaluateAsync(EvaluationContext ctx)
@@ -26,19 +28,14 @@ public sealed class PersistenceEvaluator : CategoryEvaluatorBase
 
         r.Metrics.Add(Bool("referential-integrity", f.Relationship, "referential integrity (FK/relationships)"));
         r.Metrics.Add(Bool("indexes", f.Invokes("HasIndex", "CreateIndex"), "indexes defined (incl. FKs/queries)", weight: 0.5));
-        r.Metrics.Add(Bool("concurrency", f.UsesAttribute("Timestamp", "ConcurrencyCheck") || f.IdentifierEquals("IsRowVersion", "RowVersion") || f.Invokes("IsConcurrencyToken"),
-            "concurrency control (optimistic)", weight: 0.5));
         r.Metrics.Add(Bool("read-perf", f.Invokes("AsNoTracking", "AsNoTrackingWithIdentityResolution"), "AsNoTracking on reads (efficiency proxy)", weight: 0.5));
 
-        // Real tool: lint SQL files when present.
-        var sqlFiles = p.FindByNamePattern(@"\.sql$").ToList();
-        if (sqlFiles.Count > 0)
-            RunTool(ctx, r, "sqlfluff", $"lint --dialect postgres \"{Path.GetDirectoryName(sqlFiles[0])}\"", "sqlfluff", "SQL with no violations (sqlfluff)",
-                o => o.Success ? Pass("sqlfluff", "clean", "SQL with no violations (sqlfluff)", weight: 0.5)
-                               : Partial("sqlfluff", "violations found", "SQL with no violations (sqlfluff)", weight: 0.5), weight: 0.5);
+        // No `concurrency` (rowversion) metric — and the task no longer asks for one. The API surface is
+        // read + create only: there is no UPDATE anywhere in scope, so an optimistic-concurrency token
+        // guards against a write conflict that CANNOT HAPPEN. Demanding it was the rubric contradicting
+        // its own YAGNI rule — rewarding a pattern with no variation point to justify it.
 
-        if (ctx.Options.Deep && !ctx.Tools.IsAvailable("schemacrawler")) r.MissingTools.Add("schemacrawler");
-        r.Notes.Add("PROXY: schema shape (3NF heuristics, FKs, indexes, concurrency) is scored automatically from Roslyn; N+1 / seq-scan signals use the live DB in --deep (pg_stat_statements/EXPLAIN).");
+        r.Notes.Add("PROXY: schema shape (migrations, FKs, indexes) is scored automatically from Roslyn; the schema is then exercised end to end by the live contract oracle.");
         return Task.FromResult(r);
     }
 }

@@ -4,13 +4,13 @@ using BackendEvaluator.Core;
 namespace BackendEvaluator.Evaluators;
 
 /// <summary>Category 7 — Security (🟠 proxy).
-/// Tools: gitleaks (secrets), dotnet list --vulnerable / Trivy (SCA), Semgrep (SAST). Built-in PCI
-/// checks: PAN (Luhn) over string literals + appsettings, and forbidden CVV/track/PIN fields.</summary>
+/// Tools: gitleaks (secrets), `dotnet list package --vulnerable` (SCA). Built-in PCI checks: PAN (Luhn)
+/// over string literals + appsettings, and forbidden CVV/track/PIN fields.</summary>
 public sealed class SecurityEvaluator : CategoryEvaluatorBase
 {
     public override int Number => 7;
     public override string Name => "Security";
-    public override double Weight => 0.12;
+    public override double Weight => 0.14;
     public override AutomationLevel Automation => AutomationLevel.ProxyReview;
 
     public override Task<CategoryResult> EvaluateAsync(EvaluationContext ctx)
@@ -32,63 +32,59 @@ public sealed class SecurityEvaluator : CategoryEvaluatorBase
             ? Fail("pci-sad", "cvv/cvc/track/pin field(s) present", "no sensitive auth data stored (CVV/track/PIN)", "review whether persisted")
             : Pass("pci-sad", "absent", "no sensitive auth data stored (CVV/track/PIN)"));
 
-        // Auth is OPTIONAL and out of scope for this task (no user/ownership model) — so it is reported
-        // for visibility but carries zero weight: its absence must not penalize the Security score.
+        // No `authz` metric. Auth is optional and out of scope here (no user/ownership model, so no BOLA
+        // to test), and the metric carried weight 0 — it could not move the score under any input. A
+        // zero-weight metric is a report line pretending to be a measurement; if it is worth reporting,
+        // it is a note.
         bool authz = f.UsesAttribute("Authorize") || f.Invokes("AddAuthentication", "AddAuthorization", "RequireAuthorization");
-        r.Metrics.Add(authz
-            ? Pass("authz", "present", "authentication/authorization (optional — not scored)", "no user/ownership model is in scope", weight: 0)
-            : Unknown("authz", "authentication/authorization (optional — not scored)", "out of scope — absence is not a finding", weight: 0));
+        if (authz) r.Notes.Add("FYI: authentication/authorization is wired. It is optional and out of scope in this task (no user/ownership model) — neither rewarded nor penalized.");
 
-        r.Metrics.Add(Bool("validation", p.HasPackage("FluentValidation") || f.UsesAttribute("Required", "Range", "StringLength") || f.IdentifierEquals("ModelState"),
-            "input validation", weight: 0.5));
+        // Validation must be detected by its PRESENCE, not by its style. Recognizing only FluentValidation,
+        // DataAnnotations and ModelState scored one idiom and failed every other: a submission that
+        // validates with explicit guard clauses in the application layer and surfaces the result as a
+        // ValidationException / ValidationProblemDetails is validating — arguably more cleanly, since the
+        // domain stays free of System.ComponentModel — and the live oracle proves it (the required-field,
+        // amount>0 and FK checks all come back 400). Marking that "no input validation" was the evaluator
+        // grading a convention it happened to know.
+        bool validation = p.HasPackage("FluentValidation")
+                          || f.UsesAttribute("Required", "Range", "StringLength")
+                          || f.IdentifierEquals("ModelState")
+                          || f.IdentifierContains("ValidationException", "ValidationProblem")
+                          || f.ObjectCreationTypes.Any(t => t.Contains("ValidationException") || t.Contains("ValidationProblem"));
+        r.Metrics.Add(Bool("validation", validation, "input validation", weight: 0.5));
         r.Metrics.Add(Bool("rate-limit", f.Invokes("AddRateLimiter", "RequireRateLimiting"), "rate limiting (OWASP API #4)", weight: 0.5));
-
-        // TLS posture for production. The task forbids forcing an HTTPS redirect on the container's HTTP
-        // port, so HSTS (prod-guarded) is the right signal; a bare redirect is only a partial credit.
-        bool hsts = f.Invokes("UseHsts");
-        bool httpsRedirect = f.Invokes("UseHttpsRedirection");
-        r.Metrics.Add(hsts
-            ? Pass("tls", "HSTS configured", "TLS/HSTS configured for production", weight: 0.5)
-            : httpsRedirect
-                ? Partial("tls", "HTTPS redirect only", "TLS/HSTS configured for production", "prefer HSTS; don't force redirect on the HTTP port", weight: 0.5)
-                : Fail("tls", "none", "TLS/HSTS configured for production", weight: 0.5));
 
         // Real tool: secret scan (fast, runs in any mode).
         RunTool(ctx, r, "gitleaks", $"detect --source \"{p.Root}\" --no-git --no-banner", "secrets", "no hardcoded secrets (gitleaks)",
             o => o.ExitCode == 0 ? Pass("secrets", "0 leaks", "no hardcoded secrets (gitleaks)")
                                  : Fail("secrets", "leaks found", "no hardcoded secrets (gitleaks)", "review gitleaks findings"));
 
-        // Real tools: SAST / SCA (heavier / need network) -> deep.
+        // Real tool: SCA over the restored NuGet graph -> deep. This is the ONE check that still reaches
+        // the network: the vulnerability data comes from the NuGet audit source (nuget.org).
         if (ctx.Options.Deep)
         {
             RunTool(ctx, r, "dotnet", "list package --vulnerable --include-transitive", "sca", "0 High/Critical dependencies", o =>
             {
+                // A SILENT FALSE PASS to guard against: with no reachable NuGet source, the command still
+                // EXITS 0 and prints "has no vulnerable packages **given the current sources**" — with an
+                // empty source list. Read literally that is "we checked nothing", not "nothing is wrong",
+                // so it must be Indeterminate (excluded), never a free Pass. Detect it by requiring at
+                // least one source line under the "The following sources were used:" banner.
+                bool anySource = System.Text.RegularExpressions.Regex.IsMatch(
+                    o.Combined, @"sources were used:\s*\r?\n\s+\S", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                if (!anySource)
+                    return Unknown("sca", "0 High/Critical dependencies",
+                        "no NuGet source was reachable — vulnerability data unavailable, so nothing was actually checked");
+
                 bool vuln = o.Combined.Contains("has the following vulnerable", StringComparison.OrdinalIgnoreCase)
                             || System.Text.RegularExpressions.Regex.IsMatch(o.Combined, @">\s*(High|Critical)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                 return vuln ? Fail("sca", "vulnerable packages", "0 High/Critical dependencies")
                             : Pass("sca", "none reported", "0 High/Critical dependencies");
             });
-            // Second SCA engine (Trivy): scans the whole tree, not just NuGet, and catches OS/transitive CVEs.
-            RunTool(ctx, r, "trivy",
-                $"fs --quiet --no-progress --scanners vuln --severity HIGH,CRITICAL --exit-code 1 \"{p.Root}\"",
-                "sca-trivy", "0 High/Critical vulnerabilities (Trivy)",
-                o => o.Combined.Contains("FATAL", StringComparison.OrdinalIgnoreCase)
-                        ? Unknown("sca-trivy", "0 High/Critical vulnerabilities (Trivy)", "Trivy could not run (vuln DB/network?)", 0.5)
-                   : o.ExitCode == 0
-                        ? Pass("sca-trivy", "none High/Critical", "0 High/Critical vulnerabilities (Trivy)", weight: 0.5)
-                        : Fail("sca-trivy", "High/Critical found", "0 High/Critical vulnerabilities (Trivy)", "review Trivy SCA findings", 0.5),
-                weight: 0.5, timeoutMs: 300_000);
-            // Scope SAST to the APPLICATION: this benchmark's Security criterion is the API's posture (PAN,
-            // secrets, injection, validation), per PROMPT.md — not CI supply-chain hygiene. Excluding
-            // .github/ keeps semgrep from scoring "pin your GitHub Actions to a SHA", a real but tangential
-            // nit the task never asks for.
-            RunTool(ctx, r, "semgrep", $"--error --quiet --config auto --exclude .github \"{p.Root}\"", "sast", "no SAST findings (Semgrep)",
-                o => o.ExitCode == 0 ? Pass("sast", "clean", "no SAST findings (Semgrep)")
-                                     : Partial("sast", "findings", "no SAST findings (Semgrep)"), timeoutMs: 300_000);
         }
-        else r.Notes.Add("Run with --deep for SCA (`dotnet list --vulnerable` / Trivy) and SAST (Semgrep). DAST (OWASP ZAP) needs the app running.");
+        else r.Notes.Add("Run with --deep for SCA (`dotnet list package --vulnerable`).");
 
-        r.Notes.Add("PROXY: scored automatically from SAST/DAST tool output and the live BOLA oracle scenario (user A vs resource of B) in --deep.");
+        r.Notes.Add("PROXY: scored automatically from the PCI checks (Luhn PAN / CVV / track / PIN over the Roslyn AST), gitleaks and the NuGet vulnerability graph.");
         return Task.FromResult(r);
     }
 

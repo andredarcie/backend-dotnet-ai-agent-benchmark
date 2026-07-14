@@ -1,0 +1,10 @@
+{
+  "harness":       "Claude Code",
+  "effort":        "xhigh",
+  "durationSec":   2760,
+  "passes":        1,
+  "attempts":      1,
+  "promptVersion": "PROMPT.md@338a2de8b8",
+  "producedAtUtc": "2026-07-14",
+  "notes":         "Single-pass: built from PROMPT.md only, with no PROMPT-REVIEW.md self-review pass — so it did not get the 'second chance' every two-pass run gets. Treat comparisons with two-pass runs accordingly. Cost and token counts are omitted because this run produced no model-runner log; they are unknown, not zero. Prompt used: the 8-scored-category rubric, including the explicit out-of-scope list."
+}

@@ -38,7 +38,7 @@ public sealed class EvaluationContext
         if (!Tools.IsAvailable("dotnet")) return _dotnetTest = null;
 
         // Delete any PRE-EXISTING coverage reports (stale from an earlier run, or committed into the
-        // submission) before testing, so the coverage merge in TestsEvaluator counts ONLY reports this run
+        // submission) before testing, so the coverage merge in category 1 counts ONLY reports this run
         // produces. Otherwise a leftover — or a hand-committed cobertura.xml — would inflate or outright game
         // the coverage figure.
         try

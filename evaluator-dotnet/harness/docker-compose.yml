@@ -3,9 +3,13 @@
 #   cd evaluator-dotnet/harness
 #   docker compose up --build --exit-code-from evaluator
 #
-# It boots the submission (app + Postgres + Kafka) from its own compose file, runs OWASP ZAP (DAST)
-# and the bundled-tool evaluator against the LIVE system, and writes the report to ./results.
-# Pick the submission via TARGET in .env.
+# It boots the submission (app + Postgres + Kafka) from its own compose file and runs the evaluator
+# against the LIVE system, writing the report to ./results. Pick the submission via TARGET in .env.
+#
+# There is no DAST/SAST sidecar any more: OWASP ZAP used to run here as a one-shot the evaluator had to
+# WAIT for (depends_on: service_completed_successfully), which serialized 3-5 minutes onto every grading
+# run to produce one near-identical alert list per submission. What proves the system works is the live
+# contract oracle plus the real event on the topic — both of which run inside the evaluator.
 
 name: bench-harness
 
@@ -38,58 +42,25 @@ services:
       - ./shared:/shared:rw
     restart: "no"
 
-  # OWASP ZAP baseline DAST against the live API. Intentionally a one-shot (restart: "no"): it scans,
-  # then EXITS so the evaluator's `service_completed_successfully` gate is satisfied. Its real exit code
-  # is captured to /zap/wrk/zap.exit (shared dir), so the evaluator ingests the scan result regardless
-  # of how the container itself terminates.
-  zap:
-    image: ghcr.io/zaproxy/zaproxy:stable
-    extra_hosts: ["host.docker.internal:host-gateway"]
-    volumes:
-      - ./shared:/zap/wrk:rw
-    entrypoint: ["bash", "-lc"]
-    command:
-      - |
-        for i in $$(seq 1 60); do curl -sf ${BENCH_BASE_URL}/health >/dev/null 2>&1 && break || sleep 3; done
-        # Absolute path: the `bash -lc` login shell re-sources /etc/profile and drops /zap/ from PATH,
-        # so the bare `zap-baseline.py` is not found (exits 127). /zap/zap-baseline.py always resolves.
-        /zap/zap-baseline.py -t ${BENCH_BASE_URL} -m 2
-        echo $$? > /zap/wrk/zap.exit
-    restart: "no"
-
-  # The evaluator: Roslyn AST + every bundled tool + live probes (health/metrics, k6, Schemathesis).
-  #
-  # IMPORTANT: drive the run by the EVALUATOR's completion, not by any container exiting. The `zap`
-  # one-shot must EXIT to satisfy the depends_on gate below, so `--abort-on-container-exit` can tear
-  # the whole project down the instant zap exits — racing the evaluator's start. Prefer:
+  # The evaluator: Roslyn AST + dotnet (build/test/coverage/format/vulnerable) + gitleaks + hadolint +
+  # the live probes (health/metrics, OpenAPI) and the contract oracle. It waits for /health itself, so it
+  # needs no depends_on gate; drive teardown by ITS completion:
   #
   #   docker compose up --build --exit-code-from evaluator
   #
-  # which keys teardown and the overall exit code to the evaluator finishing (it starts only once its
-  # `zap` dependency has completed). Do not remove the depends_on ordering gate.
+  # The submission's suite is UNIT-ONLY (the task rules out Testcontainers and WebApplicationFactory), so
+  # no Docker socket is mounted here and `dotnet test` boots no sibling containers — it runs in seconds.
   evaluator:
     build:
       context: ..
-    depends_on:
-      zap:
-        condition: service_completed_successfully
     extra_hosts: ["host.docker.internal:host-gateway"]
     environment:
       BENCH_BASE_URL: ${BENCH_BASE_URL}
       BENCH_INGEST_DIR: /shared
-      BENCH_K6_SCRIPT: /work/k6/script.js
       BENCH_OPENAPI_PATH: ${BENCH_OPENAPI_PATH}
-      # The submission's integration tests use Testcontainers; without a Docker socket they cannot start
-      # their Postgres/Kafka and their coverage report comes out EMPTY (which used to zero the coverage
-      # score of a well-tested project). Mount the host socket and tell Testcontainers how to reach the
-      # sibling containers it launches (Docker-outside-of-Docker on Docker Desktop).
-      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
-      TESTCONTAINERS_RYUK_DISABLED: "true"
     volumes:
       - ../../submissions/${TARGET}:/target:rw   # rw so `dotnet test/restore` can write bin/obj
       - ./results:/results:rw
       - ./shared:/shared:rw
-      - ./k6:/work/k6:ro
-      - /var/run/docker.sock:/var/run/docker.sock   # so the submission's Testcontainers integration tests run (real coverage)
     command: ["/target", "--deep", "--ingest", "/shared", "--output", "/results"]
     restart: "no"
